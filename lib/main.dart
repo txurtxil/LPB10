@@ -39,6 +39,7 @@ import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
 import 'cert_import_screen.dart';
 import 'welcome_screen.dart';
+import 'daily_stats.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1467,6 +1468,15 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       await HomeWidget.saveWidgetData<String>(
           'avg7_kwh100',
           avg7 == null ? '' : (avg7 / 100.0 * kB10BatteryKwh).toStringAsFixed(1));
+      // Motor de agregado diario (daily_stats.dart). Todavia NO alimenta la
+      // interfaz: solo se sincroniza y deja una linea en el log para poder
+      // comprobar que su avg7 coincide con el de arriba.
+      try {
+        await DailyStats.sync();
+        await CarLogBridge.log('AGG ' + await DailyStats.diagnostic());
+      } catch (e) {
+        await CarLogBridge.log('AGG error ' + e.toString());
+      }
       await CarLogBridge.log('CONSUMO avg7=' + (avg7 == null ? 'null' : avg7.toStringAsFixed(2)) +
           ' dias7=' + keys7.length.toString() + ' pts7=' + recent7.length.toString());
       // Diagnostico: deja en el log del coche por que salen o no los dias.
