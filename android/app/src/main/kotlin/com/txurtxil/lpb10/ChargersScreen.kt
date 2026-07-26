@@ -162,7 +162,7 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                     Row.Builder()
                         .setTitle(c.name)
                         .addText(sub)
-                        .setOnClickListener { navigate(c) }
+                        .setOnClickListener { screenManager.push(ChargerDetailScreen(carContext, c)) }
                         .build()
                 )
             }
