@@ -1,0 +1,324 @@
+{
+  "@@locale": "en",
+  "appTitle": "LMB10",
+  "loginScreenTitle": "Leapmotor Login",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "pinLabel": "Vehicle PIN",
+  "pinHelper": "Required for lock/unlock, climate, seats, etc.",
+  "rememberPinTitle": "Remember PIN on this device",
+  "rememberPinSubtitle": "Stored encrypted locally (flutter_secure_storage).",
+  "loginButton": "Login",
+  "dashboardDefaultTitle": "Leapmotor B10",
+  "refreshTooltip": "Refresh",
+  "settingsTooltip": "Settings, logs & backups",
+  "aboutTooltip": "About",
+  "logoutTooltip": "Log out",
+  "tileBattery": "Battery",
+  "tileAutonomy": "Range",
+  "tileLock": "Lock",
+  "lockedLabel": "Locked",
+  "unlockedLabel": "Unlocked",
+  "tileChargeState": "Charge status",
+  "chargingLabel": "Charging",
+  "notChargingLabel": "Not charging",
+  "disconnectedLabel": "Disconnected",
+  "tileChargeCable": "Charge cable",
+  "connectedLabel": "Connected",
+  "disconnectedShortLabel": "Disconn.",
+  "tileThermalMgmt": "Thermal mgmt",
+  "activeLabel": "Active",
+  "normalLabel": "Normal",
+  "tileClimate": "Climate",
+  "onLabel": "On",
+  "offLabel": "Off",
+  "tileTrunk": "Trunk",
+  "openLabel": "Open",
+  "closedLabel": "Closed",
+  "tileSentry": "Sentry",
+  "activeShortLabel": "Active",
+  "inactiveLabel": "Inactive",
+  "controlsButton": "Vehicle controls",
+  "guardModeButton": "Guard Mode (experimental)",
+  "preconditioningButton": "Preconditioning",
+  "messagesButton": "Messages",
+  "exportButton": "Export data (anonymized JSON)",
+  "debugButton": "View full status (debug)",
+  "pinDialogTitle": "Vehicle PIN",
+  "pinDialogCancel": "Cancel",
+  "pinDialogAccept": "Accept",
+  "noLocationData": "No location data",
+  "controlsScreenTitle": "B10 Controls",
+  "sectionSentry": "Sentry",
+  "sectionActions": "Actions",
+  "sectionClimate": "Climate",
+  "sectionComfort": "Comfort",
+  "sectionSunshadeWindows": "Sunshade and windows",
+  "sectionSpeedLimit": "Speed limit",
+  "sectionBattery": "Battery",
+  "sectionSeats": "Seats",
+  "actionSentryOn": "Sentry ON",
+  "actionSentryOff": "Sentry OFF",
+  "actionLock": "Lock",
+  "actionUnlock": "Unlock",
+  "actionTrunkOpen": "Open trunk",
+  "actionTrunkClose": "Close trunk",
+  "actionFindCar": "Find car",
+  "actionUnlockCharger": "Unlock charger",
+  "actionQuickHeat": "Quick heat",
+  "actionQuickCool": "Quick cool",
+  "actionDefrost": "Defrost windshield",
+  "actionAcOff": "Turn off climate",
+  "actionSteeringHeatOn": "Steering wheel heat ON",
+  "actionSteeringHeatOff": "Steering wheel heat OFF",
+  "actionSunshadeOpen": "Open sunshade",
+  "actionSunshadeClose": "Close sunshade",
+  "actionWindowsOpen": "Open windows",
+  "actionWindowsClose": "Close windows",
+  "actionPreheatOn": "Preheat ON",
+  "actionPreheatOff": "Preheat OFF",
+  "speedLimitValue": "Limit: {speed} km/h",
+  "@speedLimitValue": {
+    "placeholders": {
+      "speed": {
+        "type": "int"
+      }
+    }
+  },
+  "readingChargeLimit": "Reading current charge limit...",
+  "chargeLimitValue": "Charge limit: {percent}%",
+  "@chargeLimitValue": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "editFullScheduleButton": "Edit full charging schedule",
+  "seatDriverHeat": "Driver - Heat",
+  "seatPassengerHeat": "Passenger - Heat",
+  "seatDriverVent": "Driver - Ventilation",
+  "seatPassengerVent": "Passenger - Ventilation",
+  "aboutScreenTitle": "About",
+  "appTagline": "Unofficial app for Leapmotor B10",
+  "authorLabel": "Author",
+  "licenseLabel": "License",
+  "licenseValue": "GNU General Public License v3.0 (GPLv3)",
+  "repoLabel": "Repository and releases",
+  "disclaimerText": "Unofficial, independent project. Not affiliated with, endorsed by, or associated with Leapmotor.",
+  "messagesScreenTitle": "Messages",
+  "noMessages": "No messages.",
+  "noTitlePlaceholder": "(no title)",
+  "debugScreenTitle": "Debug: full status",
+  "saveSnapshotButton": "Save snapshot",
+  "compareSnapshotButton": "Compare with snapshot",
+  "guardModeScreenTitle": "Guard Mode (experimental)",
+  "guardModeWarning": "For occasional, conscious use only, not to leave the car like this daily: the window stays partly open during part of the process, which reduces the vehicle's physical security while the sequence lasts.",
+  "videoCmdStepTitle": "Experimental: recorder command (cmd 290)",
+  "videoCmdDescription": "We don't know what \"operation\" value the server expects. Try one, then use the snapshot/diff in Debug, or check the car's native camera settings menu to see if the switch changed state.",
+  "pendriveStepTitle": "USB drive with recording enabled",
+  "pendriveHint": "Manually check that the USB drive is inserted and recording.",
+  "ambientLightsStep": "Turn off ambient lighting (car menu)",
+  "foldMirrorsStep": "Fold mirrors (quick access or menu)",
+  "headlightsOffStep": "Turn off headlights",
+  "screensOffStep": "Turn off screens",
+  "campingModeStep": "Camping mode (experimental, unconfirmed)",
+  "activateOn3": "Activate (ON3)",
+  "deactivateOn3": "Deactivate (ON3)",
+  "openWindowStep": "Open driver's window",
+  "openWindowButton": "Open window",
+  "exitCarHint": "Exit the car now with the window open before continuing.",
+  "lockCarStep": "Lock the car",
+  "lockButton": "Lock",
+  "closeWindowStep": "Close window (experimental after locking)",
+  "closeWindowRemoteButton": "Try closing remotely",
+  "closeWindowFallbackHint": "If this button errors or the window doesn't move while the car is locked, you'll need to raise it by hand from outside as in the original method.",
+  "preconditioningScreenTitle": "Preconditioning",
+  "experimentalScheduleWarning": "Experimental: the exact schedule format is inferred by symmetry with the reference source code, not 100% confirmed. Verify it by feeling whether the car actually climates at the scheduled time.",
+  "modeLabel": "Mode",
+  "heatChip": "Heat",
+  "coldChip": "Cold",
+  "temperatureLabel": "Temperature: {temp}°C",
+  "@temperatureLabel": {
+    "placeholders": {
+      "temp": {
+        "type": "int"
+      }
+    }
+  },
+  "steeringWheelHeatToggle": "Steering wheel heating",
+  "prepareNowButton": "Precondition now (immediate test)",
+  "scheduleSectionTitle": "Schedule",
+  "hourLabel": "Time: {time}",
+  "@hourLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daysNoneSelectedHint": "Days (none selected = one-time only)",
+  "addToScheduleButton": "Add to schedule",
+  "scheduledEntriesTitle": "Scheduled entries",
+  "noScheduledEntries": "No scheduled entries.",
+  "onceLabel": "Once",
+  "dayShortSun": "Sun",
+  "dayShortMon": "Mon",
+  "dayShortTue": "Tue",
+  "dayShortWed": "Wed",
+  "dayShortThu": "Thu",
+  "dayShortFri": "Fri",
+  "dayShortSat": "Sat",
+  "chargeScheduleScreenTitle": "Charging schedule",
+  "chargeScheduleExperimentalWarning": "Experimental: the weekday format (cycles) is inferred from the default value already used in the simple charge limit. Verify with the debug screen (snapshot/diff) after saving.",
+  "scheduleActiveToggle": "Charging schedule active",
+  "startTimeLabel": "Start: {time}",
+  "@startTimeLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "endTimeLabel": "End: {time}",
+  "@endTimeLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "weekdaysTitle": "Days of the week",
+  "saveScheduleButton": "Save schedule",
+  "lastUpdatedSeconds": "Updated {sec}s ago",
+  "@lastUpdatedSeconds": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lastUpdatedMinutes": "Updated {min} min ago",
+  "@lastUpdatedMinutes": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "lastUpdatedSecondsShort": "{sec}s ago",
+  "@lastUpdatedSecondsShort": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lastUpdatedMinutesShort": "{min} min ago",
+  "@lastUpdatedMinutesShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "rangeKmAutonomy": "{km} km range",
+  "@rangeKmAutonomy": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "chargeHistoryTitle": "Charging history",
+  "chargeHistorySubtitle": "Detected by the app since installation (not provided by Leapmotor).",
+  "noChargeDetected": "No charge detected yet.",
+  "ongoingLabel": "ongoing",
+  "consumptionCardTitle": "Consumption and real range",
+  "collectingDataMsg": "Collecting driving data ({count} points). Needs several trips with the app open.",
+  "@collectingDataMsg": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notEnoughDataMsg": "Not enough driving data detected yet (only charging/parked).",
+  "avgConsumptionLabel": "Average consumption: {percent}% per 100 km",
+  "@avgConsumptionLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "estimatedRangeLabel": "Estimated range (based on your real consumption): {km} km",
+  "@estimatedRangeLabel": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "reportedRangeLabel": "Range reported by the car: {km} km",
+  "@reportedRangeLabel": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "worseEfficiencyMsg": "Your driving uses more than the manufacturer's estimate.",
+  "betterEfficiencyMsg": "Your driving is more efficient than the manufacturer's estimate.",
+  "weeklyEfficiencyTitle": "Efficiency: this week vs last",
+  "thisWeekLabel": "This week",
+  "lastWeekLabel": "Last week",
+  "betterThisWeekMsg": "This week you're using less than last week (better efficiency).",
+  "worseThisWeekMsg": "This week you're using more than last week.",
+  "needBothWeeksMsg": "Needs driving data from both weeks to compare.",
+  "percentPer100kmFmt": "{value}%/100km",
+  "@percentPer100kmFmt": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "tirePressureTitle": "Tire pressure",
+  "tireFrontLeft": "Front L",
+  "tireFrontRight": "Front R",
+  "tireRearLeft": "Rear L",
+  "tireRearRight": "Rear R",
+  "barUnit": "{value} bar",
+  "@barUnit": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "resolvingAddress": "Finding address...",
+  "parkedNear": "Parked near {address}",
+  "@parkedNear": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "enableLocationPermission": "Enable location permission to see distance",
+  "enableGps": "Enable GPS to see distance",
+  "distanceFromCurrentPosition": "{distance} from your current location",
+  "@distanceFromCurrentPosition": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotResolveAddress": "Could not resolve address",
+  "hotspotStepTitle": "Experimental: WiFi/hotspot (cmd 140)",
+  "hotspotDescription": "Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it.",
+  "supportProjectLabel": "Support the project",
+  "buyMeACoffeeButton": "Buy me a coffee on Ko-fi"
+}

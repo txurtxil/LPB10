@@ -1,0 +1,40 @@
+# Flutter / Dart
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+*.iml
+
+# Firma y secretos - NUNCA subir
+*.jks
+*.keystore
+key.properties
+android/key.properties
+
+# Certificados - NUNCA subir
+*.p12
+*.pfx
+*.pem
+*.crt
+*.key
+assets/certs/
+certs/
+
+# Backups locales
+backups_widget/
+backups/
+*.bak_*
+*.bak_sentry
+
+# Sistema
+.DS_Store
+.idea/
+.vscode/

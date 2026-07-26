@@ -1,0 +1,408 @@
+// widget_chart.dart v2 - Grafico de consumo diario para el widget de inicio.
+//
+// Barras: kWh/100 km por dia (7 dias) desde odometro + SOC.
+//   VERDE  = dia con consumo <= 15,6 (a ritmo de 430 km por carga)
+//   NARANJA= dia por encima del objetivo
+// Linea roja discontinua: 15,6 kWh/100 km = 67,1 kWh / 430 km.
+// Rayo + "+X,X" = kWh cargados ese dia. Arriba: leyenda y media semanal
+// con km/carga estimados. Devuelve ademas 'realRange' (autonomia real
+// estimada al SOC actual segun tu consumo medio de la semana).
+
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
+
+const double kB10BatteryKwh = 67.1;
+const double kB10MaxRangeKm = 430.0;
+final double kTargetKwh100 = kB10BatteryKwh / kB10MaxRangeKm * 100.0; // 15.60
+
+const _wcStorage = FlutterSecureStorage();
+const _kTripKey = 'lm_trip_points_v1';
+const _kChargeKey = 'lm_charge_history_v1';
+
+const _cBlue = Color(0xFF0D3B66);
+const _cGood = Color(0xFF2A9D8F); // <= objetivo
+const _cOver = Color(0xFFE76F51); // > objetivo
+const _cLine = Color(0xFFE63946); // linea 430 km
+
+class _DayBar {
+  final String label;
+  double km = 0;
+  double socDrop = 0;
+  bool charged = false;
+  double chargedKwh = 0;
+  _DayBar(this.label);
+  double? get kwh100 {
+    if (km <= 0 || socDrop <= 0) return null;
+    // Red de seguridad: un dia con consumo implausible no se pinta.
+    final pct = socDrop / km * 100;
+    if (pct < 12.0 || pct > 70.0) return null;
+    return socDrop * kB10BatteryKwh / km;
+  }
+}
+
+String _d1(num v) => v.toStringAsFixed(1).replaceAll('.', ',');
+
+/// Lee los puntos de viaje del archivo permanente (Documents/lmb10_history/
+/// trips.jsonl), que guarda TODO sin el limite de 200 del store rapido.
+/// Devuelve lista vacia si no existe o no se puede leer.
+Future<List<({int ts, int km, double soc})>> _readPermanentTrips() async {
+  final out = <({int ts, int km, double soc})>[];
+  try {
+    final base = await getApplicationDocumentsDirectory();
+    final f = File('${base.path}/lmb10_history/trips.jsonl');
+    if (!await f.exists()) return out;
+    final lines = await f.readAsLines();
+    for (final line in lines) {
+      final t = line.trim();
+      if (t.isEmpty) continue;
+      try {
+        final m = Map<String, dynamic>.from(json.decode(t) as Map);
+        if (m['ts'] is int && m['km'] is int && m['soc'] is num) {
+          out.add((ts: m['ts'] as int, km: m['km'] as int, soc: (m['soc'] as num).toDouble()));
+        }
+      } catch (_) {}
+    }
+    out.sort((a, b) => a.ts.compareTo(b.ts));
+  } catch (_) {}
+  return out;
+}
+
+Future<Map<String, String>> buildWidgetExtras(
+    {required bool isCharging, double? socPercent}) async {
+  String lastCharge = '';
+  String chartPath = '';
+  String chartText = '';
+  String realRange = '';
+  String cycleKm = '';
+  try {
+    // ---------- datos locales ----------
+    final chargeRaw = await _wcStorage.read(key: _kChargeKey);
+
+    // Fuente de puntos: PRIMERO el archivo permanente (sin cap). Si esta vacio
+    // (p. ej. recien instalado), se cae al store rapido capado a 200.
+    var points = await _readPermanentTrips();
+    if (points.isEmpty) {
+      final tripRaw = await _wcStorage.read(key: _kTripKey);
+      if (tripRaw != null) {
+        for (final e in (json.decode(tripRaw) as List)) {
+          final m = Map<String, dynamic>.from(e as Map);
+          points.add((
+            ts: m['ts'] as int,
+            km: m['km'] as int,
+            soc: (m['soc'] as num).toDouble(),
+          ));
+        }
+      }
+    }
+
+    final sessions =
+        <({int startTs, int? endTs, double startSoc, double? endSoc})>[];
+    if (chargeRaw != null) {
+      for (final e in (json.decode(chargeRaw) as List)) {
+        final m = Map<String, dynamic>.from(e as Map);
+        sessions.add((
+          startTs: m['startTs'] as int,
+          endTs: m['endTs'] as int?,
+          startSoc: (m['startSoc'] as num).toDouble(),
+          endSoc: (m['endSoc'] as num?)?.toDouble(),
+        ));
+      }
+    }
+
+    // Solo sesiones reales: abiertas o cerradas con ganancia >= 1%
+    final validSessions = sessions
+        .where((s) =>
+            s.endTs == null ||
+            ((s.endSoc ?? s.startSoc) - s.startSoc) >= 1.0)
+        .toList();
+
+    // ---------- ultima carga (texto) ----------
+    final closed =
+        validSessions.where((s) => s.endTs != null && s.endSoc != null);
+    if (closed.isNotEmpty) {
+      final s = closed.last;
+      final gain = s.endSoc! - s.startSoc;
+      final kwh = gain / 100.0 * kB10BatteryKwh;
+      final t = DateTime.fromMillisecondsSinceEpoch(s.endTs!);
+      String two(int n) => n.toString().padLeft(2, '0');
+      lastCharge =
+          'Ultima carga: +${gain.toStringAsFixed(0)}% (~${_d1(kwh)} kWh) '
+          '${two(t.day)}/${two(t.month)} ${two(t.hour)}:${two(t.minute)}';
+    }
+
+    // ---------- cubos de 7 dias ----------
+    final today = DateTime.now();
+    final days = <String, _DayBar>{};
+    final order = <String>[];
+    for (var i = 6; i >= 0; i--) {
+      final d = DateTime(today.year, today.month, today.day)
+          .subtract(Duration(days: i));
+      final key = '${d.year}-${d.month}-${d.day}';
+      days[key] = _DayBar(d.day.toString().padLeft(2, '0'));
+      order.add(key);
+    }
+    String keyOf(int ts) {
+      final d = DateTime.fromMillisecondsSinceEpoch(ts);
+      return '${d.year}-${d.month}-${d.day}';
+    }
+
+    for (var i = 1; i < points.length; i++) {
+      final prev = points[i - 1];
+      final curr = points[i];
+      final kmDelta = (curr.km - prev.km).toDouble();
+      final socDelta = prev.soc - curr.soc;
+      if (kmDelta <= 0 || socDelta <= 0) continue;
+      // Cordura: descartar solo tramos fisicamente imposibles.
+      final pct = socDelta / kmDelta * 100;
+      if (pct < 8.0 || pct > 70.0) continue;
+      final bar = days[keyOf(curr.ts)];
+      if (bar == null) continue;
+      bar.km += kmDelta;
+      bar.socDrop += socDelta;
+    }
+
+    for (final s in validSessions) {
+      days[keyOf(s.startTs)]?.charged = true;
+      if (s.endTs != null) {
+        final b = days[keyOf(s.endTs!)];
+        if (b != null) {
+          b.charged = true;
+          if (s.endSoc != null) {
+            b.chargedKwh += (s.endSoc! - s.startSoc) / 100.0 * kB10BatteryKwh;
+          }
+        }
+      }
+    }
+    if (isCharging) days[order.last]?.charged = true;
+
+    final bars = order.map((k) => days[k]!).toList();
+
+    // ---------- media semanal y autonomia real ----------
+    final totKm = bars.fold(0.0, (a, b) => a + b.km);
+    final totDrop = bars.fold(0.0, (a, b) => a + b.socDrop);
+    final double? weekAvg =
+        totKm > 0 && totDrop > 0 ? totDrop * kB10BatteryKwh / totKm : null;
+    if (weekAvg != null && socPercent != null && weekAvg >= 12.0) {
+      // weekAvg < 12 kWh/100 es inverosimil en este coche (objetivo 15.6):
+      // significa datos insuficientes. No se publica una autonomia fantasia.
+      // Cap a la autonomia fisica: con pocos datos el consumo medio sale
+      // optimista y daria autonomias imposibles (>430). Se limita a 430.
+      final r = (socPercent * kB10BatteryKwh / weekAvg).clamp(0.0, kB10MaxRangeKm);
+      realRange = r.round().toString();
+    }
+
+    // Km recorridos desde la ultima RECARGA, detectada como el ultimo salto
+    // de SoC hacia arriba entre dos puntos de viaje consecutivos. Mas robusto
+    // que depender de chargeSessions (que el sueno del TCU puede no registrar).
+    if (points.length >= 2) {
+      int rechargeIdx = 0;
+      for (var i = 1; i < points.length; i++) {
+        // Subida de SoC de >=3% => hubo recarga entre esos dos puntos.
+        if (points[i].soc - points[i - 1].soc >= 3) {
+          rechargeIdx = i - 1;
+        }
+      }
+      if (rechargeIdx < points.length - 1) {
+        final km = points.last.km - points[rechargeIdx].km;
+        // Cordura: el ciclo no puede superar la autonomia fisica del coche.
+        // Si sale > kB10MaxRangeKm es que aun no hay suficiente historial
+        // para localizar la ultima recarga real (se ve todo el rango
+        // disponible en vez de un ciclo). Se avisa en vez de ocultarlo sin
+        // explicar, para que quede claro que es falta de datos, no un fallo.
+        if (km > 0) {
+          cycleKm = km <= kB10MaxRangeKm ? km.toString() : 'pocos datos';
+        }
+      }
+    }
+
+    try {
+      chartText = _buildTextChart(bars, weekAvg);
+    } catch (_) {}
+
+    final hasData =
+        bars.any((b) => b.kwh100 != null) || bars.any((b) => b.charged);
+
+    if (hasData) {
+      final bytes = await _renderChartPng(bars, weekAvg);
+      final dir = await getApplicationSupportDirectory();
+      // Nombre unico por render: evita que Android reutilice el bitmap viejo.
+      try {
+        for (final f in dir.listSync()) {
+          if (f is File && f.path.contains('/widget_chart')) {
+            f.deleteSync();
+          }
+        }
+      } catch (_) {}
+      final file = File('${dir.path}/widget_chart_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(bytes, flush: true);
+      chartPath = file.path;
+    }
+  } catch (_) {
+    // Nunca romper el refresco del widget por el grafico.
+  }
+  return {
+    'charging': isCharging ? '1' : '0',
+    'lastCharge': lastCharge,
+    'chartPath': chartPath,
+    'realRange': realRange,
+    'chartText': chartText,
+    'cycleKm': cycleKm,
+  };
+}
+
+String _buildTextChart(List<_DayBar> bars, double? weekAvg) {
+  final withData = bars.where((b) => b.kwh100 != null).toList();
+  final maxVal = withData.isEmpty
+      ? kTargetKwh100
+      : withData.map((b) => b.kwh100!).reduce((a, x) => a > x ? a : x);
+  const barMax = 8;
+  final sb = StringBuffer();
+  sb.writeln('Consumo kWh/100  obj ${_d1(kTargetKwh100)}');
+  for (final b in bars) {
+    final v = b.kwh100;
+    final bolt = b.charged ? ' \u26A1' : '';
+    if (v == null) {
+      sb.writeln('${b.label} ${'\u2591' * barMax}    --$bolt');
+      continue;
+    }
+    final blocks =
+        maxVal <= 0 ? 0 : (v / maxVal * barMax).round().clamp(0, barMax);
+    final bar = '\u2588' * blocks + '\u2591' * (barMax - blocks);
+    final over = v > kTargetKwh100 ? '>' : ' ';
+    sb.writeln('${b.label} $bar ${_d1(v).padLeft(4)}$over$bolt');
+  }
+  if (weekAvg != null && weekAvg >= 12.0) {
+    final estFull =
+        (kB10BatteryKwh / weekAvg * 100).round().clamp(0, kB10MaxRangeKm.round());
+    sb.writeln('Media 7d ${_d1(weekAvg)}  ~$estFull km');
+  }
+  return sb.toString().trimRight();
+}
+
+Future<List<int>> _renderChartPng(List<_DayBar> bars, double? weekAvg) async {
+  // Estilo eConsumo: barras anchas, valor kWh/100 encima de cada una,
+  // cabecera con media/objetivo. Colores azul/verde (no cian).
+  const w = 680.0, h = 470.0;
+  const leftPad = 24.0, rightPad = 24.0, topPad = 118.0, bottomPad = 96.0;
+  final plotW = w - leftPad - rightPad;
+  final plotH = h - topPad - bottomPad;
+  final plotBottom = topPad + plotH;
+  final slotW = plotW / bars.length;
+  final barW = slotW * 0.72; // barras anchas, como eConsumo
+
+  final values = bars.map((b) => b.kwh100 ?? 0.0).toList();
+  final maxVal = math.max(values.fold(0.0, math.max), kTargetKwh100) * 1.30;
+  double yOf(double v) => topPad + plotH * (1 - v / maxVal);
+
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, w, h));
+
+  TextPainter tpOf(String text, double size, Color color,
+      {FontWeight weight = FontWeight.w600}) {
+    return TextPainter(
+      text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: size, color: color, fontWeight: weight)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+  }
+
+  // Panel redondeado
+  final panel = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(4, 4, w - 8, h - 8), const Radius.circular(30));
+  canvas.drawRRect(panel, Paint()..color = const Color(0x66FFFFFF));
+
+  // Cabecera estilo eConsumo: titulo grande + subtitulo con media
+  final title = tpOf('Consumo diario', 30, _cBlue, weight: FontWeight.w800);
+  title.paint(canvas, const Offset(leftPad, 18));
+  final sub =
+      tpOf('objetivo ${_d1(kTargetKwh100)} kWh/100 = 430 km', 22, _cBlue);
+  sub.paint(canvas, const Offset(leftPad, 58));
+  if (weekAvg != null && weekAvg >= 12.0) {
+    final estFull = (kB10BatteryKwh / weekAvg * 100).round();
+    final ok = weekAvg <= kTargetKwh100;
+    final avg = tpOf('Media 7d: ${_d1(weekAvg)}  ·  ~$estFull km/carga', 24,
+        ok ? _cGood : _cOver,
+        weight: FontWeight.w800);
+    avg.paint(canvas, Offset(w - rightPad - avg.width, 20));
+  }
+
+  // Eje base
+  canvas.drawLine(
+      Offset(leftPad, plotBottom),
+      Offset(w - rightPad, plotBottom),
+      Paint()
+        ..color = _cBlue.withOpacity(0.28)
+        ..strokeWidth = 3);
+
+  // Barras anchas con valor encima (formato eConsumo)
+  for (var i = 0; i < bars.length; i++) {
+    final b = bars[i];
+    final cx = leftPad + slotW * i + slotW / 2;
+    final v = b.kwh100;
+    if (v != null) {
+      final over = v > kTargetKwh100;
+      final color = over ? _cOver : _cGood;
+      final top = yOf(v);
+      final rect = RRect.fromRectAndCorners(
+        Rect.fromLTRB(cx - barW / 2, top, cx + barW / 2, plotBottom),
+        topLeft: const Radius.circular(9),
+        topRight: const Radius.circular(9),
+      );
+      canvas.drawRRect(rect, Paint()..color = color);
+      final lbl = tpOf(_d1(v), 30, _cBlue, weight: FontWeight.w800);
+      lbl.paint(canvas, Offset(cx - lbl.width / 2, top - 42));
+    }
+    // Dia del mes (debajo del eje, como eConsumo)
+    final day = tpOf(b.label, 28, _cBlue, weight: FontWeight.w700);
+    day.paint(canvas, Offset(cx - day.width / 2, plotBottom + 12));
+    // Rayo + kWh cargados
+    if (b.charged) {
+      if (b.chargedKwh > 0.05) {
+        final kw =
+            tpOf('+${_d1(b.chargedKwh)}', 20, _cGood, weight: FontWeight.w800);
+        final total = 24 + 6 + kw.width;
+        final startX = cx - total / 2;
+        _drawBolt(canvas, Offset(startX + 12, plotBottom + 60), 12, _cGood);
+        kw.paint(canvas, Offset(startX + 30, plotBottom + 48));
+      } else {
+        _drawBolt(canvas, Offset(cx, plotBottom + 60), 12, _cGood);
+      }
+    }
+  }
+
+  // Linea objetivo discontinua (430 km)
+  final yT = yOf(kTargetKwh100);
+  final dashPaint = Paint()
+    ..color = _cLine
+    ..strokeWidth = 5;
+  double x = leftPad;
+  while (x < w - rightPad) {
+    canvas.drawLine(
+        Offset(x, yT), Offset(math.min(x + 16, w - rightPad), yT), dashPaint);
+    x += 26;
+  }
+
+  final picture = recorder.endRecording();
+  final img = await picture.toImage(w.toInt(), h.toInt());
+  final data = await img.toByteData(format: ui.ImageByteFormat.png);
+  return data!.buffer.asUint8List();
+}
+
+void _drawBolt(Canvas canvas, Offset center, double r, Color color) {
+  final p = Path()
+    ..moveTo(center.dx + r * 0.25, center.dy - r)
+    ..lineTo(center.dx - r * 0.55, center.dy + r * 0.15)
+    ..lineTo(center.dx - r * 0.05, center.dy + r * 0.15)
+    ..lineTo(center.dx - r * 0.25, center.dy + r)
+    ..lineTo(center.dx + r * 0.55, center.dy - r * 0.15)
+    ..lineTo(center.dx + r * 0.05, center.dy - r * 0.15)
+    ..close();
+  canvas.drawPath(p, Paint()..color = color);
+}

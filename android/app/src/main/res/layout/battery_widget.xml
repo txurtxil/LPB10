@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#BFE0FA"
+    android:padding="12dp"
+    android:id="@+id/widget_root">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Leapmotor B10"
+            android:textColor="#0D3B66"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+        <ImageButton
+            android:id="@+id/widget_refresh"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:background="@drawable/widget_refresh_bg"
+            android:src="@android:drawable/ic_popup_sync"
+            android:tint="#FFFFFF"
+            android:contentDescription="Actualizar" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/widget_soc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--%"
+        android:textColor="#0D3B66"
+        android:textStyle="bold"
+        android:textSize="26sp"
+        android:layout_marginTop="4dp" />
+    <TextView
+        android:id="@+id/widget_range"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="-- km autonomia"
+        android:textColor="#0D3B66"
+        android:textSize="12sp" />
+    <TextView
+        android:id="@+id/widget_lock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Estado desconocido"
+        android:textColor="#0D3B66"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp" />
+    <TextView
+        android:id="@+id/widget_charge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:visibility="gone"
+        android:textColor="#1B7A4B"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp" />
+    <TextView
+        android:id="@+id/widget_chart_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="#0D3B66"
+        android:visibility="gone" />
+    <LinearLayout
+        android:id="@+id/widget_routines_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:layout_marginTop="6dp">
+        <Button
+            android:id="@+id/widget_routine1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:textSize="11sp"
+            android:textColor="#0D3B66"
+            android:background="#8FD0F0"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="" />
+        <Button
+            android:id="@+id/widget_routine2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:textSize="11sp"
+            android:textColor="#0D3B66"
+            android:background="#8FD0F0"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:visibility="gone"
+            android:text="" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#0D3B66"
+        android:textSize="10sp"
+        android:layout_marginTop="4dp" />
+</LinearLayout>
