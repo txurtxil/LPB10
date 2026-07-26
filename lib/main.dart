@@ -1735,8 +1735,24 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
   }
 
   Future<void> _load() async {
-    final s = await ChargeHistoryStore.load();
-    if (mounted) setState(() => _sessions = s.reversed.take(8).toList());
+    // La deteccion en vivo casi nunca llega a ver una carga: se dispara con el
+    // flanco de isCharging y exige sondear mientras el coche esta enchufado,
+    // algo que Doze impide de madrugada. Se toman las cargas CERRADAS de la
+    // reconstruccion sobre trips.jsonl y de la deteccion en vivo se conserva
+    // solo la sesion abierta, si la hubiera.
+    final live = await ChargeHistoryStore.load();
+    final open = live.where((s) => s.endTs == null).toList();
+    final rebuilt = await ChargeRebuild.fromTrips();
+    final closed = rebuilt
+        .map((r) => ChargeSession(
+              startTs: r.startTs,
+              endTs: r.endTs,
+              startSoc: r.startSoc,
+              endSoc: r.endSoc,
+            ))
+        .toList();
+    final all = <ChargeSession>[...closed, ...open];
+    if (mounted) setState(() => _sessions = all.reversed.take(8).toList());
   }
 
   String _fmtDate(int ts) {
@@ -1761,6 +1777,13 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
             AppLocalizations.of(context)!.chargeHistorySubtitle,
             style: const TextStyle(color: textColor, fontSize: 10),
           ),
+          Text(
+            Localizations.localeOf(context).languageCode == 'es'
+                ? 'Reconstruido del historial de bateria: la duracion y la potencia no se miden.'
+                : 'Rebuilt from battery history: duration and power are not measured.',
+            style: const TextStyle(
+                color: textColor, fontSize: 10, fontStyle: FontStyle.italic),
+          ),
           const SizedBox(height: 8),
           if (_sessions.isEmpty)
             Text(AppLocalizations.of(context)!.noChargeDetected, style: const TextStyle(color: textColor, fontSize: 12))
@@ -1776,7 +1799,15 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
                     const SizedBox(width: 6),
                     Text(_fmtDate(s.startTs), style: const TextStyle(color: textColor, fontSize: 12)),
                     const SizedBox(width: 8),
-                    Text('${s.startSoc.toStringAsFixed(0)}% -> $endLabel', style: const TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        ongoing
+                            ? '${s.startSoc.toStringAsFixed(0)}% -> $endLabel'
+                            : '${s.startSoc.toStringAsFixed(0)}% -> $endLabel  -  +${(((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * kB10BatteryKwh).toStringAsFixed(1)} kWh',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                 ),
               );

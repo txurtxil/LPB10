@@ -73,7 +73,10 @@ class DailyStats {
     return d;
   }
 
-  static Future<File> _trips() async =>
+  static Future<File> _trips() async => tripsFile();
+
+  /// Publico para que ChargeRebuild no duplique la ruta del historico.
+  static Future<File> tripsFile() async =>
       File((await _dir()).path + '/trips.jsonl');
   static Future<File> _agg() async =>
       File((await _dir()).path + '/daily_agg.jsonl');
@@ -335,5 +338,113 @@ class DailyStats {
         weeks(days).length.toString() +
         ' mes=' +
         months(days).length.toString();
+  }
+}
+
+/// Reconstruccion del historial de cargas a partir de trips.jsonl.
+///
+/// Por que hace falta: la deteccion en vivo se dispara con el flanco de
+/// isCharging (!wasCharging && isCharging), asi que exige sondear MIENTRAS el
+/// coche carga. Eso no ocurre. En el historico real del 26/07/2026 hay 32
+/// huecos de mas de una hora, y las dos unicas recargas visibles son un salto
+/// de SoC a traves de un hueco sin muestras (20,3 h y 1,8 h). Doze aplasta el
+/// WorkManager de madrugada, que es justo cuando se carga, y el TCU se duerme
+/// a los ~13 min. Resultado: chargeSessions vacio desde la instalacion.
+///
+/// Se detecta igual que el ciclo de carga: por subida de SoC entre puntos
+/// consecutivos. NO se puede saber la duracion real ni la potencia (entre dos
+/// muestras pueden pasar 20 h y la carga durar 4), asi que no se muestran.
+class RebuiltCharge {
+  final int startTs;
+  final int endTs;
+  final double startSoc;
+  final double endSoc;
+  final int samples;
+
+  RebuiltCharge(
+      this.startTs, this.endTs, this.startSoc, this.endSoc, this.samples);
+
+  double get gain => endSoc - startSoc;
+  double get kwh => gain / 100.0 * kB10BatteryKwh;
+
+  /// Solo hay duracion fiable si se llego a ver la carga por dentro.
+  bool get durationMeasured => samples > 2;
+}
+
+class ChargeRebuild {
+  static const double kMinGain = 1.0; // % de SoC minimo para contar como carga
+  static const int kMergeGapMs = 30 * 60 * 1000;
+
+  // La tarjeta recarga en cada refresco; sin cache se reparsearia el historico
+  // entero cada 90 s. La longitud del fichero basta como testigo: solo crece.
+  static int _cacheLen = -1;
+  static List<RebuiltCharge> _cache = <RebuiltCharge>[];
+
+  static Future<List<RebuiltCharge>> fromTrips() async {
+    final f = await DailyStats.tripsFile();
+    if (!await f.exists()) return <RebuiltCharge>[];
+    final len = await f.length();
+    if (len == _cacheLen) return _cache;
+
+    final seen = <String>{};
+    final pts = <List<num>>[];
+    for (final line in await f.readAsLines()) {
+      final t = line.trim();
+      if (t.isEmpty) continue;
+      try {
+        final m = Map<String, dynamic>.from(json.decode(t) as Map);
+        final ts = m['ts'];
+        final soc = m['soc'];
+        if (ts is! int || soc is! num) continue;
+        final k = ts.toString() + ':' + soc.toString();
+        if (!seen.add(k)) continue;
+        pts.add([ts, soc.toDouble()]);
+      } catch (_) {}
+    }
+    pts.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
+
+    final runs = <RebuiltCharge>[];
+    int? ini;
+    for (var i = 1; i < pts.length; i++) {
+      final d = pts[i][1].toDouble() - pts[i - 1][1].toDouble();
+      if (d > 0) {
+        ini ??= i - 1;
+      } else if (ini != null) {
+        runs.add(RebuiltCharge(
+            pts[ini][0].toInt(),
+            pts[i - 1][0].toInt(),
+            pts[ini][1].toDouble(),
+            pts[i - 1][1].toDouble(),
+            i - ini));
+        ini = null;
+      }
+    }
+    if (ini != null) {
+      final last = pts.length - 1;
+      runs.add(RebuiltCharge(
+          pts[ini][0].toInt(),
+          pts[last][0].toInt(),
+          pts[ini][1].toDouble(),
+          pts[last][1].toDouble(),
+          last - ini + 1));
+    }
+
+    // Une rachas casi pegadas: una meseta de SoC a mitad de carga (dos lecturas
+    // con el mismo decimal) partiria una carga real en dos.
+    final merged = <RebuiltCharge>[];
+    for (final r in runs) {
+      if (merged.isNotEmpty && r.startTs - merged.last.endTs <= kMergeGapMs) {
+        final p = merged.removeLast();
+        merged.add(RebuiltCharge(
+            p.startTs, r.endTs, p.startSoc, r.endSoc, p.samples + r.samples));
+      } else {
+        merged.add(r);
+      }
+    }
+
+    final out = merged.where((r) => r.gain >= kMinGain).toList();
+    _cacheLen = len;
+    _cache = out;
+    return out;
   }
 }
