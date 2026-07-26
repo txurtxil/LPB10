@@ -190,17 +190,84 @@ Future<String> importHistoryBackup() async {
       ..sort((a, b) => (a['startTs'] as int).compareTo(b['startTs'] as int));
     if (tp.isEmpty && ch.isEmpty) return 'Backup sin datos reconocibles';
 
-    // Archivo permanente (la exportacion deduplica por timestamp)
+    // Deduplicacion contra lo que YA hay en disco.
+    //
+    // El comentario que habia aqui decia que la exportacion deduplica por
+    // timestamp. NO es cierto: un backup real del 26/07/2026 traia 2777
+    // entradas con 1212 duplicados exactos, y todo lo anterior al 20/07
+    // aparecia escrito TRES veces. La causa era esta misma funcion: appendTrip
+    // a pelo, sin comprobar si la linea ya existia, ejecutada mas de una vez
+    // sobre datos que ya se estaban recogiendo.
+    //
+    // Filtrando aqui, la importacion pasa a ser idempotente: importar dos
+    // veces el mismo fichero no cambia nada.
+    String claveTrip(Map<String, dynamic> m) {
+      final ts = m['ts'];
+      final km = m['km'];
+      final soc = m['soc'];
+      if (ts is! int || km is! int || soc is! num) return '';
+      return ts.toString() +
+          ':' +
+          km.toString() +
+          ':' +
+          soc.toDouble().toString();
+    }
+
+    final dir = await HistoryArchive._dir();
+
+    final yaTrips = <String>{};
+    final fTrips = File(dir.path + '/trips.jsonl');
+    if (await fTrips.exists()) {
+      for (final linea in await fTrips.readAsLines()) {
+        final s = linea.trim();
+        if (s.isEmpty) continue;
+        try {
+          final k = claveTrip(
+              Map<String, dynamic>.from(json.decode(s) as Map));
+          if (k.isNotEmpty) yaTrips.add(k);
+        } catch (_) {}
+      }
+    }
+
+    final yaCargas = <String>{};
+    final fCargas = File(dir.path + '/charges.jsonl');
+    if (await fCargas.exists()) {
+      for (final linea in await fCargas.readAsLines()) {
+        final s = linea.trim();
+        if (s.isEmpty) continue;
+        try {
+          final m = Map<String, dynamic>.from(json.decode(s) as Map);
+          yaCargas.add(m['startTs'].toString() + ':' + m['endTs'].toString());
+        } catch (_) {}
+      }
+    }
+
+    var nuevosTrips = 0;
+    var repes = 0;
     for (final t in tp) {
+      final k = claveTrip(t);
+      if (k.isEmpty) continue;
+      if (!yaTrips.add(k)) {
+        repes++;
+        continue;
+      }
       await HistoryArchive.appendTrip(
           t['ts'] as int, t['km'] as int, (t['soc'] as num).toDouble());
+      nuevosTrips++;
     }
+
+    var nuevasCargas = 0;
     for (final c in ch) {
       final endV = c['endTs'];
       final socV = c['endSoc'];
       if (endV is int && socV is num) {
+        if (!yaCargas.add(c['startTs'].toString() + ':' + endV.toString())) {
+          repes++;
+          continue;
+        }
         await HistoryArchive.appendCharge(c['startTs'] as int, endV,
             (c['startSoc'] as num).toDouble(), socV.toDouble());
+        nuevasCargas++;
       }
     }
 
@@ -222,7 +289,12 @@ Future<String> importHistoryBackup() async {
                   'endSoc': c['endSoc']
                 })
             .toList()));
-    return 'Importado: ${tp.length} puntos de viaje, ${ch.length} cargas';
+    return 'Importado: ' +
+        nuevosTrips.toString() +
+        ' puntos, ' +
+        nuevasCargas.toString() +
+        ' cargas' +
+        (repes > 0 ? ' (' + repes.toString() + ' ya estaban, omitidos)' : '');
   } catch (_) {
     return 'Backup no valido';
   }
