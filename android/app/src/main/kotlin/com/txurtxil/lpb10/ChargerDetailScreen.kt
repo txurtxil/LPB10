@@ -51,16 +51,22 @@ class ChargerDetailScreen(
             val i = Intent(Intent.ACTION_VIEW, nav)
             i.setPackage("com.google.android.apps.maps")
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            carContext.startActivity(i)
-            CarLog.log(carContext, "NAV", "MOVIL lanzado con Maps")
+            // carContext.startActivity() arrastra el display del COCHE. El log
+            // del 26/07 lo dejo claro: SecurityException Permission Denial con
+            // launchDisplayId=98, porque solo las apps aprobadas para
+            // automocion pueden abrir actividades en esa pantalla.
+            // Con applicationContext la actividad va al display del movil, y
+            // Android Auto proyecta Maps por su cuenta.
+            carContext.applicationContext.startActivity(i)
+            CarLog.log(carContext, "NAV", "MOVIL lanzado con Maps (display movil)")
         } catch (e: ActivityNotFoundException) {
             CarLog.log(carContext, "NAV", "MOVIL sin Maps, reintento generico")
             try {
                 val g = Intent(Intent.ACTION_VIEW,
                     Uri.parse("geo:" + c.lat + "," + c.lon + "?q=" + c.lat + "," + c.lon))
                 g.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                carContext.startActivity(g)
-                CarLog.log(carContext, "NAV", "MOVIL lanzado generico")
+                carContext.applicationContext.startActivity(g)
+                CarLog.log(carContext, "NAV", "MOVIL lanzado generico (display movil)")
             } catch (e2: Exception) {
                 CarLog.log(carContext, "NAV", "MOVIL fallo: " + e2.javaClass.simpleName + " " + e2.message)
                 CarToast.makeText(carContext, "No hay app de mapas", CarToast.LENGTH_LONG).show()

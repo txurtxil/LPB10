@@ -78,7 +78,7 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
             val vals = daysWithData.mapNotNull { it.substringAfter(":").toFloatOrNull() }
             val maxV = (vals.maxOrNull() ?: 0f).coerceAtLeast(15.6f)
             val titDays = if (es) "Por dia" else "Per day"
-            list.addItem(Row.Builder().setTitle(titDays).addText(if (es) "Ultimos 7 dias" else "Last 7 days").build())
+            list.addItem(Row.Builder().setTitle(titDays).addText(if (es) "Un dia por barra" else "One day per bar").build())
             for (d in daysWithData) {
                 val label = d.substringBefore(":")
                 val kwhStr = d.substringAfter(":")
