@@ -1376,7 +1376,15 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   await HomeWidget.saveWidgetData<String>('amp', s.raw['batteryCurrent']?.toString() ?? '');
   await HomeWidget.saveWidgetData<String>('kw', s.batteryPowerKw?.toStringAsFixed(2) ?? '');
   await HomeWidget.saveWidgetData<String>('interiorTemp', s.raw['interiorTemp']?.toString() ?? '');
-  await HomeWidget.saveWidgetData<String>('batteryTemp', s.raw['minBatteryTemp']?.toString() ?? '');
+  // Temp. bateria: el coche NO la reporta siempre (TCU dormido / sin cargar).
+  // Si falta, NO se machaca el ultimo valor bueno; se conserva y se guarda la
+  // marca de tiempo para que Android Auto muestre la antiguedad del dato.
+  final btRaw = s.raw['minBatteryTemp'];
+  if (btRaw != null && btRaw.toString().trim().isNotEmpty) {
+    await HomeWidget.saveWidgetData<String>('batteryTemp', btRaw.toString());
+    await HomeWidget.saveWidgetData<String>(
+        'batteryTempTs', DateTime.now().millisecondsSinceEpoch.toString());
+  }
   await HomeWidget.saveWidgetData<String>('chargeRemainTime', s.raw['chargeRemainTime']?.toString() ?? '');
   await HomeWidget.saveWidgetData<String>('tireAlerts', s.tirePressureAlerts.join('|'));
   // Lista completa de rutinas para la rejilla del coche (id::nombre por linea)
@@ -1413,8 +1421,15 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       // Se descartan puntos con timestamp futuro (imposibles: datos corruptos
       // que hacian aparecer fechas que aun no han llegado, p.ej. agosto en julio).
       final nowMs = DateTime.now().millisecondsSinceEpoch;
+      // Las barras por dia NO pueden depender del ciclo: cada recarga mueve
+      // rechargeIdx al final, cyclePts se queda en 2-3 puntos y el historico
+      // por dias desaparece (solo se veia el dia en curso). Se recorre TODO
+      // el historico permanente y luego se limita a los 7 ultimos dias.
+      final allTp = pts
+          .map((e) => TripPoint(ts: e.ts, totalMileage: e.km, soc: e.soc))
+          .toList();
       final byDay = <String, List<TripPoint>>{};
-      for (final p in tp) {
+      for (final p in allTp) {
         // TripPoint.ts YA viene en milisegundos. Multiplicarlo por 1000
         // daba fechas del año 58525 y el filtro de futuro descartaba todos
         // los puntos: por eso no salia ningun dia. Se autodetecta la unidad
@@ -1437,6 +1452,23 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       if (dayParts.length > 7) {
         dayParts.removeRange(0, dayParts.length - 7);
       }
+      // Media de los 7 ultimos dias, independiente del ciclo. Justo despues
+      // de recargar el ciclo no tiene datos y el resumen sale vacio; esta
+      // cifra sigue siendo util. Los tramos de carga los descarta el filtro
+      // de plausibilidad de averageConsumptionPercentPer100km.
+      final recent7 = <TripPoint>[];
+      final keys7 = byDay.keys.toList();
+      final from7 = keys7.length > 7 ? keys7.length - 7 : 0;
+      for (var i = from7; i < keys7.length; i++) {
+        recent7.addAll(byDay[keys7[i]]!);
+      }
+      recent7.sort((a, b) => a.ts.compareTo(b.ts));
+      final avg7 = TripPointStore.averageConsumptionPercentPer100km(recent7);
+      await HomeWidget.saveWidgetData<String>(
+          'avg7_kwh100',
+          avg7 == null ? '' : (avg7 / 100.0 * kB10BatteryKwh).toStringAsFixed(1));
+      await CarLogBridge.log('CONSUMO avg7=' + (avg7 == null ? 'null' : avg7.toStringAsFixed(2)) +
+          ' dias7=' + keys7.length.toString() + ' pts7=' + recent7.length.toString());
       // Diagnostico: deja en el log del coche por que salen o no los dias.
       if (tp.isNotEmpty) {
         final ultimoMs =

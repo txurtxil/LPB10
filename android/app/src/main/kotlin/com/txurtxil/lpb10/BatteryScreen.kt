@@ -20,6 +20,7 @@ class BatteryScreen(carContext: CarContext) : Screen(carContext) {
         val kw = p.getString("kw", null)?.toFloatOrNull()
         val temp = p.getString("interiorTemp", null)
         val batTemp = p.getString("batteryTemp", null)
+        val batTempTs = p.getString("batteryTempTs", null)?.toLongOrNull()
         val chargeMin = p.getString("chargeRemainTime", null)?.toIntOrNull()
 
         val pane = Pane.Builder()
@@ -68,10 +69,20 @@ class BatteryScreen(carContext: CarContext) : Screen(carContext) {
 
         // Se muestra siempre: si el coche no reporta la señal (TCU dormido)
         // se indica, en vez de hacer desaparecer la fila sin explicacion.
+        val batTempTxt = if (!batTemp.isNullOrEmpty()) {
+            val ageMin = if (batTempTs != null && batTempTs > 0L)
+                (System.currentTimeMillis() - batTempTs) / 60000L else -1L
+            when {
+                ageMin < 0L -> batTemp + " °C"
+                ageMin < 20L -> batTemp + " °C"
+                ageMin < 180L -> batTemp + " °C  (hace " + ageMin + " min)"
+                else -> batTemp + " °C  (hace " + (ageMin / 60L) + " h)"
+            }
+        } else "-- (no reportada)"
         pane.addRow(
             Row.Builder()
                 .setTitle("Temp. bateria")
-                .addText(if (!batTemp.isNullOrEmpty()) batTemp + " °C" else "-- (no reportada)")
+                .addText(batTempTxt)
                 .build()
         )
         if (chargeMin != null && chargeMin > 0) {

@@ -49,6 +49,18 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
         }
         list.addItem(Row.Builder().setTitle(titSummary).addText(summaryText).build())
 
+        // Media de 7 dias: no depende del ciclo, asi que sigue habiendo cifra
+        // aunque acabes de enchufar y el ciclo no tenga datos suficientes.
+        val avg7 = p.getString("avg7_kwh100", "") ?: ""
+        if (avg7.isNotEmpty()) {
+            list.addItem(
+                Row.Builder()
+                    .setTitle(if (es) "Ultimos 7 dias" else "Last 7 days")
+                    .addText(avg7 + " kWh/100")
+                    .build()
+            )
+        }
+
         // --- BARRAS POR DIA: solo dias CON dato real, para no ensuciar ---
         val allDays = daysRaw.split(",").filter { it.contains(":") }
         val daysWithData = allDays.filter { it.substringAfter(":").toFloatOrNull() != null }
