@@ -7,6 +7,7 @@ import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
+import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
 import androidx.car.app.model.Row
@@ -29,6 +30,11 @@ class ChargerDetailScreen(
 
     // Via 1: el host del coche. URI "geo:lat,lon" = ir a un punto. Antes se
     // mandaba "geo:0,0?q=..." que es la forma de BUSQUEDA, no la de destino.
+    // Sin usar desde la interfaz: en el B10 startCarApp devuelve sin excepcion
+    // y no abre nada (log del 26 y 27/07, siete intentos). Se conserva por si
+    // algun dia se prueba a cambiar la categoria del manifest a CHARGING, que
+    // es el caso de uso para el que Google diseno este traspaso.
+    @Suppress("unused")
     private fun viaHost() {
         val uri = Uri.parse("geo:" + c.lat + "," + c.lon)
         try {
@@ -59,6 +65,12 @@ class ChargerDetailScreen(
             // Android Auto proyecta Maps por su cuenta.
             carContext.applicationContext.startActivity(i)
             CarLog.log(carContext, "NAV", "MOVIL lanzado con Maps (display movil)")
+            // Comprobado en el B10 el 27/07: Maps arranca en el movil Y la ruta
+            // queda cargada en el Maps de Android Auto. Lo unico que falta es
+            // que el usuario cambie de app en la pantalla del coche, y eso no
+            // hay forma de automatizarlo: la API para traer otra app al frente
+            // es startCarApp(ACTION_NAVIGATE), y el host del B10 la descarta.
+            screenManager.push(NavSentScreen(carContext, c.name))
         } catch (e: ActivityNotFoundException) {
             CarLog.log(carContext, "NAV", "MOVIL sin Maps, reintento generico")
             try {
@@ -77,6 +89,27 @@ class ChargerDetailScreen(
         }
     }
 
+    private class NavSentScreen(
+        carContext: CarContext,
+        private val destino: String
+    ) : Screen(carContext) {
+        override fun onGetTemplate(): Template {
+            return MessageTemplate.Builder(
+                "Ruta a " + destino + " enviada a Google Maps.\n\n" +
+                    "Abre Maps en la pantalla del coche para verla."
+            )
+                .setTitle("Ruta enviada")
+                .setHeaderAction(Action.BACK)
+                .addAction(
+                    Action.Builder()
+                        .setTitle("Entendido")
+                        .setOnClickListener { screenManager.pop() }
+                        .build()
+                )
+                .build()
+        }
+    }
+
     override fun onGetTemplate(): Template {
         val km = String.format("%.1f km", c.distM / 1000f)
         val pane = Pane.Builder()
@@ -91,10 +124,10 @@ class ChargerDetailScreen(
             pane.addRow(Row.Builder().setTitle("Operador").addText(c.info).build())
         }
         pane.addAction(
-            Action.Builder().setTitle("Navegar").setOnClickListener { viaHost() }.build()
-        )
-        pane.addAction(
-            Action.Builder().setTitle("En el movil").setOnClickListener { viaPhone() }.build()
+            Action.Builder()
+                .setTitle("Enviar a Maps")
+                .setOnClickListener { viaPhone() }
+                .build()
         )
         return PaneTemplate.Builder(pane.build())
             .setTitle(c.name)
