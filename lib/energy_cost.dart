@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'charge_cost.dart';
 import 'daily_stats.dart';
 import 'price_screen.dart';
 import 'widget_chart.dart' show kB10BatteryKwh;
@@ -61,6 +62,84 @@ class EnergyPrice {
 /// de los tramos que pasaron el filtro de plausibilidad.
 double kwhOf(DayAgg a) => a.soc / 100.0 * kB10BatteryKwh;
 
+/// Euros por kWh aplicables a cada dia, segun la ULTIMA carga anterior.
+///
+/// Asi el coste deja de asumir que siempre se carga en casa: si el martes
+/// cargaste en un rapido a 0,59, los kilometros del miercoles se cobran a ese
+/// precio. Y si la siguiente carga no se toca, vuelve sola al precio de casa.
+///
+/// El precio se expresa por kWh que ENTRARON EN LA BATERIA. Cuando el usuario
+/// anota el total pagado, ese precio ya lleva dentro las perdidas de carga,
+/// porque pago la energia que entrego el cargador y no la que llego a la
+/// bateria. Es mas exacto que la estimacion con el precio de casa.
+Future<Map<String, double>> preciosPorDia() async {
+  final out = <String, double>{};
+  try {
+    final casa = (await EnergyPrice.load())?.eurKwh;
+    final days = await DailyStats.load();
+    if (days.isEmpty) return out;
+    final cargas = await ChargeRebuild.fromTrips();
+    final costes = await ChargeCostStore.loadAll();
+
+    final tramos = <List<double>>[]; // [endTs, precio]
+    for (final c in cargas) {
+      final kwh = c.kwh;
+      if (kwh <= 0) continue;
+      final m = costes[c.startTs];
+      double? p;
+      if (m != null && m.eur != null) {
+        p = m.eur! / kwh;
+      } else if (m != null && m.eurKwh != null) {
+        p = m.eurKwh! * (m.kwhCargador ?? kwh) / kwh;
+      } else {
+        p = casa;
+      }
+      if (p != null) tramos.add([c.endTs.toDouble(), p]);
+    }
+    tramos.sort((a, b) => a[0].compareTo(b[0]));
+
+    for (final d in days) {
+      DateTime dia;
+      try {
+        dia = DateTime.parse(d.d);
+      } catch (_) {
+        continue;
+      }
+      final finDia =
+          dia.add(const Duration(days: 1)).millisecondsSinceEpoch.toDouble();
+      double? p;
+      for (final t in tramos) {
+        if (t[0] <= finDia) {
+          p = t[1];
+        } else {
+          break;
+        }
+      }
+      p ??= casa;
+      if (p != null) out[d.d] = p;
+    }
+  } catch (_) {}
+  return out;
+}
+
+/// Suma km, kWh y euros de un conjunto de dias aplicando el precio de cada uno.
+({double km, double kwh, double eur, bool hayEur}) totalizar(
+    Iterable<DayAgg> ds, Map<String, double> precios) {
+  var km = 0.0, kwh = 0.0, eur = 0.0;
+  var hay = false;
+  for (final a in ds) {
+    final k = kwhOf(a);
+    km += a.km;
+    kwh += k;
+    final p = precios[a.d];
+    if (p != null) {
+      eur += k * p;
+      hay = true;
+    }
+  }
+  return (km: km, kwh: kwh, eur: eur, hayEur: hay);
+}
+
 class EnergyCostCard extends StatefulWidget {
   const EnergyCostCard({super.key});
 
@@ -76,6 +155,8 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
   bool _loading = true;
   double _kwhHoy = 0, _kwh7 = 0, _kwhMes = 0;
   double _kmHoy = 0, _km7 = 0, _kmMes = 0;
+  double _eurHoy = 0, _eur7 = 0, _eurMes = 0;
+  bool _hayEur = false;
 
   @override
   void initState() {
@@ -96,39 +177,31 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
     final hoyKey = DailyStats.dayKey(ahora);
     final mesKey = DailyStats.monthKey(ahora);
 
-    var kHoy = 0.0, mHoy = 0.0, kMes = 0.0, mMes = 0.0, k7 = 0.0, m7 = 0.0;
-    for (final a in days) {
-      if (a.d == hoyKey) {
-        kHoy += kwhOf(a);
-        mHoy += a.km;
-      }
-      if (a.d.startsWith(mesKey)) {
-        kMes += kwhOf(a);
-        mMes += a.km;
-      }
-    }
+    final precios = await preciosPorDia();
     final last7 = days.length > 7 ? days.sublist(days.length - 7) : days;
-    for (final a in last7) {
-      k7 += kwhOf(a);
-      m7 += a.km;
-    }
+    final tHoy = totalizar(days.where((a) => a.d == hoyKey), precios);
+    final tMes = totalizar(days.where((a) => a.d.startsWith(mesKey)), precios);
+    final t7 = totalizar(last7, precios);
 
     if (!mounted) return;
     setState(() {
       _price = p;
-      _kwhHoy = kHoy;
-      _kmHoy = mHoy;
-      _kwh7 = k7;
-      _km7 = m7;
-      _kwhMes = kMes;
-      _kmMes = mMes;
+      _kwhHoy = tHoy.kwh;
+      _kmHoy = tHoy.km;
+      _eurHoy = tHoy.eur;
+      _kwh7 = t7.kwh;
+      _km7 = t7.km;
+      _eur7 = t7.eur;
+      _kwhMes = tMes.kwh;
+      _kmMes = tMes.km;
+      _eurMes = tMes.eur;
+      _hayEur = tHoy.hayEur || t7.hayEur || tMes.hayEur;
       _loading = false;
     });
   }
 
-  Widget _fila(String titulo, double kwh, double km) {
-    final p = _price;
-    final eur = p == null ? null : kwh * p.eurKwh;
+  Widget _fila(String titulo, double kwh, double km, double eurCalc) {
+    final eur = _hayEur ? eurCalc : null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -216,9 +289,9 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
                   ),
                 ),
               ),
-            _fila(es ? 'Hoy' : 'Today', _kwhHoy, _kmHoy),
-            _fila(es ? 'Ultimos 7 dias' : 'Last 7 days', _kwh7, _km7),
-            _fila(es ? 'Este mes' : 'This month', _kwhMes, _kmMes),
+            _fila(es ? 'Hoy' : 'Today', _kwhHoy, _kmHoy, _eurHoy),
+            _fila(es ? 'Ultimos 7 dias' : 'Last 7 days', _kwh7, _km7, _eur7),
+            _fila(es ? 'Este mes' : 'This month', _kwhMes, _kmMes, _eurMes),
             const SizedBox(height: 8),
             Text(
               es
@@ -246,28 +319,23 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 Future<({String widget, String car})> buildCostLines() async {
   const vacio = (widget: '', car: '');
   try {
-    final p = await EnergyPrice.load();
-    if (p == null) return vacio;
     final days = await DailyStats.load();
     if (days.isEmpty) return vacio;
+    final precios = await preciosPorDia();
+    if (precios.isEmpty) return vacio;
 
     final ahora = DateTime.now();
     final hoyKey = DailyStats.dayKey(ahora);
     final mesKey = DailyStats.monthKey(ahora);
-
-    var kHoy = 0.0, kMes = 0.0, k7 = 0.0;
-    for (final a in days) {
-      if (a.d == hoyKey) kHoy += kwhOf(a);
-      if (a.d.startsWith(mesKey)) kMes += kwhOf(a);
-    }
     final last7 = days.length > 7 ? days.sublist(days.length - 7) : days;
-    for (final a in last7) {
-      k7 += kwhOf(a);
-    }
+
+    final tHoy = totalizar(days.where((a) => a.d == hoyKey), precios);
+    final tMes = totalizar(days.where((a) => a.d.startsWith(mesKey)), precios);
+    final t7 = totalizar(last7, precios);
+    final kHoy = tHoy.eur, k7 = t7.eur, kMes = tMes.eur;
 
     // Coma decimal: el resto del widget ya la usa (_d1 en widget_chart.dart).
-    String eur(double kwh) =>
-        (kwh * p.eurKwh).toStringAsFixed(2).replaceAll('.', ',');
+    String eur(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
     // Ancho: las lineas mas largas del grafico rondan los 25 caracteres
     // ("Consumo kWh/100  obj 15,6"). Estas se quedan en 19, asi que caben.
@@ -302,22 +370,18 @@ Future<({String d7, String mes, String ano})> buildCarTotals() async {
   try {
     final days = await DailyStats.load();
     if (days.isEmpty) return vacio;
-    final p = await EnergyPrice.load();
+    final precios = await preciosPorDia();
     final ahora = DateTime.now();
     final mesKey = DailyStats.monthKey(ahora);
     final anoKey = ahora.year.toString() + '-';
 
     String linea(Iterable<DayAgg> ds) {
-      var km = 0.0, kwh = 0.0;
-      for (final a in ds) {
-        km += a.km;
-        kwh += kwhOf(a);
-      }
-      if (km <= 0) return '';
-      final eur = p == null ? '' : (kwh * p.eurKwh).toStringAsFixed(2);
-      return km.toStringAsFixed(0) +
+      final t = totalizar(ds, precios);
+      if (t.km <= 0) return '';
+      final eur = t.hayEur ? t.eur.toStringAsFixed(2) : '';
+      return t.km.toStringAsFixed(0) +
           '|' +
-          kwh.toStringAsFixed(1) +
+          t.kwh.toStringAsFixed(1) +
           '|' +
           eur;
     }
