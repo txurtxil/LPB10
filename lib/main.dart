@@ -40,6 +40,7 @@ import 'cert_store.dart';
 import 'cert_import_screen.dart';
 import 'welcome_screen.dart';
 import 'daily_stats.dart';
+import 'energy_cost.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1059,6 +1060,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 12),
                       ConsumptionCard(reportedRange: s.liveRemainingRange, currentSoc: s.preciseSoc ?? s.soc?.toDouble()),
                       const SizedBox(height: 12),
+                      const EnergyCostCard(),
+
                       const ChargeHistoryCard(),
                       const SizedBox(height: 12),
                       const WeeklyEfficiencyCard(),

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'backup_helper.dart';
 import 'cert_store.dart';
 import 'cert_import_screen.dart';
+import 'price_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -77,6 +78,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final c = await hasClientCert();
                     if (mounted) setState(() => _hasCert = c);
                   },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.euro_symbol),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Precio de la luz'
+                      : 'Electricity price'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Para calcular en euros lo que gastas conduciendo'
+                      : 'To show your driving energy use in euros'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const PriceScreen())),
                 ),
                 const Divider(),
                 ListTile(
