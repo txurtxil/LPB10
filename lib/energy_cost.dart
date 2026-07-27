@@ -289,3 +289,46 @@ Future<({String widget, String car})> buildCostLines() async {
     return vacio;
   }
 }
+
+/// Totales para la pantalla de Consumo del coche.
+///
+/// Cada cadena viene como "km|kWh|euros". Los euros van vacios si el usuario
+/// no ha configurado precio, y entonces el coche solo pinta km y kWh.
+///
+/// El ano arranca donde arranque el historico: si la app se instalo en julio,
+/// el total anual son los meses que haya, no doce.
+Future<({String d7, String mes, String ano})> buildCarTotals() async {
+  const vacio = (d7: '', mes: '', ano: '');
+  try {
+    final days = await DailyStats.load();
+    if (days.isEmpty) return vacio;
+    final p = await EnergyPrice.load();
+    final ahora = DateTime.now();
+    final mesKey = DailyStats.monthKey(ahora);
+    final anoKey = ahora.year.toString() + '-';
+
+    String linea(Iterable<DayAgg> ds) {
+      var km = 0.0, kwh = 0.0;
+      for (final a in ds) {
+        km += a.km;
+        kwh += kwhOf(a);
+      }
+      if (km <= 0) return '';
+      final eur = p == null ? '' : (kwh * p.eurKwh).toStringAsFixed(2);
+      return km.toStringAsFixed(0) +
+          '|' +
+          kwh.toStringAsFixed(1) +
+          '|' +
+          eur;
+    }
+
+    final last7 = days.length > 7 ? days.sublist(days.length - 7) : days;
+    return (
+      d7: linea(last7),
+      mes: linea(days.where((a) => a.d.startsWith(mesKey))),
+      ano: linea(days.where((a) => a.d.startsWith(anoKey))),
+    );
+  } catch (_) {
+    return vacio;
+  }
+}

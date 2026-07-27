@@ -17,6 +17,18 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
         return "█".repeat(n) + "░".repeat(10 - n)
     }
 
+    // "km|kWh|euros" -> "265 km  ·  41,1 kWh  ·  5,34 EUR"
+    // Los euros llegan vacios si no hay precio configurado.
+    private fun fmtTot(raw: String): String {
+        val c = raw.split("|")
+        if (c.size < 2) return ""
+        val base = c[0] + " km  \u00B7  " + c[1].replace('.', ',') + " kWh"
+        val eur = if (c.size > 2) c[2] else ""
+        return if (eur.isNotEmpty())
+            base + "  \u00B7  " + eur.replace('.', ',') + " \u20AC"
+        else base
+    }
+
     override fun onGetTemplate(): Template {
         val p = HomeWidgetPlugin.getData(carContext)
         val es = (p.getString("lang", "es") ?: "es") == "es"
@@ -52,13 +64,26 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
         // Media de 7 dias: no depende del ciclo, asi que sigue habiendo cifra
         // aunque acabes de enchufar y el ciclo no tenga datos suficientes.
         val avg7 = p.getString("avg7_kwh100", "") ?: ""
-        if (avg7.isNotEmpty()) {
-            list.addItem(
-                Row.Builder()
-                    .setTitle(if (es) "Ultimos 7 dias" else "Last 7 days")
-                    .addText(avg7 + " kWh/100")
-                    .build()
-            )
+        val tot7 = fmtTot(p.getString("tot_7d", "") ?: "")
+        if (avg7.isNotEmpty() || tot7.isNotEmpty()) {
+            val r = Row.Builder()
+                .setTitle(if (es) "Ultimos 7 dias" else "Last 7 days")
+            if (avg7.isNotEmpty()) r.addText(avg7 + " kWh/100")
+            if (tot7.isNotEmpty()) r.addText(tot7)
+            list.addItem(r.build())
+        }
+
+        // Mes y ano en UNA sola fila con dos lineas: cada fila cuenta para el
+        // limite de elementos que impone el host, y ya vamos justos.
+        val totMes = fmtTot(p.getString("tot_mes", "") ?: "")
+        val totAno = fmtTot(p.getString("tot_ano", "") ?: "")
+        if (totMes.isNotEmpty() || totAno.isNotEmpty()) {
+            val r = Row.Builder().setTitle(if (es) "Totales" else "Totals")
+            if (totMes.isNotEmpty())
+                r.addText((if (es) "Mes: " else "Month: ") + totMes)
+            if (totAno.isNotEmpty())
+                r.addText((if (es) "Ano: " else "Year: ") + totAno)
+            list.addItem(r.build())
         }
 
         // --- BARRAS POR DIA: solo dias CON dato real, para no ensuciar ---
@@ -81,16 +106,19 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
             val vals = daysWithData.mapNotNull { it.split(":").getOrNull(1)?.toFloatOrNull() }
             val maxV = (vals.maxOrNull() ?: 0f).coerceAtLeast(15.6f)
             val titDays = if (es) "Por dia" else "Per day"
-            // Gasto en euros. Cadena vacia si no hay precio configurado.
-            val costRow = p.getString("cost_row", "") ?: ""
-            if (costRow.isNotEmpty()) {
-                list.addItem(
-                    Row.Builder()
-                        .setTitle(if (es) "Gasto" else "Cost")
-                        .addText(costRow)
-                        .build()
-                )
-            }
+            // El gasto ya va dentro de las filas de 7 dias y Totales, asi que
+            // aqui se aprovecha el hueco para explicar como se lee el grafico.
+            list.addItem(
+                Row.Builder()
+                    .setTitle(if (es) "Como leer esto" else "How to read this")
+                    .addText(if (es)
+                        "La barra compara cada dia con el que mas gasto de la semana: llena = el peor."
+                        else "The bar compares each day with the worst one of the week: full = worst.")
+                    .addText(if (es)
+                        "kWh/100 = energia gastada cada 100 km. Cuanto menos, mejor. Objetivo 15,6."
+                        else "kWh/100 = energy used per 100 km. Lower is better. Target 15.6.")
+                    .build()
+            )
             list.addItem(Row.Builder().setTitle(titDays).addText(if (es) "Un dia por barra" else "One day per bar").build())
             for (d in daysWithData) {
                 val campos = d.split(":")
@@ -98,11 +126,13 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
                 val kwhStr = campos.getOrNull(1) ?: continue
                 val kwh = kwhStr.toFloatOrNull() ?: continue
                 val eur = campos.getOrNull(2) ?: ""
-                val texto = if (eur.isNotEmpty())
-                    bar(kwh, maxV) + "  " + kwhStr + " kWh/100  \u00B7  " +
-                        eur.replace('.', ',') + " \u20AC"
-                else
-                    bar(kwh, maxV) + "  " + kwhStr + " kWh/100"
+                val kmDia = campos.getOrNull(3) ?: ""
+                val sb = StringBuilder()
+                sb.append(bar(kwh, maxV)).append("  ").append(kwhStr).append(" kWh/100")
+                if (kmDia.isNotEmpty()) sb.append("  \u00B7  ").append(kmDia).append(" km")
+                if (eur.isNotEmpty())
+                    sb.append("  \u00B7  ").append(eur.replace('.', ',')).append(" \u20AC")
+                val texto = sb.toString()
                 list.addItem(Row.Builder().setTitle(label).addText(texto).build())
             }
         }

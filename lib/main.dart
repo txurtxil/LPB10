@@ -1497,21 +1497,29 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       // seria un error: esa cifra ya viene dividida por kilometros.
       try {
         final precioDia = await EnergyPrice.load();
-        if (precioDia != null) {
-          final agg = await DailyStats.load();
-          final eurDia = <String, String>{};
-          for (final ag in agg) {
-            final iso = ag.d.split('-');
-            if (iso.length != 3) continue;
-            eurDia[iso[2] + '/' + iso[1]] =
-                (ag.soc / 100.0 * kB10BatteryKwh * precioDia.eurKwh)
-                    .toStringAsFixed(2);
-          }
-          for (var i = 0; i < dayParts.length; i++) {
-            final k = dayParts[i].split(':').first;
-            dayParts[i] = dayParts[i] + ':' + (eurDia[k] ?? '');
+        final agg = await DailyStats.load();
+        final eurDia = <String, String>{};
+        final kmDia = <String, String>{};
+        for (final ag in agg) {
+          final iso = ag.d.split('-');
+          if (iso.length != 3) continue;
+          final k = iso[2] + '/' + iso[1];
+          kmDia[k] = ag.km.toStringAsFixed(0);
+          if (precioDia != null) {
+            eurDia[k] = (ag.soc / 100.0 * kB10BatteryKwh * precioDia.eurKwh)
+                .toStringAsFixed(2);
           }
         }
+        // Formato final de cada dia: "dd/MM:kwh100:euros:km".
+        for (var i = 0; i < dayParts.length; i++) {
+          final k = dayParts[i].split(':').first;
+          dayParts[i] =
+              dayParts[i] + ':' + (eurDia[k] ?? '') + ':' + (kmDia[k] ?? '');
+        }
+        final tot = await buildCarTotals();
+        await HomeWidget.saveWidgetData<String>('tot_7d', tot.d7);
+        await HomeWidget.saveWidgetData<String>('tot_mes', tot.mes);
+        await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
       } catch (_) {}
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       if (avgPct != null) {
