@@ -74,7 +74,7 @@ Future<List<({int ts, int km, double soc})>> _readPermanentTrips() async {
 }
 
 Future<Map<String, String>> buildWidgetExtras(
-    {required bool isCharging, double? socPercent}) async {
+    {required bool isCharging, double? socPercent, double? eurKwh}) async {
   String lastCharge = '';
   String chartPath = '';
   String chartText = '';
@@ -222,7 +222,7 @@ Future<Map<String, String>> buildWidgetExtras(
     }
 
     try {
-      chartText = _buildTextChart(bars, weekAvg);
+      chartText = _buildTextChart(bars, weekAvg, eurKwh);
     } catch (_) {}
 
     final hasData =
@@ -256,14 +256,24 @@ Future<Map<String, String>> buildWidgetExtras(
   };
 }
 
-String _buildTextChart(List<_DayBar> bars, double? weekAvg) {
+String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
+  // Ancho util del widget: unos 22 caracteres. La cabecera de 25 ya se partia
+  // en dos lineas en pantalla. Al anadir la columna de euros la barra baja de
+  // 8 a 6 bloques para que la fila se quede en 20 y no se rompa. Sin precio
+  // configurado no cambia nada respecto a antes.
+  final conEuro = eurKwh != null;
+  final barMax = conEuro ? 6 : 8;
   final withData = bars.where((b) => b.kwh100 != null).toList();
   final maxVal = withData.isEmpty
       ? kTargetKwh100
       : withData.map((b) => b.kwh100!).reduce((a, x) => a > x ? a : x);
-  const barMax = 8;
   final sb = StringBuffer();
-  sb.writeln('Consumo kWh/100  obj ${_d1(kTargetKwh100)}');
+  if (conEuro) {
+    sb.writeln('Consumo kWh/100 y \u20AC');
+    sb.writeln('obj ${_d1(kTargetKwh100)}');
+  } else {
+    sb.writeln('Consumo kWh/100  obj ${_d1(kTargetKwh100)}');
+  }
   for (final b in bars) {
     final v = b.kwh100;
     final bolt = b.charged ? ' \u26A1' : '';
@@ -275,7 +285,16 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg) {
         maxVal <= 0 ? 0 : (v / maxVal * barMax).round().clamp(0, barMax);
     final bar = '\u2588' * blocks + '\u2591' * (barMax - blocks);
     final over = v > kTargetKwh100 ? '>' : ' ';
-    sb.writeln('${b.label} $bar ${_d1(v).padLeft(4)}$over$bolt');
+    // Euros del dia: caida de SoC pasada a kWh por el precio. NO se deriva del
+    // kWh/100, que ya viene dividido por kilometros y daria euros por 100 km.
+    final eur = conEuro
+        ? ' ' +
+            (b.socDrop / 100.0 * kB10BatteryKwh * eurKwh!)
+                .toStringAsFixed(2)
+                .replaceAll('.', ',')
+                .padLeft(5)
+        : '';
+    sb.writeln('${b.label} $bar ${_d1(v).padLeft(4)}$over$eur$bolt');
   }
   if (weekAvg != null && weekAvg >= 12.0) {
     final estFull =

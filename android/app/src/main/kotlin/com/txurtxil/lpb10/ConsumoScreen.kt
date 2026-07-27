@@ -63,7 +63,10 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
 
         // --- BARRAS POR DIA: solo dias CON dato real, para no ensuciar ---
         val allDays = daysRaw.split(",").filter { it.contains(":") }
-        val daysWithData = allDays.filter { it.substringAfter(":").toFloatOrNull() != null }
+        // Cada dia llega como "dd/MM:kwh100" o "dd/MM:kwh100:euros". El tercer
+        // campo solo aparece si hay precio de la luz configurado, asi que hay
+        // que partir por ':' y no usar substringAfter, que se comeria dos campos.
+        val daysWithData = allDays.filter { it.split(":").getOrNull(1)?.toFloatOrNull() != null }
         if (daysWithData.isEmpty()) {
             list.addItem(
                 Row.Builder()
@@ -75,7 +78,7 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
             )
         }
         if (daysWithData.isNotEmpty()) {
-            val vals = daysWithData.mapNotNull { it.substringAfter(":").toFloatOrNull() }
+            val vals = daysWithData.mapNotNull { it.split(":").getOrNull(1)?.toFloatOrNull() }
             val maxV = (vals.maxOrNull() ?: 0f).coerceAtLeast(15.6f)
             val titDays = if (es) "Por dia" else "Per day"
             // Gasto en euros. Cadena vacia si no hay precio configurado.
@@ -90,10 +93,16 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
             }
             list.addItem(Row.Builder().setTitle(titDays).addText(if (es) "Un dia por barra" else "One day per bar").build())
             for (d in daysWithData) {
-                val label = d.substringBefore(":")
-                val kwhStr = d.substringAfter(":")
+                val campos = d.split(":")
+                val label = campos.getOrNull(0) ?: continue
+                val kwhStr = campos.getOrNull(1) ?: continue
                 val kwh = kwhStr.toFloatOrNull() ?: continue
-                val texto = bar(kwh, maxV) + "  " + kwhStr + " kWh/100"
+                val eur = campos.getOrNull(2) ?: ""
+                val texto = if (eur.isNotEmpty())
+                    bar(kwh, maxV) + "  " + kwhStr + " kWh/100  \u00B7  " +
+                        eur.replace('.', ',') + " \u20AC"
+                else
+                    bar(kwh, maxV) + "  " + kwhStr + " kWh/100"
                 list.addItem(Row.Builder().setTitle(label).addText(texto).build())
             }
         }

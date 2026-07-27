@@ -1492,6 +1492,27 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       }
       await CarLogBridge.log(
           'CONSUMO dias=${byDay.keys.join("|")} parts=${dayParts.join("|")}');
+      // Tercer campo de cada dia: los euros. Se toman del agregado diario,
+      // que tiene los kWh REALES de la jornada. Calcularlo desde el kWh/100
+      // seria un error: esa cifra ya viene dividida por kilometros.
+      try {
+        final precioDia = await EnergyPrice.load();
+        if (precioDia != null) {
+          final agg = await DailyStats.load();
+          final eurDia = <String, String>{};
+          for (final ag in agg) {
+            final iso = ag.d.split('-');
+            if (iso.length != 3) continue;
+            eurDia[iso[2] + '/' + iso[1]] =
+                (ag.soc / 100.0 * kB10BatteryKwh * precioDia.eurKwh)
+                    .toStringAsFixed(2);
+          }
+          for (var i = 0; i < dayParts.length; i++) {
+            final k = dayParts[i].split(':').first;
+            dayParts[i] = dayParts[i] + ':' + (eurDia[k] ?? '');
+          }
+        }
+      } catch (_) {}
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       if (avgPct != null) {
         final kwh100 = avgPct / 100.0 * kB10BatteryKwh;
@@ -1509,7 +1530,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   } catch (_) {}
   // Grafico de consumo diario + info de carga (widget_chart.dart)
   try {
-    final extras = await buildWidgetExtras(isCharging: s.isCharging, socPercent: s.preciseSoc ?? s.soc?.toDouble());
+    final precioW = await EnergyPrice.load();
+    final extras = await buildWidgetExtras(
+        isCharging: s.isCharging,
+        socPercent: s.preciseSoc ?? s.soc?.toDouble(),
+        eurKwh: precioW?.eurKwh);
     // Gasto en euros: se engancha al final del grafico de texto del widget
     // (TextView monoespaciado con wrap_content, asi que crecer no rompe nada)
     // y se guarda aparte para la pantalla de Consumo del coche.
