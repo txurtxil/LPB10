@@ -261,40 +261,43 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
   // en dos lineas en pantalla. Al anadir la columna de euros la barra baja de
   // 8 a 6 bloques para que la fila se quede en 20 y no se rompa. Sin precio
   // configurado no cambia nada respecto a antes.
+  // Fuera las barras por dia.
+  //
+  // Costaban 7 caracteres de los ~22 que caben y solo daban comparacion
+  // relativa, que las cifras alineadas ya dan igual de bien. Con ese hueco
+  // entran los KILOMETROS, que era el dato que faltaba y sin el la tabla
+  // parecia contradecirse: un dia a 14,2 kWh/100 costaba 0,17 y otro a 14,8
+  // costaba 1,10. No es el ritmo, son los kilometros (9 frente a 57).
+  //
+  // El kWh/100 mide COMO conduces; los km, CUANTO usas el coche; el euro es
+  // consecuencia de los dos. El '>' sigue marcando los dias sobre objetivo.
   final conEuro = eurKwh != null;
-  final barMax = conEuro ? 6 : 8;
-  final withData = bars.where((b) => b.kwh100 != null).toList();
-  final maxVal = withData.isEmpty
-      ? kTargetKwh100
-      : withData.map((b) => b.kwh100!).reduce((a, x) => a > x ? a : x);
   final sb = StringBuffer();
-  if (conEuro) {
-    sb.writeln('Consumo kWh/100 y \u20AC');
-    sb.writeln('obj ${_d1(kTargetKwh100)}');
-  } else {
-    sb.writeln('Consumo kWh/100  obj ${_d1(kTargetKwh100)}');
-  }
+  sb.writeln('Consumo por dia  obj ${_d1(kTargetKwh100)}');
+  sb.writeln('dia' +
+      'kWh100'.padLeft(7) +
+      ' ' +
+      'km'.padLeft(4) +
+      (conEuro ? '\u20AC'.padLeft(6) : ''));
   for (final b in bars) {
     final v = b.kwh100;
     final bolt = b.charged ? ' \u26A1' : '';
+    final km = b.km <= 0 ? '' : b.km.toStringAsFixed(0);
     if (v == null) {
-      sb.writeln('${b.label} ${'\u2591' * barMax}    --$bolt');
+      sb.writeln('${b.label} ${'--'.padLeft(5)} ${km.padLeft(4)}$bolt');
       continue;
     }
-    final blocks =
-        maxVal <= 0 ? 0 : (v / maxVal * barMax).round().clamp(0, barMax);
-    final bar = '\u2588' * blocks + '\u2591' * (barMax - blocks);
     final over = v > kTargetKwh100 ? '>' : ' ';
     // Euros del dia: caida de SoC pasada a kWh por el precio. NO se deriva del
     // kWh/100, que ya viene dividido por kilometros y daria euros por 100 km.
     final eur = conEuro
-        ? ' ' +
-            (b.socDrop / 100.0 * kB10BatteryKwh * eurKwh!)
-                .toStringAsFixed(2)
-                .replaceAll('.', ',')
-                .padLeft(5)
+        ? (b.socDrop / 100.0 * kB10BatteryKwh * eurKwh!)
+            .toStringAsFixed(2)
+            .replaceAll('.', ',')
+            .padLeft(6)
         : '';
-    sb.writeln('${b.label} $bar ${_d1(v).padLeft(4)}$over$eur$bolt');
+    sb.writeln(
+        '${b.label} ${_d1(v).padLeft(5)}$over${km.padLeft(4)}$eur$bolt');
   }
   if (weekAvg != null && weekAvg >= 12.0) {
     final estFull =
