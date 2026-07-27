@@ -41,6 +41,7 @@ import 'cert_import_screen.dart';
 import 'welcome_screen.dart';
 import 'daily_stats.dart';
 import 'energy_cost.dart';
+import 'charge_cost.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1769,6 +1770,8 @@ class ChargeHistoryCard extends StatefulWidget {
 
 class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
   List<ChargeSession> _sessions = [];
+  Map<int, ChargeCost> _costes = {};
+  double? _precioCasa;
 
   @override
   void initState() {
@@ -1800,7 +1803,58 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
             ))
         .toList();
     final all = <ChargeSession>[...closed, ...open];
-    if (mounted) setState(() => _sessions = all.reversed.take(8).toList());
+    final costes = await ChargeCostStore.loadAll();
+    final precio = await EnergyPrice.load();
+    if (mounted) {
+      setState(() {
+        _sessions = all.reversed.take(8).toList();
+        _costes = costes;
+        _precioCasa = precio?.eurKwh;
+      });
+    }
+  }
+
+  /// Etiqueta de coste, tocable. La tilde delante avisa de que es una
+  /// estimacion con el precio de casa y no un dato confirmado.
+  Widget _chipCoste(ChargeSession s, Color textColor) {
+    final kwh =
+        ((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * kB10BatteryKwh;
+    final manual = _costes[s.startTs];
+    var estimado = false;
+    final eur = costeCarga(
+      kwhBateria: kwh,
+      manual: manual,
+      precioCasa: _precioCasa,
+      marca: (e) => estimado = e,
+    );
+    final texto = eur == null
+        ? '+ €'
+        : (estimado ? '~' : '') +
+            eur.toStringAsFixed(2).replaceAll('.', ',') +
+            ' €';
+    return InkWell(
+      onTap: () async {
+        final cambiado =
+            await editarCosteCarga(context, s.startTs, kwh, manual);
+        if (cambiado) await _load();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          border: Border.all(color: textColor.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          texto,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 11,
+            fontWeight: estimado ? FontWeight.normal : FontWeight.bold,
+            fontStyle: estimado ? FontStyle.italic : FontStyle.normal,
+          ),
+        ),
+      ),
+    );
   }
 
   String _fmtDate(int ts) {
@@ -1827,8 +1881,8 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
           ),
           Text(
             Localizations.localeOf(context).languageCode == 'es'
-                ? 'Reconstruido del historial de bateria: la duracion y la potencia no se miden.'
-                : 'Rebuilt from battery history: duration and power are not measured.',
+                ? 'Reconstruido del historial de bateria: la duracion y la potencia no se miden. Toca el precio para corregirlo; en cursiva es estimado.'
+                : 'Rebuilt from battery history: duration and power are not measured. Tap a price to correct it; italics means estimated.',
             style: const TextStyle(
                 color: textColor, fontSize: 10, fontStyle: FontStyle.italic),
           ),
@@ -1856,6 +1910,7 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
                         style: const TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
+                    if (!ongoing) _chipCoste(s, textColor),
                   ],
                 ),
               );
