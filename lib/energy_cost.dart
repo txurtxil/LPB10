@@ -233,3 +233,59 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
     );
   }
 }
+
+/// Lineas de gasto para el widget de inicio y para Android Auto.
+///
+/// Se calcula aqui y NO en widget_chart.dart a proposito: energy_cost.dart ya
+/// importa widget_chart.dart para kB10BatteryKwh, y hacerlo al reves crearia
+/// una dependencia circular.
+///
+/// Devuelve cadenas vacias si el usuario no ha puesto precio o si aun no hay
+/// agregado. En ese caso no se pinta nada: mejor que filas con guiones
+/// ocupando sitio en un widget donde el espacio es oro.
+Future<({String widget, String car})> buildCostLines() async {
+  const vacio = (widget: '', car: '');
+  try {
+    final p = await EnergyPrice.load();
+    if (p == null) return vacio;
+    final days = await DailyStats.load();
+    if (days.isEmpty) return vacio;
+
+    final ahora = DateTime.now();
+    final hoyKey = DailyStats.dayKey(ahora);
+    final mesKey = DailyStats.monthKey(ahora);
+
+    var kHoy = 0.0, kMes = 0.0, k7 = 0.0;
+    for (final a in days) {
+      if (a.d == hoyKey) kHoy += kwhOf(a);
+      if (a.d.startsWith(mesKey)) kMes += kwhOf(a);
+    }
+    final last7 = days.length > 7 ? days.sublist(days.length - 7) : days;
+    for (final a in last7) {
+      k7 += kwhOf(a);
+    }
+
+    // Coma decimal: el resto del widget ya la usa (_d1 en widget_chart.dart).
+    String eur(double kwh) =>
+        (kwh * p.eurKwh).toStringAsFixed(2).replaceAll('.', ',');
+
+    // Ancho: las lineas mas largas del grafico rondan los 25 caracteres
+    // ("Consumo kWh/100  obj 15,6"). Estas se quedan en 19, asi que caben.
+    final w = StringBuffer()
+      ..writeln('Gasto hoy ' + eur(kHoy).padLeft(6) + ' \u20AC')
+      ..writeln('Gasto 7d  ' + eur(k7).padLeft(6) + ' \u20AC')
+      ..write('Gasto mes ' + eur(kMes).padLeft(6) + ' \u20AC');
+
+    final c = 'Hoy ' +
+        eur(kHoy) +
+        ' \u20AC  \u00B7  7 dias ' +
+        eur(k7) +
+        ' \u20AC  \u00B7  Mes ' +
+        eur(kMes) +
+        ' \u20AC';
+
+    return (widget: w.toString(), car: c);
+  } catch (_) {
+    return vacio;
+  }
+}

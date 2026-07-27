@@ -1510,6 +1510,18 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   // Grafico de consumo diario + info de carga (widget_chart.dart)
   try {
     final extras = await buildWidgetExtras(isCharging: s.isCharging, socPercent: s.preciseSoc ?? s.soc?.toDouble());
+    // Gasto en euros: se engancha al final del grafico de texto del widget
+    // (TextView monoespaciado con wrap_content, asi que crecer no rompe nada)
+    // y se guarda aparte para la pantalla de Consumo del coche.
+    try {
+      final coste = await buildCostLines();
+      if (coste.widget.isNotEmpty) {
+        final ct = extras['chartText'] ?? '';
+        extras['chartText'] =
+            ct.isEmpty ? coste.widget : ct + '\n' + coste.widget;
+      }
+      await HomeWidget.saveWidgetData<String>('cost_row', coste.car);
+    } catch (_) {}
     for (final entry in extras.entries) {
       await HomeWidget.saveWidgetData<String>(entry.key, entry.value);
     }
