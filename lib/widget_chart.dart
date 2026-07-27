@@ -273,9 +273,13 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
   // consecuencia de los dos. El '>' sigue marcando los dias sobre objetivo.
   final conEuro = eurKwh != null;
   final sb = StringBuffer();
-  sb.writeln('Consumo por dia  obj ${_d1(kTargetKwh100)}');
+  // Ancho util medido en pantalla: 22 caracteres con monospace a 13sp. El
+  // titulo anterior gastaba 25 y se partia en dos lineas.
+  sb.writeln('Consumo dia  obj ${_d1(kTargetKwh100)}');
+  // La cabecera tiene que cuadrar EXACTAMENTE con el reparto de las filas:
+  //   dia(2) espacio(1) kWh(5) marca(1) km(4) euro(6) = 19 caracteres.
   sb.writeln('dia' +
-      'kWh100'.padLeft(7) +
+      'kWh'.padLeft(5) +
       ' ' +
       'km'.padLeft(4) +
       (conEuro ? '\u20AC'.padLeft(6) : ''));

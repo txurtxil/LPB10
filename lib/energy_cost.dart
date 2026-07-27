@@ -332,24 +332,31 @@ Future<({String widget, String car})> buildCostLines() async {
     final tHoy = totalizar(days.where((a) => a.d == hoyKey), precios);
     final tMes = totalizar(days.where((a) => a.d.startsWith(mesKey)), precios);
     final t7 = totalizar(last7, precios);
-    final kHoy = tHoy.eur, k7 = t7.eur, kMes = tMes.eur;
-
     // Coma decimal: el resto del widget ya la usa (_d1 en widget_chart.dart).
     String eur(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+    String km(double v) => v.toStringAsFixed(0);
 
-    // Ancho: las lineas mas largas del grafico rondan los 25 caracteres
-    // ("Consumo kWh/100  obj 15,6"). Estas se quedan en 19, asi que caben.
+    // Mismo ancho de 19 caracteres que la tabla diaria, para que las columnas
+    // de km y euros queden en la misma vertical en todo el widget:
+    //   etiqueta(7) km(5) euro(7).
     final w = StringBuffer()
-      ..writeln('Gasto hoy ' + eur(kHoy).padLeft(6) + ' \u20AC')
-      ..writeln('Gasto 7d  ' + eur(k7).padLeft(6) + ' \u20AC')
-      ..write('Gasto mes ' + eur(kMes).padLeft(6) + ' \u20AC');
+      ..writeln('Totales' + 'km'.padLeft(5) + '\u20AC'.padLeft(7))
+      ..writeln('Hoy'.padRight(7) +
+          km(tHoy.km).padLeft(5) +
+          eur(tHoy.eur).padLeft(7))
+      ..writeln('7 dias'.padRight(7) +
+          km(t7.km).padLeft(5) +
+          eur(t7.eur).padLeft(7))
+      ..write('Mes'.padRight(7) +
+          km(tMes.km).padLeft(5) +
+          eur(tMes.eur).padLeft(7));
 
     final c = 'Hoy ' +
-        eur(kHoy) +
+        eur(tHoy.eur) +
         ' \u20AC  \u00B7  7 dias ' +
-        eur(k7) +
+        eur(t7.eur) +
         ' \u20AC  \u00B7  Mes ' +
-        eur(kMes) +
+        eur(tMes.eur) +
         ' \u20AC';
 
     return (widget: w.toString(), car: c);
