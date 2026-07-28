@@ -12,62 +12,75 @@ AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, 
 
 SurferRule
 
-## Support the project / Apoyar el proyecto
-
-If you find this useful, you can buy me a coffee on Ko-fi: https://ko-fi.com/txurtxil
-Si te resulta util, puedes invitarme a un cafe en Ko-fi: https://ko-fi.com/txurtxil
-
 ## License / Licencia
 
 GNU General Public License v3.0 (GPLv3). See the LICENSE file in this repository for the full text.
 Ver el archivo LICENSE en este repositorio para el texto completo.
 
-## Screenshots / Capturas
+## Installation / Instalacion
 
-Dashboard views showing the battery/range/lock tiles, the compact location card, and the charging history and efficiency cards.
-Vistas del dashboard con las tiles de bateria/autonomia/cerradura, la tarjeta compacta de ubicacion, y las tarjetas de historial de carga y eficiencia.
+There are two distribution channels, and **they are not interchangeable**.
 
+Hay dos vias de distribucion, y **no son intercambiables**.
 
+### Google Play (internal testing) / Google Play (prueba interna)
 
-![Dashboard 1](docs/screenshots/01Dash.jpg)
+The only channel that works with Android Auto: template apps only appear on the car's head unit when installed from Google Play. Distribution is by invitation — you must supply the Google account of your phone, be added to the tester list, and then follow the invitation link. Without that final click, Play will report the app as unavailable.
 
+Es la unica via que funciona con Android Auto: las apps de plantilla solo aparecen en la pantalla del coche si se instalan desde Google Play. La distribucion es por invitacion — hay que facilitar la cuenta de Google del movil, ser anadido a la lista de testers, y despues pulsar el enlace de invitacion. Sin ese ultimo clic, Play dira que la app no esta disponible.
 
+### GitHub Releases (APK)
 
+Direct APK download. Installs anywhere, but **will not appear in Android Auto**.
 
+Descarga directa del APK. Se instala en cualquier sitio, pero **no aparecera en Android Auto**.
 
-![Dashboard 2](docs/screenshots/02Dash.jpg)
+### Switching channels destroys your data / Cambiar de via borra tus datos
 
+The GitHub APK and the Play build are signed with different keys, so one cannot be installed over the other. You must uninstall first — and uninstalling deletes your local trip history and your stored client certificate.
 
+Mandatory procedure:
 
+1. Settings → **Export backup**, and save it outside the app (share it to Drive, email, wherever).
+2. Have your client certificate at hand — you will have to import it again.
+3. Uninstall the old version.
+4. Install from the new channel and import the backup.
 
+Import is idempotent, so step 4 can be repeated without creating duplicates.
 
-![Dashboard 3](docs/screenshots/03Dash.jpg)
+Los APK de GitHub y los de Play van firmados con claves distintas, asi que no se pueden instalar uno sobre otro. Hay que desinstalar primero — y desinstalar borra el historico local de viajes y el certificado de cliente guardado.
 
+Procedimiento obligatorio:
 
+1. Ajustes → **Exportar copia de seguridad**, y guardarla **fuera** de la app (compartirla a Drive, correo, donde sea).
+2. Tener localizado el certificado de cliente: habra que volver a importarlo.
+3. Desinstalar la version antigua.
+4. Instalar desde la via nueva e importar la copia.
 
-Home-screen widget: current SOC, manufacturer range vs. your real-world estimate, lock status, and a daily-consumption bar chart with a target line for the 430 km max-range figure.
-Widget de pantalla de inicio: SOC actual, autonomia del fabricante frente a tu estimacion real, estado de cerradura, y un grafico de barras de consumo diario con una linea objetivo para los 430 km de autonomia maxima.
-
-
-
-![Home-screen widget / Widget de escritorio](docs/screenshots/widget.jpg)
-
-
+La importacion es idempotente, asi que el paso 4 se puede repetir sin duplicar nada.
 
 ## Which Leapmotor models does this work with? / Con que modelos de Leapmotor funciona
 
-This project was built and tested against a Leapmotor B10, but the protocol layer talks to Leapmotor's shared international backend (appgateway.leapmotor-international.de), not to B10-specific endpoints. The vehicle list, login, signing, and remote-control flow are generic across Leapmotor's line-up; the only per-model detail handled explicitly is the vehicle status path (B10 and B11 share the C10 status endpoint, per the community reference client). Owners of other Leapmotor models (C10, C16, T03, etc.) are welcome to try it and report back — some remote actions may not apply to every model or trim.
+The protocol layer talks to Leapmotor's shared international backend (appgateway.leapmotor-international.de), not to model-specific endpoints. The vehicle list, login, signing, and remote-control flow are generic across Leapmotor's line-up; the only per-model detail handled explicitly is the vehicle status path (B10 and B11 share the C10 status endpoint, per the community reference client).
 
-Este proyecto se ha construido y probado sobre un Leapmotor B10, pero la capa de protocolo habla con el backend internacional compartido de Leapmotor (appgateway.leapmotor-international.de), no con endpoints exclusivos del B10. El listado de vehiculos, el login, la firma de peticiones y el flujo de comandos remotos son genericos en toda la gama Leapmotor; el unico detalle especifico por modelo que se gestiona explicitamente es la ruta de estado del vehiculo (B10 y B11 comparten el endpoint de estado de C10, segun el cliente de referencia de la comunidad). Si tienes otro modelo Leapmotor (C10, C16, T03, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas no apliquen a todos los modelos o acabados.
+Development and testing has been done on a B10. Owners of other models (C10, C16, T03, B05, etc.) are welcome to try it and report back — some remote actions may not apply to every model or trim.
+
+**Important caveat about energy figures.** The app currently assumes a **67.1 kWh** battery and a **430 km** manufacturer range. Every kWh and euro figure in the app — daily consumption, energy added per charge, widget costs, Android Auto totals, the 15.6 kWh/100 km target line — is derived from those two numbers. On a model with a different battery, the percentages and kilometres will be right but **the kWh and euro amounts will be wrong**. Making these configurable is the next planned change.
+
+La capa de protocolo habla con el backend internacional compartido de Leapmotor (appgateway.leapmotor-international.de), no con endpoints exclusivos de un modelo. El listado de vehiculos, el login, la firma de peticiones y el flujo de comandos remotos son genericos en toda la gama; el unico detalle especifico por modelo que se gestiona explicitamente es la ruta de estado del vehiculo (B10 y B11 comparten el endpoint de estado del C10, segun el cliente de referencia de la comunidad).
+
+El desarrollo y las pruebas se han hecho sobre un B10. Si tienes otro modelo (C10, C16, T03, B05, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas no apliquen a todos los modelos o acabados.
+
+**Advertencia importante sobre las cifras de energia.** La app asume ahora mismo una bateria de **67,1 kWh** y **430 km** de autonomia de fabricante. Todos los kWh y todos los euros de la app — consumo diario, energia anadida por carga, coste en el widget, totales de Android Auto, la linea objetivo de 15,6 kWh/100 km — salen de esos dos numeros. En un modelo con otra bateria, los porcentajes y los kilometros seran correctos pero **los kWh y los euros no**. Hacerlos configurables es el siguiente cambio previsto.
 
 ## Features / Caracteristicas
 
 ### Session & security / Sesion y seguridad
-- Real login against Leapmotor's cloud with HMAC-SHA256 request signing and mTLS (static app certificate + a per-account PKCS#12 certificate extracted at login), matching the official app's protocol.
+- Real login against Leapmotor's cloud with HMAC-SHA256 request signing and mTLS (client certificate supplied by you + a per-account PKCS#12 certificate extracted at login), matching the official app's protocol.
 - Persistent session: after the first login, session data is stored encrypted (flutter_secure_storage) and the access token refreshes automatically — no need to log in again unless the session fully expires.
 - Optional PIN: can be remembered encrypted on-device, or requested just-in-time before opening vehicle controls.
 
-- Login real contra la nube de Leapmotor con firma HMAC-SHA256 y mTLS (certificado estatico de la app + certificado PKCS#12 de cuenta extraido en el login), igual que el protocolo de la app oficial.
+- Login real contra la nube de Leapmotor con firma HMAC-SHA256 y mTLS (certificado de cliente aportado por ti + certificado PKCS#12 de cuenta extraido en el login), igual que el protocolo de la app oficial.
 - Sesion persistente: tras el primer login, los datos de sesion se guardan cifrados (flutter_secure_storage) y el token de acceso se refresca solo, sin volver a pedir usuario/contrasena salvo expiracion total.
 - PIN opcional: puede recordarse cifrado en el dispositivo, o pedirse justo antes de abrir los controles del vehiculo.
 
@@ -76,7 +89,7 @@ Este proyecto se ha construido y probado sobre un Leapmotor B10, pero la capa de
 - "Vehicle controls" button pinned at the top, above the battery card, for one-tap access to all remote actions.
 - Compact location card: reverse-geocoded address (cached to respect OpenStreetMap/Nominatim's usage policy), distance from your current position to the car, and a tap-to-expand full-screen interactive map. Can be hidden entirely from Settings for a text-only dashboard.
 - Battery card with a bar-chart history (locally recorded, fills in over time).
-- Charging history card: detects charging sessions automatically (date, start/end %) — Leapmotor's API doesn't expose this history, so it's inferred locally from repeated status polling.
+- Charging history card: charge sessions are **rebuilt from the stored trip history** by detecting SOC increases between consecutive samples. Leapmotor's API does not expose this history, and live detection is unreliable because the TCU sleeps overnight — so the history is reconstructed rather than polled. Duration and power are deliberately not shown: two samples can be 20 hours apart for a 4-hour charge.
 - Consumption & real range card: calculates % battery used per 100 km from the odometer and compares your real-world range against the manufacturer's estimate.
 - Weekly efficiency card: this week's consumption vs. last week's.
 - Tire pressure card (in bar), read from the vehicle's status signals.
@@ -88,7 +101,7 @@ Este proyecto se ha construido y probado sobre un Leapmotor B10, pero la capa de
 - Boton "Controles del vehiculo" fijado arriba, encima de la tarjeta de bateria, para acceder a todas las acciones remotas con un toque.
 - Tarjeta de ubicacion compacta: direccion por geocodificacion inversa (cacheada para respetar la politica de uso de OpenStreetMap/Nominatim), distancia desde tu posicion actual hasta el coche, y mapa interactivo a pantalla completa al tocarla. Se puede ocultar del todo desde Ajustes para un dashboard solo de texto.
 - Tarjeta de bateria con historial en barras (grabado localmente, se va rellenando con el uso).
-- Tarjeta de historial de cargas: detecta sesiones de carga automaticamente (fecha, % inicial/final) — la API de Leapmotor no expone este historico, se infiere localmente comparando lecturas de estado sucesivas.
+- Tarjeta de historial de cargas: las sesiones se **reconstruyen a partir del historico de viajes guardado**, detectando subidas de SOC entre muestras consecutivas. La API de Leapmotor no expone este historico, y la deteccion en vivo no es fiable porque el TCU duerme de madrugada — por eso se reconstruye en vez de sondear. La duracion y la potencia no se muestran a proposito: entre dos muestras pueden pasar 20 horas para una carga de 4.
 - Tarjeta de consumo y autonomia real: calcula el % de bateria consumido cada 100 km a partir del odometro y compara tu autonomia real con la estimacion del fabricante.
 - Tarjeta de eficiencia semanal: consumo de esta semana frente a la anterior.
 - Tarjeta de presion de neumaticos (en bar), leida de las senales de estado del vehiculo.
@@ -115,6 +128,42 @@ Flujo completo de verificacion de PIN (operatePassword cifrado AES-128-CBC, veri
 - Limite de velocidad configurable.
 - Interruptor de modo centinela (ver Limitaciones conocidas mas abajo).
 
+### Android Auto
+
+A car-screen interface built on androidx.car.app templates, available when the app is installed from Google Play:
+
+- Hub screen with Battery, Tires, Routines, Quick actions, Consumption and Chargers.
+- **Consumption**: current cycle, last 7 days (kWh/100 km, km, kWh and cost), month and year totals, and a per-day breakdown. Battery temperature is preserved with its age when the TCU is asleep, instead of showing a blank.
+- **Quick actions**: twelve remote commands. The ones that physically open the car (unlock, trunk) go through a confirmation screen first.
+- **Chargers**: nearby charging points from OpenStreetMap, with a detail screen that hands the route over to Google Maps.
+
+Android Auto templates cannot draw graphics of any kind, so charts are rendered as text block bars.
+
+Interfaz para la pantalla del coche construida sobre las plantillas de androidx.car.app, disponible cuando la app se instala desde Google Play:
+
+- Pantalla principal con Bateria, Ruedas, Rutinas, Acciones rapidas, Consumo y Cargadores.
+- **Consumo**: ciclo actual, ultimos 7 dias (kWh/100 km, km, kWh y coste), totales de mes y ano, y desglose por dia. La temperatura de bateria se conserva con su antiguedad cuando el TCU esta dormido, en vez de mostrarse en blanco.
+- **Acciones rapidas**: doce comandos remotos. Los que abren fisicamente el coche (desbloqueo, maletero) pasan antes por una pantalla de confirmacion.
+- **Cargadores**: puntos de recarga cercanos desde OpenStreetMap, con una pantalla de detalle que pasa la ruta a Google Maps.
+
+Las plantillas de Android Auto no admiten graficos de ningun tipo, asi que los graficos se dibujan con barras de bloque en texto.
+
+### Energy cost / Coste de la energia
+
+- Configurable electricity price, stored as a structure rather than a bare number so that time-of-use bands can be added later without migrating data.
+- Per-charge cost: total paid, or price per kWh, or the house price as an estimate. Estimated values are shown in italics with a `~` prefix.
+- Each day inherits the price of the most recent charge before it, so changing tariff or charging away from home does not retroactively rewrite your history.
+- Costs appear on the dashboard, in the home-screen widget and in Android Auto.
+
+Note: the figures measure energy **in the battery**, with no charging-loss factor applied, so they land roughly 12–15% below what your electricity bill will say. The app states this in its own interface.
+
+- Precio de la electricidad configurable, guardado como estructura y no como numero suelto, para poder anadir tramos horarios mas adelante sin migrar datos.
+- Coste por carga: total pagado, o precio por kWh, o el precio de casa como estimacion. Los valores estimados se muestran en cursiva y con `~` delante.
+- Cada dia hereda el precio de la carga anterior mas reciente, asi que cambiar de tarifa o cargar fuera de casa no reescribe el historico hacia atras.
+- Los costes aparecen en el dashboard, en el widget de escritorio y en Android Auto.
+
+Nota: las cifras miden energia **en bateria**, sin aplicar factor de perdidas de carga, asi que salen alrededor de un 12–15 % por debajo de lo que dira tu factura. La app lo advierte en su propia interfaz.
+
 ### Preconditioning / Precondicionado
 - Immediate preconditioning (climate on right now) and scheduled preconditioning (recurring by weekday, or one-time), with heat/cold, target temperature, and optional steering wheel heating.
 
@@ -137,11 +186,13 @@ Flujo completo de verificacion de PIN (operatePassword cifrado AES-128-CBC, veri
 - Botones experimentales para dos comandos sin documentar del protocolo de referencia: un posible "modo acampada" (cmd 410) y un posible interruptor de la grabadora dashcam (cmd 290) — ninguno de los dos esta confirmado; pruebalos con la herramienta de snapshot/diff de debug.
 
 ### Desktop widget / Widget de escritorio
-- A real, freely resizable Android home-screen widget: current SOC, manufacturer range vs. your real-world estimate, lock status, live charging indicator, and a daily-consumption bar chart (kWh/100 km) with a target line at 15.6 kWh/100 km — the pace needed to reach the B10's 430 km max range. Bars are green at or under target and orange above it, charge days are marked with the energy added, and the weekly average is shown as estimated km per charge.
-- Adapts to the size you drag it to (compact / medium / full chart). Refreshes when the app is opened and periodically in the background (WorkManager, ~15 min, Android's minimum) — reliability depends on your phone manufacturer's battery management.
+- A real, freely resizable Android home-screen widget: current SOC, manufacturer range vs. your real-world estimate, lock status, live charging indicator, daily consumption in kWh/100 km with kilometres and cost per day, and running totals for today, the last 7 days and the month.
+- Adapts to the size you drag it to (compact / medium / full). Refreshes when the app is opened and periodically in the background (WorkManager, ~15 min, Android's minimum) — reliability depends on your phone manufacturer's battery management.
+- RemoteViews cannot draw a Canvas, so the chart is rendered as monospaced text rather than a bitmap.
 
-- Widget real de pantalla de inicio Android, redimensionable libremente: SOC actual, autonomia del fabricante frente a tu estimacion real, estado de cerradura, indicador de carga en vivo, y un grafico de barras de consumo diario (kWh/100 km) con una linea objetivo a 15,6 kWh/100 km — el ritmo necesario para alcanzar los 430 km de autonomia maxima del B10. Las barras son verdes si estan en o bajo el objetivo y naranjas si lo superan, los dias con carga se marcan con la energia anadida, y la media semanal se muestra como km por carga estimados.
-- Se adapta al tamano al que lo estires (compacto / medio / grafico completo). Se refresca al abrir la app y periodicamente en segundo plano (WorkManager, ~15 min, el minimo de Android) — la fiabilidad depende de la gestion de bateria de tu fabricante de telefono.
+- Widget real de pantalla de inicio Android, redimensionable libremente: SOC actual, autonomia del fabricante frente a tu estimacion real, estado de cerradura, indicador de carga en vivo, consumo diario en kWh/100 km con kilometros y coste por dia, y totales acumulados de hoy, los ultimos 7 dias y el mes.
+- Se adapta al tamano al que lo estires (compacto / medio / completo). Se refresca al abrir la app y periodicamente en segundo plano (WorkManager, ~15 min, el minimo de Android) — la fiabilidad depende de la gestion de bateria de tu fabricante de telefono.
+- RemoteViews no admite Canvas, asi que el grafico se dibuja con texto monoespaciado en vez de con un bitmap.
 
 ### Notifications / Notificaciones
 Triggered both in the foreground and during background refresh:
@@ -160,14 +211,14 @@ Disparadas tanto en primer plano como en el refresco de fondo:
 
 ### Other / Otros
 - Messages screen: shows the official app's message inbox, reachable from an envelope icon with an unread badge in the toolbar.
-- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges) via the Android share sheet, and import them back to restore the data on a new install. A permanent, uncapped local archive keeps the full history beyond the in-app cards.
-- Settings screen: toggle to show/hide the location card.
+- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges) via the Android share sheet, and import them back to restore the data on a new install. Import is idempotent — re-importing the same backup adds nothing. A permanent, uncapped local archive keeps the full history beyond the in-app cards.
+- Settings screen: location card visibility, electricity price, certificate import.
 - Bilingual: Spanish and English, following the OS language (flutter_localizations + intl).
 - Custom "LM" app icon — does not reproduce Leapmotor's real logo.
 
 - Pantalla de mensajes: muestra la bandeja de mensajes de la app oficial, accesible desde un icono de sobre con globo de no leidos en la barra de herramientas.
-- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas) por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app.
-- Pantalla de ajustes: interruptor para mostrar/ocultar la tarjeta de ubicacion.
+- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas) por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. La importacion es idempotente: reimportar el mismo backup no anade nada. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app.
+- Pantalla de ajustes: visibilidad de la tarjeta de ubicacion, precio de la electricidad, importacion del certificado.
 - Bilingue: espanol e ingles, siguiendo el idioma del sistema (flutter_localizations + intl).
 - Icono de app propio ("LM") — no reproduce el logotipo real de Leapmotor.
 
@@ -175,9 +226,11 @@ Disparadas tanto en primer plano como en el refresco de fondo:
 
 - Sentry mode (cmd 220) is accepted and confirmed by the server, but testing showed no observable change in the vehicle's reported state (not even in unmapped raw signals). Everything points to it not being actually implemented on this vehicle's firmware/hardware, even though the command exists in the protocol. Sentry Mode therefore relies mainly on its app-side watchdog layer.
 - Parked camera recording is disabled in the current UK/EU firmware; the on-board dashcam only records while driving (3-minute blocks to a USB stick in the "REC" port).
-- The TCU enters deep sleep about 13 minutes after locking, so cloud-based watching pauses until the car wakes back up (e.g. a door opening wakes it and the next poll catches the change) — it's not equivalent to a real-time server push.
+- The TCU enters deep sleep about 13 minutes after locking, so cloud-based watching pauses until the car wakes back up (e.g. a door opening wakes it and the next poll catches the change) — it's not equivalent to a real-time server push. This is also why overnight charging cannot be watched live and has to be reconstructed afterwards.
+- Energy figures assume a fixed 67.1 kWh battery — see the model section above.
 - Reading messages in this app does not mark them as read on Leapmotor's server (no such endpoint is documented), so the unread badge is tracked locally and resets when you open the inbox.
 - The "camping mode" (ON3, cmd 410) and dashcam-recorder toggle (cmd 290) commands are unconfirmed experiments — test with the debug tool before relying on them.
+- Live 360-camera streaming is not possible: car templates have no video surface, the 360 view is generated by the car's own hardware and never reaches the cloud, and showing video to the driver would breach distraction rules.
 - Background refresh depends on Android's WorkManager and is subject to each manufacturer's battery-saving restrictions (Xiaomi/MIUI, Samsung, etc. are notably aggressive). It's not equivalent to a real server push notification.
 - Locally-inferred history (charging sessions, consumption, efficiency) has no retroactive data before installing that feature, and may miss sessions if the app was closed for a long time.
 - Guard Mode leaves a window ajar during part of its sequence, reducing the car's physical security while it lasts — occasional, conscious use only.
@@ -185,89 +238,123 @@ Disparadas tanto en primer plano como en el refresco de fondo:
 
 - El modo centinela (cmd 220) es aceptado y confirmado por el servidor, pero las pruebas no mostraron ningun cambio observable en el estado reportado del vehiculo (ni en senales crudas sin mapear). Todo apunta a que no esta realmente implementado en el firmware/hardware de este vehiculo, aunque el comando exista en el protocolo. Por eso el Modo Centinela se apoya sobre todo en su capa de vigilancia en la app.
 - La grabacion con camaras estando aparcado esta desactivada en el firmware UK/UE actual; el dashcam de a bordo solo graba en marcha (bloques de 3 minutos a un USB en el puerto "REC").
-- El TCU entra en sueno profundo unos 13 minutos tras bloquear, asi que la vigilancia basada en la nube se pausa hasta que el coche despierta (p. ej. abrir una puerta lo despierta y el siguiente sondeo detecta el cambio) — no equivale a un push en tiempo real del servidor.
+- El TCU entra en sueno profundo unos 13 minutos tras bloquear, asi que la vigilancia basada en la nube se pausa hasta que el coche despierta (p. ej. abrir una puerta lo despierta y el siguiente sondeo detecta el cambio) — no equivale a un push en tiempo real del servidor. Es tambien la razon por la que la carga nocturna no se puede vigilar en vivo y hay que reconstruirla despues.
+- Las cifras de energia asumen una bateria fija de 67,1 kWh — ver la seccion de modelos mas arriba.
 - Leer los mensajes en esta app no los marca como leidos en el servidor de Leapmotor (no hay endpoint documentado para ello), asi que el globo de no leidos se lleva localmente y se pone a cero al abrir la bandeja.
 - Los comandos de "modo acampada" (ON3, cmd 410) y de interruptor de grabadora dashcam (cmd 290) son experimentos sin confirmar — pruebalos con la herramienta de debug antes de confiar en ellos.
+- Ver las camaras 360 en directo no es posible: las plantillas del coche no admiten superficie de video, la vista 360 la genera el hardware del propio coche y nunca pasa por la nube, y mostrar video al conductor incumpliria las normas de distraccion.
 - El refresco en segundo plano depende de WorkManager de Android y esta sujeto a las restricciones de ahorro de bateria de cada fabricante (Xiaomi/MIUI, Samsung, etc. son especialmente agresivos). No equivale a una notificacion push real del servidor.
 - El historial inferido localmente (sesiones de carga, consumo, eficiencia) no tiene datos retroactivos anteriores a instalar esa funcion, y puede perder sesiones si la app estuvo mucho tiempo cerrada.
 - El Modo Vigilancia deja una ventanilla entreabierta durante parte de su secuencia, reduciendo la seguridad fisica del coche mientras dura — uso puntual y consciente unicamente.
 - El formato completo del horario de carga/precondicionado (franjas horarias, codificacion de dias) se infiere por simetria con el codigo fuente de referencia, no esta 100% confirmado con una captura real — verificalo sintiendo si el coche se comporta realmente segun lo programado.
 
+## Certificates / Certificados
+
+Connecting to Leapmotor's servers requires a client certificate for mTLS. **This repository does not contain it and this app does not distribute it.** The certificate is Leapmotor's material and redistributing it is not an option.
+
+Each user must obtain their own and import it from within the app: **Settings → Import certificate**. The certificate is then stored encrypted on the device (flutter_secure_storage) and never leaves it. Community sources such as markoceri/leapmotor-certs document how this material is obtained.
+
+The per-account PKCS#12 certificate is a different thing: it is extracted automatically during login and requires no action from you.
+
+Conectarse a los servidores de Leapmotor requiere un certificado de cliente para mTLS. **Este repositorio no lo contiene y esta app no lo distribuye.** El certificado es material de Leapmotor y redistribuirlo no es una opcion.
+
+Cada usuario debe conseguir el suyo e importarlo desde la propia app: **Ajustes → Importar certificado**. El certificado queda guardado cifrado en el dispositivo (flutter_secure_storage) y no sale de el. Fuentes comunitarias como markoceri/leapmotor-certs documentan como se obtiene este material.
+
+El certificado PKCS#12 de cuenta es otra cosa distinta: se extrae automaticamente durante el login y no requiere ninguna accion por tu parte.
+
 ## Tech stack / Stack tecnico
 
-- Flutter (Android)
+- Flutter (Android), with native Kotlin for the home-screen widget and the Android Auto screens
 - http and dart:io SecurityContext for mTLS
 - crypto (SHA-256, HMAC, MD5) and pointycastle (AES-128-CBC) for Leapmotor's signing/encryption protocol
+- androidx.car.app for the Android Auto templates
 - flutter_map + latlong2 for the map; geolocator for distance calculation
-- flutter_secure_storage for session, PIN and local history
+- Overpass API / OpenStreetMap for the charger map; Nominatim for reverse geocoding
+- flutter_secure_storage for session, PIN, client certificate and local history
 - home_widget for the home-screen widget; workmanager for background refresh
 - flutter_local_notifications for alerts (requires core library desugaring in Gradle)
 - flutter_localizations + intl for bilingual support (es/en)
 - share_plus + path_provider for history export; file_selector for backup import
 
-Mismo stack en espanol: Flutter (Android); http y dart:io SecurityContext para mTLS; crypto y pointycastle para el protocolo de firma/cifrado; flutter_map + latlong2 para el mapa; geolocator para la distancia; flutter_secure_storage para sesion/PIN/historial; home_widget y workmanager para el widget y el refresco de fondo; flutter_local_notifications para alertas; flutter_localizations + intl para el bilingue; share_plus + path_provider para la exportacion del historico; file_selector para importar el backup.
+Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las pantallas de Android Auto; http y dart:io SecurityContext para mTLS; crypto y pointycastle para el protocolo de firma/cifrado; androidx.car.app para las plantillas de Android Auto; flutter_map + latlong2 para el mapa; geolocator para la distancia; Overpass/OpenStreetMap para el mapa de cargadores y Nominatim para la geocodificacion inversa; flutter_secure_storage para sesion, PIN, certificado e historial; home_widget y workmanager para el widget y el refresco de fondo; flutter_local_notifications para alertas; flutter_localizations + intl para el bilingue; share_plus + path_provider para la exportacion del historico; file_selector para importar el backup.
 
 ## Project structure / Estructura del proyecto
 
-  lib/leapmotor_engine.dart        API client: login, HMAC signing, PKCS#12, remote commands, status parsing
-  lib/main.dart                    Dashboard, cards, settings, notifications, background refresh
-  lib/widget_chart.dart            Home-screen widget chart renderer and consumption/charge calculations
-  lib/history_archive.dart         Permanent local history archive + backup export/import
-  lib/sentry/                      Sentry Mode: engine, adapter, notifier and screen
-  lib/about_screen.dart            About screen
-  lib/messages_screen.dart         Official app message inbox
-  lib/guard_mode_screen.dart       Experimental Guard Mode screen
-  lib/preconditioning_screen.dart  Preconditioning (immediate + scheduled)
-  lib/charge_schedule_screen.dart  Full charge schedule editor
-  lib/settings_screen.dart         App settings
-  lib/l10n/                        Translation source files (.arb) and generated localizations
-  android/app/src/main/kotlin/.../BatteryWidgetProvider.kt   Native home-screen widget provider
-  assets/certs/                    Static app mTLS certificate (app.crt / app.key)
-  docs/screenshots/                Screenshots used in this README
-  build_lpb10_v*.sh                Incremental build/deploy scripts (version history)
+    lib/leapmotor_engine.dart        API client: login, HMAC signing, PKCS#12, remote commands, status parsing
+    lib/main.dart                    Dashboard, cards, settings, notifications, background refresh
+    lib/widget_chart.dart            Home-screen widget renderer and consumption/charge calculations
+    lib/daily_stats.dart             Incremental daily aggregation engine + charge history rebuild
+    lib/energy_cost.dart             Electricity price model and per-day cost totals
+    lib/charge_cost.dart             Per-charge cost (total paid, price per kWh, or estimate)
+    lib/price_screen.dart            Electricity price settings
+    lib/cert_store.dart              Encrypted storage for the user-supplied client certificate
+    lib/cert_import_screen.dart      Certificate import flow
+    lib/history_archive.dart         Permanent local history archive + backup export/import
+    lib/car_log_screen.dart          On-device viewer for the Android Auto diagnostic log
+    lib/sentry/                      Sentry Mode: engine, adapter, notifier and screen
+    lib/routines/                    Routines engine and screen
+    lib/about_screen.dart            About screen
+    lib/messages_screen.dart         Official app message inbox
+    lib/guard_mode_screen.dart       Experimental Guard Mode screen
+    lib/preconditioning_screen.dart  Preconditioning (immediate + scheduled)
+    lib/charge_schedule_screen.dart  Full charge schedule editor
+    lib/settings_screen.dart         App settings
+    lib/l10n/                        Translation source files (.arb); generated code is not edited by hand
+    android/.../BatteryWidgetProvider.kt   Native home-screen widget provider
+    android/.../LMB10CarAppService.kt      Android Auto entry point and session
+    android/.../CarMainScreen.kt           Android Auto hub
+    android/.../ConsumoScreen.kt           Android Auto consumption screen
+    android/.../ChargersScreen.kt          Nearby chargers
+    android/.../ChargerDetailScreen.kt     Charger detail and navigation hand-off
+    android/.../QuickActionsScreen.kt      Remote commands from the car screen
+    android/.../CarLog.kt                  File-based diagnostic log
+    docs/screenshots/                Screenshots used in this README
+
+Note: `lib/l10n/generated/` is produced by `flutter gen-l10n` on every build (`generate: true` in pubspec.yaml). Edit the `.arb` files, never the generated Dart.
+
+Nota: `lib/l10n/generated/` lo produce `flutter gen-l10n` en cada build (`generate: true` en pubspec.yaml). Edita los `.arb`, nunca el Dart generado.
 
 ## Protocol summary / Resumen del protocolo
 
 This app replicates the real protocol used by Leapmotor's official international app, cross-checked against the community Python client leapmotor-api (github.com/markoceri/leapmotor-api):
 
-1. Login, signed with SHA-256, using mTLS with the app's static certificate.
+1. Login, signed with SHA-256, using mTLS with the client certificate.
 2. The response includes an account certificate in PKCS#12 (base64Cert), whose password is derived deterministically (MD5, then SHA-256, then SM4 encryption with fixed protocol tables) — no brute-forcing required.
 3. Authenticated requests use HMAC-SHA256 signed headers (key derived via HKDF-SHA256 from the login's signIkm/signSalt/signInfo).
 4. Remote commands require encrypting the vehicle PIN with AES-128-CBC (key/IV derived from the session token), verifying it first, then polling the result.
 5. Vehicle status arrives as numeric signal IDs, translated to readable names.
 6. The access token can be refreshed using the refreshToken, without re-entering credentials.
 
+The app never talks directly to the vehicle: everything goes app → cloud → car. It sends no CAN or UDS frames and cannot damage the vehicle.
+
 Esta app replica el protocolo real de la app oficial internacional de Leapmotor, verificado contra el cliente Python de la comunidad leapmotor-api (github.com/markoceri/leapmotor-api):
 
-1. Login firmado con SHA-256, con mTLS usando el certificado estatico de la app.
+1. Login firmado con SHA-256, con mTLS usando el certificado de cliente.
 2. La respuesta incluye un certificado de cuenta PKCS#12 (base64Cert), cuya contrasena se deriva de forma deterministica (MD5, luego SHA-256, luego cifrado SM4 con tablas fijas), sin fuerza bruta.
 3. Las peticiones autenticadas usan cabeceras firmadas HMAC-SHA256 (clave derivada via HKDF-SHA256 del signIkm/signSalt/signInfo del login).
 4. Los comandos remotos cifran el PIN con AES-128-CBC (clave/IV derivados del token de sesion), lo verifican primero, y sondean el resultado despues.
 5. El estado del vehiculo llega con IDs de senal numericos, traducidos a nombres legibles.
 6. El token de acceso se puede refrescar con el refreshToken, sin reintroducir credenciales.
 
-## Certificates / Certificados
-
-The static mTLS certificate (app.crt / app.key) is app-level material, not your account credentials — but it is not distributed in this repository. Place both files in assets/certs/ before building. They can be obtained from community sources such as markoceri/leapmotor-certs (github.com/markoceri/leapmotor-certs).
-
-El certificado mTLS estatico (app.crt y app.key) es material a nivel de aplicacion, no credenciales de tu cuenta, pero no se distribuye en este repositorio. Coloca ambos archivos en assets/certs/ antes de compilar. Pueden obtenerse de fuentes comunitarias como markoceri/leapmotor-certs (github.com/markoceri/leapmotor-certs).
+La app nunca habla directamente con el vehiculo: todo va app → nube → coche. No manda tramas CAN ni UDS y no puede averiar el vehiculo.
 
 ## Building / Compilar
 
-  flutter pub get
-  flutter build apk --profile
+    flutter pub get
+    flutter build apk --release
 
 Additional requirements / Requisitos adicionales:
 - Core library desugaring enabled in android/app/build.gradle.kts (needed by flutter_local_notifications).
+- Signing configuration in android/key.properties (not in this repository).
 - To install the desktop widget: long-press an empty space on your home screen, tap Widgets, find LMB10, and drag the widget in. You may need to remove and re-add it after some updates.
 - For reliable background refresh: exclude the app from battery optimization in your phone's settings (path varies by manufacturer).
+- Android Auto screens can only be tested on a real head unit through a Google Play install, or locally with the Desktop Head Unit (DHU).
 
 - Core library desugaring habilitado en android/app/build.gradle.kts (lo necesita flutter_local_notifications).
+- Configuracion de firma en android/key.properties (no incluida en este repositorio).
 - Para instalar el widget de escritorio: mantener pulsado un espacio vacio del escritorio, tocar Widgets, buscar LMB10, y arrastrarlo. Puede que haga falta quitarlo y volver a anadirlo tras alguna actualizacion.
 - Para un refresco de fondo fiable: excluye la app de la optimizacion de bateria en los ajustes de tu telefono (la ruta varia segun el fabricante).
-
-The build_lpb10_v*.sh scripts document the full incremental change history of the project.
-Los scripts build_lpb10_v*.sh documentan el historico completo de cambios incrementales del proyecto.
+- Las pantallas de Android Auto solo se pueden probar en un head unit real instalando desde Google Play, o en local con el Desktop Head Unit (DHU).
 
 ## Credits / Creditos
 

@@ -9,7 +9,7 @@
   "rememberPinTitle": "Recordar PIN en este dispositivo",
   "rememberPinSubtitle": "Se guarda cifrado localmente (flutter_secure_storage).",
   "loginButton": "Login",
-  "dashboardDefaultTitle": "Leapmotor B10",
+  "dashboardDefaultTitle": "Leapmotor",
   "refreshTooltip": "Actualizar",
   "settingsTooltip": "Ajustes, logs y backups",
   "aboutTooltip": "Acerca de",
@@ -48,7 +48,7 @@
   "pinDialogCancel": "Cancelar",
   "pinDialogAccept": "Aceptar",
   "noLocationData": "Sin datos de ubicacion",
-  "controlsScreenTitle": "Controles B10",
+  "controlsScreenTitle": "Controles del vehiculo",
   "sectionSentry": "Centinela",
   "sectionActions": "Acciones",
   "sectionClimate": "Climatizacion",
@@ -100,7 +100,7 @@
   "seatDriverVent": "Conductor - Ventilacion",
   "seatPassengerVent": "Copiloto - Ventilacion",
   "aboutScreenTitle": "Acerca de",
-  "appTagline": "App no oficial para Leapmotor B10",
+  "appTagline": "App no oficial para Leapmotor",
   "authorLabel": "Autor",
   "licenseLabel": "Licencia",
   "licenseValue": "GNU General Public License v3.0 (GPLv3)",
@@ -318,7 +318,5 @@
   },
   "couldNotResolveAddress": "No se pudo resolver la direccion",
   "hotspotStepTitle": "Experimental: WiFi/hotspot (cmd 140)",
-  "hotspotDescription": "No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo.",
-  "supportProjectLabel": "Apoyar el proyecto",
-  "buyMeACoffeeButton": "Invitame a un cafe en Ko-fi"
+  "hotspotDescription": "No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo."
 }

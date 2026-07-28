@@ -18,12 +18,22 @@ import androidx.car.app.model.Template
 /**
  * Detalle de un cargador con DOS vias de navegacion distintas.
  *
- * Contexto (log del coche, 26/07): startCarApp(ACTION_NAVIGATE) devuelve sin
- * excepcion pero el host del B10 no abre nada. El log tampoco muestra un
- * onCreateScreen posterior, asi que el host NO nos devuelve el intent a
- * nosotros mismos: simplemente lo descarta en silencio. Al no haber señal de
- * fallo, no se pueden encadenar reintentos automaticos; se ofrecen las dos
- * rutas y cada una deja traza en el log.
+ * Historia, porque costo dos dias de diagnostico equivocado:
+ * startCarApp(ACTION_NAVIGATE) devolvia sin excepcion y no abria nada. Se
+ * concluyo que el host lo descartaba en silencio, porque no aparecia ningun
+ * onCreateScreen posterior en el log. La conclusion era FALSA: cuando el host
+ * entrega un intent a una sesion YA VIVA no llama a onCreateScreen, llama a
+ * Session.onNewIntent(), que no estaba instrumentado. Se estaba mirando el
+ * metodo equivocado.
+ *
+ * Al instrumentarlo (28/07, 15 pulsaciones seguidas, todas iguales) quedo
+ * claro: el host SI respondia, en el mismo segundo, y devolvia el
+ * ACTION_NAVIGATE a la propia LMB10. Causa: el manifest declaraba la categoria
+ * NAVIGATION, asi que para Android Auto la app de navegacion del coche eramos
+ * nosotros y el host nos resolvia el intent a nosotros mismos.
+ *
+ * Corregido pasando la categoria a POI. Ojo: CHARGING y PARKING estan
+ * obsoletas y Play rechaza el bundle si se usan.
  */
 class ChargerDetailScreen(
     carContext: CarContext,
@@ -32,10 +42,12 @@ class ChargerDetailScreen(
 
     // Via 1: el host del coche. URI "geo:lat,lon" = ir a un punto. Antes se
     // mandaba "geo:0,0?q=..." que es la forma de BUSQUEDA, no la de destino.
-    // Sin usar desde la interfaz: en el B10 startCarApp devuelve sin excepcion
-    // y no abre nada (log del 26 y 27/07, siete intentos). Se conserva por si
-    // algun dia se prueba a cambiar la categoria del manifest a CHARGING, que
-    // es el caso de uso para el que Google diseno este traspaso.
+    // Con la categoria POI en el manifest el host resuelve este intent a Google
+    // Maps y lo abre en la pantalla del coche, sin tocar el movil ni depender
+    // de que este desbloqueado. Es la via buena.
+    // Si algun dia vuelve a no abrir nada, lo PRIMERO que hay que mirar es si
+    // la categoria del manifest ha vuelto a ser NAVIGATION, y lo segundo el
+    // log de Session.onNewIntent().
     private fun viaHost() {
         val uri = Uri.parse("geo:" + c.lat + "," + c.lon)
         try {
@@ -79,7 +91,7 @@ class ChargerDetailScreen(
             // queda cargada en el Maps de Android Auto. Lo unico que falta es
             // que el usuario cambie de app en la pantalla del coche, y eso no
             // hay forma de automatizarlo: la API para traer otra app al frente
-            // es startCarApp(ACTION_NAVIGATE), y el host del B10 la descarta.
+            // es startCarApp(ACTION_NAVIGATE), que funciona desde el 28/07.
             screenManager.push(NavSentScreen(carContext, c.name))
         } catch (e: ActivityNotFoundException) {
             CarLog.log(carContext, "NAV", "MOVIL sin Maps, reintento generico")

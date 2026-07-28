@@ -155,7 +155,7 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardDefaultTitle.
   ///
   /// In es, this message translates to:
-  /// **'Leapmotor B10'**
+  /// **'Leapmotor'**
   String get dashboardDefaultTitle;
 
   /// No description provided for @refreshTooltip.
@@ -389,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @controlsScreenTitle.
   ///
   /// In es, this message translates to:
-  /// **'Controles B10'**
+  /// **'Controles del vehiculo'**
   String get controlsScreenTitle;
 
   /// No description provided for @sectionSentry.
@@ -617,7 +617,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTagline.
   ///
   /// In es, this message translates to:
-  /// **'App no oficial para Leapmotor B10'**
+  /// **'App no oficial para Leapmotor'**
   String get appTagline;
 
   /// No description provided for @authorLabel.
@@ -1213,18 +1213,6 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo.'**
   String get hotspotDescription;
-
-  /// No description provided for @supportProjectLabel.
-  ///
-  /// In es, this message translates to:
-  /// **'Apoyar el proyecto'**
-  String get supportProjectLabel;
-
-  /// No description provided for @buyMeACoffeeButton.
-  ///
-  /// In es, this message translates to:
-  /// **'Invitame a un cafe en Ko-fi'**
-  String get buyMeACoffeeButton;
 }
 
 class _AppLocalizationsDelegate

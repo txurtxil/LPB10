@@ -38,7 +38,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get loginButton => 'Login';
 
   @override
-  String get dashboardDefaultTitle => 'Leapmotor B10';
+  String get dashboardDefaultTitle => 'Leapmotor';
 
   @override
   String get refreshTooltip => 'Actualizar';
@@ -155,7 +155,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noLocationData => 'Sin datos de ubicacion';
 
   @override
-  String get controlsScreenTitle => 'Controles B10';
+  String get controlsScreenTitle => 'Controles del vehiculo';
 
   @override
   String get sectionSentry => 'Centinela';
@@ -273,7 +273,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get aboutScreenTitle => 'Acerca de';
 
   @override
-  String get appTagline => 'App no oficial para Leapmotor B10';
+  String get appTagline => 'App no oficial para Leapmotor';
 
   @override
   String get authorLabel => 'Autor';
@@ -624,10 +624,4 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get hotspotDescription =>
       'No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo.';
-
-  @override
-  String get supportProjectLabel => 'Apoyar el proyecto';
-
-  @override
-  String get buyMeACoffeeButton => 'Invitame a un cafe en Ko-fi';
 }

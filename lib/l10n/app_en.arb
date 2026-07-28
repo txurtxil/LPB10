@@ -9,7 +9,7 @@
   "rememberPinTitle": "Remember PIN on this device",
   "rememberPinSubtitle": "Stored encrypted locally (flutter_secure_storage).",
   "loginButton": "Login",
-  "dashboardDefaultTitle": "Leapmotor B10",
+  "dashboardDefaultTitle": "Leapmotor",
   "refreshTooltip": "Refresh",
   "settingsTooltip": "Settings, logs & backups",
   "aboutTooltip": "About",
@@ -48,7 +48,7 @@
   "pinDialogCancel": "Cancel",
   "pinDialogAccept": "Accept",
   "noLocationData": "No location data",
-  "controlsScreenTitle": "B10 Controls",
+  "controlsScreenTitle": "Vehicle controls",
   "sectionSentry": "Sentry",
   "sectionActions": "Actions",
   "sectionClimate": "Climate",
@@ -100,7 +100,7 @@
   "seatDriverVent": "Driver - Ventilation",
   "seatPassengerVent": "Passenger - Ventilation",
   "aboutScreenTitle": "About",
-  "appTagline": "Unofficial app for Leapmotor B10",
+  "appTagline": "Unofficial app for Leapmotor",
   "authorLabel": "Author",
   "licenseLabel": "License",
   "licenseValue": "GNU General Public License v3.0 (GPLv3)",
@@ -318,7 +318,5 @@
   },
   "couldNotResolveAddress": "Could not resolve address",
   "hotspotStepTitle": "Experimental: WiFi/hotspot (cmd 140)",
-  "hotspotDescription": "Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it.",
-  "supportProjectLabel": "Support the project",
-  "buyMeACoffeeButton": "Buy me a coffee on Ko-fi"
+  "hotspotDescription": "Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it."
 }
