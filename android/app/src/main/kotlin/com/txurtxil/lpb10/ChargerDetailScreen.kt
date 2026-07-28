@@ -1,6 +1,8 @@
 package com.txurtxil.lpb10
 
+import android.app.KeyguardManager
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.car.app.CarContext
@@ -34,7 +36,6 @@ class ChargerDetailScreen(
     // y no abre nada (log del 26 y 27/07, siete intentos). Se conserva por si
     // algun dia se prueba a cambiar la categoria del manifest a CHARGING, que
     // es el caso de uso para el que Google diseno este traspaso.
-    @Suppress("unused")
     private fun viaHost() {
         val uri = Uri.parse("geo:" + c.lat + "," + c.lon)
         try {
@@ -51,6 +52,15 @@ class ChargerDetailScreen(
     // conectado, Maps se proyecta en la pantalla del coche. Puede fallar por
     // las restricciones de arranque de actividades en segundo plano.
     private fun viaPhone() {
+        // Con el movil bloqueado Android NO abre Google Maps: encola la
+        // actividad detras del keyguard y la suelta al desbloquear. No hay
+        // forma de saltarselo desde una app de terceros, asi que se avisa.
+        val kg = carContext.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (kg != null && kg.isKeyguardLocked) {
+            CarLog.log(carContext, "NAV", "MOVIL abortado: keyguard bloqueado")
+            screenManager.push(LockedScreen(carContext) { viaPhone() })
+            return
+        }
         val nav = Uri.parse("google.navigation:q=" + c.lat + "," + c.lon)
         try {
             CarLog.log(carContext, "NAV", "MOVIL intento " + nav)
@@ -89,6 +99,31 @@ class ChargerDetailScreen(
         }
     }
 
+    private class LockedScreen(
+        carContext: CarContext,
+        private val onRetry: () -> Unit
+    ) : Screen(carContext) {
+        override fun onGetTemplate(): Template {
+            return MessageTemplate.Builder(
+                "El movil esta bloqueado y Android no deja abrir Google Maps " +
+                    "hasta desbloquearlo.\n\nDesbloquea la pantalla del movil " +
+                    "y pulsa Reintentar."
+            )
+                .setTitle("Movil bloqueado")
+                .setHeaderAction(Action.BACK)
+                .addAction(
+                    Action.Builder()
+                        .setTitle("Reintentar")
+                        .setOnClickListener {
+                            screenManager.pop()
+                            onRetry()
+                        }
+                        .build()
+                )
+                .build()
+        }
+    }
+
     private class NavSentScreen(
         carContext: CarContext,
         private val destino: String
@@ -123,6 +158,12 @@ class ChargerDetailScreen(
         if (c.info.isNotEmpty()) {
             pane.addRow(Row.Builder().setTitle("Operador").addText(c.info).build())
         }
+        pane.addAction(
+            Action.Builder()
+                .setTitle("Maps del coche")
+                .setOnClickListener { viaHost() }
+                .build()
+        )
         pane.addAction(
             Action.Builder()
                 .setTitle("Enviar a Maps")

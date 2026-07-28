@@ -26,8 +26,18 @@ open class LMB10CarAppService : CarAppService() {
 
     override fun onCreateSession(): Session = object : Session() {
         override fun onCreateScreen(intent: Intent): Screen {
-            CarLog.log(carContext, "SERVICE", "onCreateScreen -> CarMainScreen")
+            CarLog.log(carContext, "SERVICE",
+                "onCreateScreen action=" + intent.action + " data=" + intent.data)
             return CarMainScreen(carContext)
+        }
+
+        // Cuando el host entrega un intent a una sesion YA VIVA no llama a
+        // onCreateScreen: llama aqui. Si startCarApp(ACTION_NAVIGATE) nos lo
+        // devuelve a nosotros mismos por ser categoria NAVIGATION, la traza
+        // sale por aqui y en ningun otro sitio.
+        override fun onNewIntent(intent: Intent) {
+            CarLog.log(carContext, "SERVICE",
+                "onNewIntent action=" + intent.action + " data=" + intent.data)
         }
     }
 }
