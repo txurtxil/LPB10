@@ -14,9 +14,7 @@
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
     <uses-permission android:name="androidx.car.app.MAP_TEMPLATES" />
-    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
     <application
         android:label="LMB10"
         android:name="${applicationName}"
@@ -52,7 +50,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.NAVIGATION" />
+                <category android:name="androidx.car.app.category.CHARGING" />
                 <category android:name="android.intent.category.CAR_LAUNCHER" />
             </intent-filter>
         </service>
