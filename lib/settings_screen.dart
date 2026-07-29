@@ -8,6 +8,8 @@ import 'backup_helper.dart';
 import 'cert_store.dart';
 import 'cert_import_screen.dart';
 import 'price_screen.dart';
+import 'vehicle_profile.dart';
+import 'vehicle_profile_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -77,6 +79,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         builder: (_) => const CertImportScreen()));
                     final c = await hasClientCert();
                     if (mounted) setState(() => _hasCert = c);
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.electric_car_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Perfil del vehiculo'
+                      : 'Vehicle profile'),
+                  subtitle: Text(vehicleProfileSummary()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const VehicleProfileScreen()));
+                    if (mounted) setState(() {});
                   },
                 ),
                 const Divider(),

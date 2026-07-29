@@ -18,7 +18,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'charge_cost.dart';
 import 'daily_stats.dart';
 import 'price_screen.dart';
-import 'widget_chart.dart' show kB10BatteryKwh;
+import 'widget_chart.dart' show gBatteryKwh;
 
 const _priceStorage = FlutterSecureStorage();
 const kEnergyPriceKey = 'lm_energy_price_v1';
@@ -60,7 +60,7 @@ class EnergyPrice {
 
 /// kWh que representa un agregado. DayAgg.soc es la caida de bateria acumulada
 /// de los tramos que pasaron el filtro de plausibilidad.
-double kwhOf(DayAgg a) => a.soc / 100.0 * kB10BatteryKwh;
+double kwhOf(DayAgg a) => a.soc / 100.0 * gBatteryKwh;
 
 /// Euros por kWh aplicables a cada dia, segun la ULTIMA carga anterior.
 ///
@@ -310,7 +310,7 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 /// Lineas de gasto para el widget de inicio y para Android Auto.
 ///
 /// Se calcula aqui y NO en widget_chart.dart a proposito: energy_cost.dart ya
-/// importa widget_chart.dart para kB10BatteryKwh, y hacerlo al reves crearia
+/// importa widget_chart.dart para gBatteryKwh, y hacerlo al reves crearia
 /// una dependencia circular.
 ///
 /// Devuelve cadenas vacias si el usuario no ha puesto precio o si aun no hay

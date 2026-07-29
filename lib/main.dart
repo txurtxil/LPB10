@@ -42,6 +42,7 @@ import 'daily_stats.dart';
 import 'energy_cost.dart';
 import 'charge_cost.dart';
 import 'car_log_bridge.dart';
+import 'vehicle_profile.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -149,6 +150,7 @@ void backgroundCallbackDispatcher() {
 @pragma('vm:entry-point')
 void carAppMain() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await loadVehicleProfile();
   DartPluginRegistrant.ensureInitialized();
   const carChannel = MethodChannel('lmb10/carapp');
   carChannel.setMethodCallHandler((call) async {
@@ -506,6 +508,7 @@ Future<void> exportAnonymizedJson(BuildContext context, Vehicle vehicle) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await loadVehicleProfile();
   await _initNotifications();
   Workmanager().initialize(backgroundCallbackDispatcher, isInDebugMode: false);
   Workmanager().registerPeriodicTask(
@@ -1438,7 +1441,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       final dayParts = <String>[];
       for (final entry in byDay.entries) {
         final a = TripPointStore.averageConsumptionPercentPer100km(entry.value);
-        final kwh = a == null ? '' : (a / 100.0 * kB10BatteryKwh).toStringAsFixed(1);
+        final kwh = a == null ? '' : (a / 100.0 * gBatteryKwh).toStringAsFixed(1);
         dayParts.add('${entry.key}:$kwh');
       }
       if (dayParts.length > 7) {
@@ -1458,7 +1461,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       final avg7 = TripPointStore.averageConsumptionPercentPer100km(recent7);
       await HomeWidget.saveWidgetData<String>(
           'avg7_kwh100',
-          avg7 == null ? '' : (avg7 / 100.0 * kB10BatteryKwh).toStringAsFixed(1));
+          avg7 == null ? '' : (avg7 / 100.0 * gBatteryKwh).toStringAsFixed(1));
       // Motor de agregado diario (daily_stats.dart). Todavia NO alimenta la
       // interfaz: solo se sincroniza y deja una linea en el log para poder
       // comprobar que su avg7 coincide con el de arriba.
@@ -1494,7 +1497,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
           final k = iso[2] + '/' + iso[1];
           kmDia[k] = ag.km.toStringAsFixed(0);
           if (precioDia != null) {
-            eurDia[k] = (ag.soc / 100.0 * kB10BatteryKwh * precioDia.eurKwh)
+            eurDia[k] = (ag.soc / 100.0 * gBatteryKwh * precioDia.eurKwh)
                 .toStringAsFixed(2);
           }
         }
@@ -1511,11 +1514,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       } catch (_) {}
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       if (avgPct != null) {
-        final kwh100 = avgPct / 100.0 * kB10BatteryKwh;
+        final kwh100 = avgPct / 100.0 * gBatteryKwh;
         // Cap a la autonomia fisica del coche: con pocos datos el consumo
         // medio sale optimista y daria autonomias imposibles (>430).
-        final estRangeRaw = kwh100 > 0 ? (kB10BatteryKwh / kwh100 * 100).round() : 0;
-        final estRange = estRangeRaw > kB10MaxRangeKm.round() ? kB10MaxRangeKm.round() : estRangeRaw;
+        final estRangeRaw = kwh100 > 0 ? (gBatteryKwh / kwh100 * 100).round() : 0;
+        final estRange = estRangeRaw > gMaxRangeKm.round() ? gMaxRangeKm.round() : estRangeRaw;
         await HomeWidget.saveWidgetData<String>('cycle_kwh100', kwh100.toStringAsFixed(1));
         await HomeWidget.saveWidgetData<String>('cycle_est_range', estRange.toString());
       } else {
@@ -1805,7 +1808,7 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
   /// estimacion con el precio de casa y no un dato confirmado.
   Widget _chipCoste(ChargeSession s, Color textColor) {
     final kwh =
-        ((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * kB10BatteryKwh;
+        ((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * gBatteryKwh;
     final manual = _costes[s.startTs];
     var estimado = false;
     final eur = costeCarga(
@@ -1892,7 +1895,7 @@ class _ChargeHistoryCardState extends State<ChargeHistoryCard> {
                       child: Text(
                         ongoing
                             ? '${s.startSoc.toStringAsFixed(0)}% -> $endLabel'
-                            : '${s.startSoc.toStringAsFixed(0)}% -> $endLabel  -  +${(((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * kB10BatteryKwh).toStringAsFixed(1)} kWh',
+                            : '${s.startSoc.toStringAsFixed(0)}% -> $endLabel  -  +${(((s.endSoc ?? s.startSoc) - s.startSoc) / 100.0 * gBatteryKwh).toStringAsFixed(1)} kWh',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
                       ),

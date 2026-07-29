@@ -20,7 +20,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import 'widget_chart.dart' show kB10BatteryKwh;
+import 'widget_chart.dart' show gBatteryKwh;
 
 class DayAgg {
   final String d; // 'yyyy-MM-dd', o '2026-S30' / '2026-07' si es un rollup
@@ -41,7 +41,7 @@ class DayAgg {
 
   double? get kwh100 {
     final p = pct;
-    return p == null ? null : p / 100.0 * kB10BatteryKwh;
+    return p == null ? null : p / 100.0 * gBatteryKwh;
   }
 
   Map<String, dynamic> toMap() =>
@@ -365,7 +365,7 @@ class RebuiltCharge {
       this.startTs, this.endTs, this.startSoc, this.endSoc, this.samples);
 
   double get gain => endSoc - startSoc;
-  double get kwh => gain / 100.0 * kB10BatteryKwh;
+  double get kwh => gain / 100.0 * gBatteryKwh;
 
   /// Solo hay duracion fiable si se llego a ver la carga por dentro.
   bool get durationMeasured => samples > 2;

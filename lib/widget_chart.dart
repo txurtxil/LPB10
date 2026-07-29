@@ -17,9 +17,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
-const double kB10BatteryKwh = 67.1;
-const double kB10MaxRangeKm = 430.0;
-final double kTargetKwh100 = kB10BatteryKwh / kB10MaxRangeKm * 100.0; // 15.60
+// Ya NO son const: las fija loadVehicleProfile() al arrancar segun el modelo
+// elegido por el usuario. Los valores de aqui son solo el punto de partida
+// (B10) para quien nunca haya tocado el perfil.
+double gBatteryKwh = 67.1;
+double gMaxRangeKm = 430.0;
+
+// GETTER, no final. Un final de nivel superior se calcula UNA sola vez en su
+// primera lectura, asi que si el perfil se carga despues se quedaria clavado
+// en el objetivo del B10 para siempre.
+double get kTargetKwh100 => gBatteryKwh / gMaxRangeKm * 100.0;
 
 const _wcStorage = FlutterSecureStorage();
 const _kTripKey = 'lm_trip_points_v1';
@@ -42,7 +49,7 @@ class _DayBar {
     // Red de seguridad: un dia con consumo implausible no se pinta.
     final pct = socDrop / km * 100;
     if (pct < 12.0 || pct > 70.0) return null;
-    return socDrop * kB10BatteryKwh / km;
+    return socDrop * gBatteryKwh / km;
   }
 }
 
@@ -128,7 +135,7 @@ Future<Map<String, String>> buildWidgetExtras(
     if (closed.isNotEmpty) {
       final s = closed.last;
       final gain = s.endSoc! - s.startSoc;
-      final kwh = gain / 100.0 * kB10BatteryKwh;
+      final kwh = gain / 100.0 * gBatteryKwh;
       final t = DateTime.fromMillisecondsSinceEpoch(s.endTs!);
       String two(int n) => n.toString().padLeft(2, '0');
       lastCharge =
@@ -174,7 +181,7 @@ Future<Map<String, String>> buildWidgetExtras(
         if (b != null) {
           b.charged = true;
           if (s.endSoc != null) {
-            b.chargedKwh += (s.endSoc! - s.startSoc) / 100.0 * kB10BatteryKwh;
+            b.chargedKwh += (s.endSoc! - s.startSoc) / 100.0 * gBatteryKwh;
           }
         }
       }
@@ -187,13 +194,13 @@ Future<Map<String, String>> buildWidgetExtras(
     final totKm = bars.fold(0.0, (a, b) => a + b.km);
     final totDrop = bars.fold(0.0, (a, b) => a + b.socDrop);
     final double? weekAvg =
-        totKm > 0 && totDrop > 0 ? totDrop * kB10BatteryKwh / totKm : null;
+        totKm > 0 && totDrop > 0 ? totDrop * gBatteryKwh / totKm : null;
     if (weekAvg != null && socPercent != null && weekAvg >= 12.0) {
       // weekAvg < 12 kWh/100 es inverosimil en este coche (objetivo 15.6):
       // significa datos insuficientes. No se publica una autonomia fantasia.
       // Cap a la autonomia fisica: con pocos datos el consumo medio sale
       // optimista y daria autonomias imposibles (>430). Se limita a 430.
-      final r = (socPercent * kB10BatteryKwh / weekAvg).clamp(0.0, kB10MaxRangeKm);
+      final r = (socPercent * gBatteryKwh / weekAvg).clamp(0.0, gMaxRangeKm);
       realRange = r.round().toString();
     }
 
@@ -211,12 +218,12 @@ Future<Map<String, String>> buildWidgetExtras(
       if (rechargeIdx < points.length - 1) {
         final km = points.last.km - points[rechargeIdx].km;
         // Cordura: el ciclo no puede superar la autonomia fisica del coche.
-        // Si sale > kB10MaxRangeKm es que aun no hay suficiente historial
+        // Si sale > gMaxRangeKm es que aun no hay suficiente historial
         // para localizar la ultima recarga real (se ve todo el rango
         // disponible en vez de un ciclo). Se avisa en vez de ocultarlo sin
         // explicar, para que quede claro que es falta de datos, no un fallo.
         if (km > 0) {
-          cycleKm = km <= kB10MaxRangeKm ? km.toString() : 'pocos datos';
+          cycleKm = km <= gMaxRangeKm ? km.toString() : 'pocos datos';
         }
       }
     }
@@ -295,7 +302,7 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
     // Euros del dia: caida de SoC pasada a kWh por el precio. NO se deriva del
     // kWh/100, que ya viene dividido por kilometros y daria euros por 100 km.
     final eur = conEuro
-        ? (b.socDrop / 100.0 * kB10BatteryKwh * eurKwh!)
+        ? (b.socDrop / 100.0 * gBatteryKwh * eurKwh!)
             .toStringAsFixed(2)
             .replaceAll('.', ',')
             .padLeft(6)
@@ -305,7 +312,7 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
   }
   if (weekAvg != null && weekAvg >= 12.0) {
     final estFull =
-        (kB10BatteryKwh / weekAvg * 100).round().clamp(0, kB10MaxRangeKm.round());
+        (gBatteryKwh / weekAvg * 100).round().clamp(0, gMaxRangeKm.round());
     sb.writeln('Media 7d ${_d1(weekAvg)}  ~$estFull km');
   }
   return sb.toString().trimRight();
@@ -348,10 +355,10 @@ Future<List<int>> _renderChartPng(List<_DayBar> bars, double? weekAvg) async {
   final title = tpOf('Consumo diario', 30, _cBlue, weight: FontWeight.w800);
   title.paint(canvas, const Offset(leftPad, 18));
   final sub =
-      tpOf('objetivo ${_d1(kTargetKwh100)} kWh/100 = 430 km', 22, _cBlue);
+      tpOf('objetivo ${_d1(kTargetKwh100)} kWh/100 = ' + gMaxRangeKm.round().toString() + ' km', 22, _cBlue);
   sub.paint(canvas, const Offset(leftPad, 58));
   if (weekAvg != null && weekAvg >= 12.0) {
-    final estFull = (kB10BatteryKwh / weekAvg * 100).round();
+    final estFull = (gBatteryKwh / weekAvg * 100).round();
     final ok = weekAvg <= kTargetKwh100;
     final avg = tpOf('Media 7d: ${_d1(weekAvg)}  ·  ~$estFull km/carga', 24,
         ok ? _cGood : _cOver,
