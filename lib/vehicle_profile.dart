@@ -29,7 +29,9 @@ const kVehicleProfiles = <VehicleProfile>[
   VehicleProfile('b10', 'B10  ·  67,1 kWh  ·  430 km', 67.1, 430.0),
   VehicleProfile('b05_pro', 'B05 Pro  ·  56,2 kWh  ·  401 km', 56.2, 401.0),
   VehicleProfile('b05_promax', 'B05 ProMax  ·  67,1 kWh  ·  482 km', 67.1, 482.0),
-  VehicleProfile('c10', 'C10 electrico  ·  69,9 kWh  ·  420 km', 69.9, 420.0),
+  VehicleProfile('c10_life', 'C10 Life  -  69,9 kWh  -  420 km', 69.9, 420.0),
+  VehicleProfile('c10_promax_rwd', 'C10 ProMax RWD  -  81,9 kWh  -  510 km', 81.9, 510.0),
+  VehicleProfile('c10_promax_awd', 'C10 ProMax AWD  -  81,9 kWh  -  437 km', 81.9, 437.0),
   VehicleProfile('custom', 'Otro  ·  a mano', 67.1, 430.0),
 ];
 

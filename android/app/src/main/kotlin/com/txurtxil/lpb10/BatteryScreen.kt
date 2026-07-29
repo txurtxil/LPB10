@@ -129,45 +129,47 @@ class BatteryScreen(carContext: CarContext) : Screen(carContext) {
             .build()
     }
 
-    /// Pila de bateria en horizontal. 240x120 es un tamano prudente: los
-    /// bitmaps grandes los puede rechazar el host.
+    /// Arco de carga, 320x320.
+    ///
+    /// La version anterior era una pila horizontal de 240x120 y el host del B10
+    /// la RECORTABA por los laterales: se perdian las esquinas redondeadas y el
+    /// terminal. No se sabe cuanto recorta ni si depende del coche, asi que en
+    /// vez de ajustar margenes a ciegas se usa una forma TOLERANTE al recorte:
+    /// un arco centrado solo pierde los extremos y nunca parece roto.
     private fun dibujaBateria(pct: Float): Bitmap {
-        val w = 240
-        val h = 120
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val n = 320
+        val bmp = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val v = pct.coerceIn(0f, 100f)
 
-        val cuerpo = RectF(8f, 20f, w - 32f, h - 20f)
-        val relleno = pct.coerceIn(0f, 100f) / 100f
         val color = when {
-            relleno <= 0.15f -> Color.parseColor("#E63946")
-            relleno <= 0.35f -> Color.parseColor("#E9A23B")
+            v <= 15f -> Color.parseColor("#E63946")
+            v <= 35f -> Color.parseColor("#E9A23B")
             else -> Color.parseColor("#2A9D8F")
         }
 
-        p.style = Paint.Style.FILL
-        p.color = Color.parseColor("#22FFFFFF")
-        c.drawRoundRect(cuerpo, 12f, 12f, p)
-
-        val dentro = RectF(cuerpo.left + 6f, cuerpo.top + 6f,
-            cuerpo.left + 6f + (cuerpo.width() - 12f) * relleno, cuerpo.bottom - 6f)
-        p.color = color
-        c.drawRoundRect(dentro, 8f, 8f, p)
-
+        val r = 108f
+        val caja = RectF(n / 2f - r, n / 2f - r, n / 2f + r, n / 2f + r)
         p.style = Paint.Style.STROKE
-        p.strokeWidth = 4f
-        p.color = Color.WHITE
-        c.drawRoundRect(cuerpo, 12f, 12f, p)
+        p.strokeWidth = 26f
+        p.strokeCap = Paint.Cap.ROUND
+
+        p.color = Color.parseColor("#33FFFFFF")
+        c.drawArc(caja, 135f, 270f, false, p)
+        p.color = color
+        c.drawArc(caja, 135f, 270f * (v / 100f), false, p)
 
         p.style = Paint.Style.FILL
-        c.drawRoundRect(RectF(w - 30f, h / 2f - 16f, w - 10f, h / 2f + 16f), 6f, 6f, p)
-
         p.color = Color.WHITE
-        p.textSize = 40f
         p.textAlign = Paint.Align.CENTER
         p.isFakeBoldText = true
-        c.drawText(pct.toInt().toString() + "%", cuerpo.centerX(), cuerpo.centerY() + 14f, p)
+        p.textSize = 78f
+        c.drawText(v.toInt().toString(), n / 2f, n / 2f + 12f, p)
+        p.isFakeBoldText = false
+        p.textSize = 30f
+        p.color = Color.parseColor("#BBFFFFFF")
+        c.drawText("%", n / 2f, n / 2f + 52f, p)
         return bmp
     }
 }
