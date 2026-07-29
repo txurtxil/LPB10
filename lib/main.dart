@@ -19,7 +19,6 @@ import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'leapmotor_engine.dart';
 import 'about_screen.dart';
-import 'car_log_screen.dart';
 import 'guard_mode_screen.dart';
 import 'sentry/sentry_screen.dart';
 import 'sentry/sentry_background.dart';
@@ -42,6 +41,7 @@ import 'welcome_screen.dart';
 import 'daily_stats.dart';
 import 'energy_cost.dart';
 import 'charge_cost.dart';
+import 'car_log_bridge.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -256,18 +256,6 @@ Future<bool> carQuickAction(String action) async {
   }
 }
 
-/// Puente minimo para que carQuickAction escriba en el log del coche.
-class CarLogBridge {
-  static Future<void> log(String msg) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final f = File('${dir.path}/lmb10_history/carlog.txt');
-      await f.parent.create(recursive: true);
-      final ts = DateTime.now().toIso8601String().substring(5, 19);
-      await f.writeAsString('$ts [DART-QA] $msg\n', mode: FileMode.append);
-    } catch (_) {}
-  }
-}
 
 
 // ============================================================
@@ -313,7 +301,6 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   }
 
   final soc = status.preciseSoc ?? status.soc?.toDouble();
-  final prevSoc = (prevState['soc'] as num?)?.toDouble();
   final prevLocked = prevState['isLocked'] as bool?;
   final prevChargeCompleted = prevState['chargeCompleted'] as bool?;
   var lowBatteryNotified = prevState['lowBatteryNotified'] as bool? ?? false;

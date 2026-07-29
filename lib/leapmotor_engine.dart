@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:http/io_client.dart';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:pointycastle/export.dart' as pc;
+import 'car_log_bridge.dart';
 import 'cert_store.dart';
 
 // ============================================================
@@ -215,14 +216,39 @@ Map<String, dynamic> mergeSignalToNamed(Map<String, dynamic> statusData) {
       merged[namedField] = signal[signalId];
     }
   });
+  // El backend manda las senales 3724/2191 y 3725/2190 en VALOR ABSOLUTO.
+  // Verificado en el snapshot del 29/07: senal 2 = -2.987649 y senal 3724 =
+  // 2.987649, el mismo numero hasta el ultimo decimal, sin signo. En longitud
+  // oeste (toda Espana) tirar de un fallback situaria el coche en el hemisferio
+  // equivocado, a unos 500 km de distancia.
+  //
+  // No se corrige nada a proposito: el signo correcto no se puede deducir del
+  // propio snapshot cuando falta la senal 2, haria falta la ultima posicion
+  // conocida y esta funcion es pura. La senal 2 va primera y hasta hoy nunca ha
+  // faltado. Se deja traza para saber si eso llega a pasar alguna vez; si el
+  // log nunca lo registra, no hay nada que arreglar.
   if (!merged.containsKey('longitude')) {
     for (final lonSignal in ['2', '3724', '2191']) {
-      if (signal.containsKey(lonSignal)) { merged['longitude'] = signal[lonSignal]; break; }
+      if (signal.containsKey(lonSignal)) {
+        merged['longitude'] = signal[lonSignal];
+        if (lonSignal != '2') {
+          CarLogBridge.log('GPS lon por fallback senal ' + lonSignal +
+              ' = ' + signal[lonSignal].toString() + ' (signo NO fiable)');
+        }
+        break;
+      }
     }
   }
   if (!merged.containsKey('latitude')) {
     for (final latSignal in ['3', '3725', '2190']) {
-      if (signal.containsKey(latSignal)) { merged['latitude'] = signal[latSignal]; break; }
+      if (signal.containsKey(latSignal)) {
+        merged['latitude'] = signal[latSignal];
+        if (latSignal != '3') {
+          CarLogBridge.log('GPS lat por fallback senal ' + latSignal +
+              ' = ' + signal[latSignal].toString());
+        }
+        break;
+      }
     }
   }
   return merged;
