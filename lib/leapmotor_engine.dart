@@ -1014,6 +1014,60 @@ class LeapmotorApiClient {
     return _asInt((data['data'] as Map<String, dynamic>?)?['unread']) ?? 0;
   });
 
+  // ============================================================
+  // SONDA: historial real de cargas desde la nube.
+  //
+  // Endpoint /carownerservice/charge/daily/detail/page. Es el UNICO de toda la
+  // API que no lleva el segmento "oversea" y el UNICO que va en JSON en vez de
+  // formulario, asi que hay que sobrescribir el Content-Type que fija
+  // _baseHeaders.
+  //
+  // Trampa critica: pageNum y pageSize se FIRMAN como cadena y se ENVIAN como
+  // entero. Si se firman como entero el HMAC no cuadra y el servidor rechaza.
+  //
+  // Devuelve el cuerpo CRUDO a proposito, sin interpretar. Nadie ha ejecutado
+  // nunca este endpoint contra un B10 y se desconoce si chargeInEnergy viene en
+  // kWh o en Wh, y si chargeGunStartTs/chargeGunEndTs son segundos o
+  // milisegundos. Se decide viendo la respuesta real, no adivinando.
+  // ============================================================
+  Future<String> probeChargeHistoryRaw(String vin, {int days = 7}) => withTokenRetry(() async {
+    if (_accountClient == null) throw Exception('Not logged in');
+    String iso(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final end = DateTime.now().toUtc();
+    final start = end.subtract(Duration(days: days));
+    final startTime = iso(start);
+    final endTime = iso(end);
+    const timeZone = 'GMT+00:00';
+    const pageNum = 1;
+    const pageSize = 20;
+
+    final headers = _signedHeaders(vin: vin, bodyParams: {
+      'timeZone': timeZone,
+      'startTime': startTime,
+      'endTime': endTime,
+      'pageNum': pageNum.toString(),
+      'pageSize': pageSize.toString(),
+    })..addAll(_authHeaders());
+    headers['Content-Type'] = 'application/json';
+
+    final body = json.encode({
+      'vin': vin,
+      'timeZone': timeZone,
+      'startTime': startTime,
+      'endTime': endTime,
+      'pageNum': pageNum,
+      'pageSize': pageSize,
+    });
+
+    final response = await _accountClient!.post(
+      Uri.parse('$kBaseUrl/carownerservice/charge/daily/detail/page'),
+      headers: headers,
+      body: body,
+    );
+    return 'HTTP ${response.statusCode}  ($startTime .. $endTime)\n${response.body}';
+  });
+
 
   /// Establece el horario completo de carga (cmd_id=190): habilitado, limite
   /// de SOC, franja horaria y dias de la semana. A diferencia de setChargeLimit

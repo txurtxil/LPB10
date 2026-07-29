@@ -2522,6 +2522,23 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
     }
   }
 
+  /// SONDA del endpoint de cargas. Vuelca el cuerpo crudo sin interpretarlo:
+  /// se desconoce si chargeInEnergy viene en kWh o Wh, y si los timestamps del
+  /// conector son segundos o milisegundos. Se decide viendo la respuesta real.
+  Future<void> _probeCharges() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Consultando historial de cargas en la nube...';
+    });
+    try {
+      final raw = await widget.client.probeChargeHistoryRaw(widget.vehicle.vin);
+      setState(() { _text = raw; _loading = false; });
+    } catch (e) {
+      setState(() { _text = 'Error en la sonda de cargas:\n\n$e'; _loading = false; });
+    }
+  }
+
   void _saveSnapshot() {
     if (_current == null) return;
     setState(() {
@@ -2609,6 +2626,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeCharges,
+                icon: const Icon(Icons.ev_station_outlined, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: historial de cargas (nube)'
+                    : 'Probe: charge history (cloud)'),
+              ),
             ),
           ),
           Expanded(
