@@ -71,8 +71,15 @@ class QuickWidgetProvider : AppWidgetProvider() {
             !range.isNullOrEmpty() -> range + " km"
             else -> "-- km"
         }
-        val extra = if (charging == "1" && !kw.isNullOrEmpty()) "  ·  " + kw + " kW" else ""
-        v.setTextViewText(R.id.qw_info, rangoTxt + "  ·  " + estado + extra)
+        v.setTextViewText(R.id.qw_info, rangoTxt)
+
+        // Segunda linea: estado y lo que este pasando ahora mismo.
+        val temp = p.getString("interiorTemp", null)
+        val partes = ArrayList<String>()
+        partes.add(estado)
+        if (charging == "1" && !kw.isNullOrEmpty()) partes.add("cargando " + kw + " kW")
+        if (!temp.isNullOrEmpty()) partes.add("interior " + temp + "\u00B0")
+        v.setTextViewText(R.id.qw_info2, partes.joinToString("  ·  "))
 
         var pintado = false
         if (pct != null) {
@@ -143,11 +150,20 @@ class QuickWidgetProvider : AppWidgetProvider() {
         p.color = color
         c.drawRoundRect(RectF(0f, 18f, w * f, h - 6f), 18f, 18f, p)
 
-        p.color = Color.WHITE
+        // El numero va DENTRO de la parte llena si cabe, y fuera si no: con
+        // bateria baja el texto blanco sobre fondo oscuro se leia mal.
         p.isFakeBoldText = true
-        p.textSize = 46f
+        p.textSize = 44f
         p.textAlign = Paint.Align.LEFT
-        c.drawText(pct.toInt().toString() + "%", 16f, h - 22f, p)
+        val txt = pct.toInt().toString() + "%"
+        val ancho = p.measureText(txt)
+        if (w * f > ancho + 40f) {
+            p.color = Color.parseColor("#0B1A18")
+            c.drawText(txt, 22f, h - 24f, p)
+        } else {
+            p.color = Color.WHITE
+            c.drawText(txt, w * f + 22f, h - 24f, p)
+        }
         return bmp
     }
 }

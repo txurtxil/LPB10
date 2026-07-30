@@ -4,26 +4,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#E6101418"
-    android:padding="12dp">
+    android:background="@drawable/qw_bg"
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:baselineAligned="false">
         <TextView
             android:id="@+id/qw_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:text="LMB10"
-            android:textColor="#E8F1F8"
+            android:textColor="#F2F7FB"
             android:textStyle="bold"
+            android:letterSpacing="0.04"
             android:textSize="13sp" />
         <TextView
             android:id="@+id/qw_fresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:maxLines="1"
             android:text=""
             android:textColor="#8FA8BC"
             android:textSize="11sp" />
@@ -32,8 +37,8 @@
     <ImageView
         android:id="@+id/qw_bar_img"
         android:layout_width="match_parent"
-        android:layout_height="34dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="38dp"
+        android:layout_marginTop="10dp"
         android:scaleType="fitXY"
         android:contentDescription="Bateria" />
 
@@ -41,10 +46,10 @@
         android:id="@+id/qw_bar_txt"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:fontFamily="monospace"
         android:textSize="15sp"
-        android:textColor="#E8F1F8"
+        android:textColor="#F2F7FB"
         android:visibility="gone"
         android:text="" />
 
@@ -52,68 +57,104 @@
         android:id="@+id/qw_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textColor="#C3D4E2"
-        android:textSize="12sp"
+        android:layout_marginTop="8dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#D2E0EC"
+        android:textSize="13sp"
         android:text="-- km" />
+
+    <TextView
+        android:id="@+id/qw_info2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#8FA8BC"
+        android:textSize="12sp"
+        android:text="" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical" />
 
     <LinearLayout
         android:id="@+id/qw_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp">
+        android:layout_marginTop="10dp"
+        android:baselineAligned="false">
         <Button
             android:id="@+id/qw_lock"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="3dp"
+            android:layout_marginEnd="5dp"
             android:minHeight="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:minWidth="0dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:textSize="11sp"
+            android:textAllCaps="false"
             android:textColor="#E8F1F8"
-            android:background="#1F3446"
+            android:background="@drawable/qw_btn"
+            android:drawableTop="@drawable/qw_ic_lock"
+            android:drawablePadding="3dp"
             android:text="Cerrar" />
         <Button
             android:id="@+id/qw_clima"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginHorizontal="3dp"
+            android:layout_marginHorizontal="5dp"
             android:minHeight="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:minWidth="0dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:textSize="11sp"
+            android:textAllCaps="false"
             android:textColor="#E8F1F8"
-            android:background="#1F3446"
+            android:background="@drawable/qw_btn"
+            android:drawableTop="@drawable/qw_ic_clima"
+            android:drawablePadding="3dp"
             android:text="Clima" />
         <Button
             android:id="@+id/qw_unlock"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginHorizontal="3dp"
+            android:layout_marginHorizontal="5dp"
             android:minHeight="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:minWidth="0dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:textSize="11sp"
+            android:textAllCaps="false"
             android:textColor="#FFD9A0"
-            android:background="#3A2A18"
+            android:background="@drawable/qw_btn_warn"
+            android:drawableTop="@drawable/qw_ic_unlock"
+            android:drawablePadding="3dp"
             android:text="Abrir" />
         <Button
             android:id="@+id/qw_trunk"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="3dp"
+            android:layout_marginStart="5dp"
             android:minHeight="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:minWidth="0dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:textSize="11sp"
+            android:textAllCaps="false"
             android:textColor="#FFD9A0"
-            android:background="#3A2A18"
+            android:background="@drawable/qw_btn_warn"
+            android:drawableTop="@drawable/qw_ic_trunk"
+            android:drawablePadding="3dp"
             android:text="Maletero" />
     </LinearLayout>
 </LinearLayout>
