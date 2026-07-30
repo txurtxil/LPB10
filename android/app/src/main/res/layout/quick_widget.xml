@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/qw_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#E6101418"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/qw_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="LMB10"
+            android:textColor="#E8F1F8"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/qw_fresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#8FA8BC"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/qw_bar_img"
+        android:layout_width="match_parent"
+        android:layout_height="34dp"
+        android:layout_marginTop="8dp"
+        android:scaleType="fitXY"
+        android:contentDescription="Bateria" />
+
+    <TextView
+        android:id="@+id/qw_bar_txt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:fontFamily="monospace"
+        android:textSize="15sp"
+        android:textColor="#E8F1F8"
+        android:visibility="gone"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/qw_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="#C3D4E2"
+        android:textSize="12sp"
+        android:text="-- km" />
+
+    <LinearLayout
+        android:id="@+id/qw_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+        <Button
+            android:id="@+id/qw_lock"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:minHeight="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="11sp"
+            android:textColor="#E8F1F8"
+            android:background="#1F3446"
+            android:text="Cerrar" />
+        <Button
+            android:id="@+id/qw_clima"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="3dp"
+            android:minHeight="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="11sp"
+            android:textColor="#E8F1F8"
+            android:background="#1F3446"
+            android:text="Clima" />
+        <Button
+            android:id="@+id/qw_unlock"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="3dp"
+            android:minHeight="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="11sp"
+            android:textColor="#FFD9A0"
+            android:background="#3A2A18"
+            android:text="Abrir" />
+        <Button
+            android:id="@+id/qw_trunk"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:minHeight="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="11sp"
+            android:textColor="#FFD9A0"
+            android:background="#3A2A18"
+            android:text="Maletero" />
+    </LinearLayout>
+</LinearLayout>

@@ -506,6 +506,27 @@ Future<void> exportAnonymizedJson(BuildContext context, Vehicle vehicle) async {
   await Share.shareXFiles([XFile(file.path)], text: 'Exportacion anonimizada de datos LMB10');
 }
 
+/// Accion pedida desde el widget de acciones rapidas: lmb10://action?cmd=lock
+String? _actionFromUri(Uri? uri) {
+  if (uri == null) return null;
+  if (uri.host != 'action') return null;
+  final cmd = uri.queryParameters['cmd'];
+  return (cmd == null || cmd.isEmpty) ? null : cmd;
+}
+
+/// Callback de FONDO del widget: se ejecuta sin abrir la app, asi que funciona
+/// con el movil bloqueado. Solo llega aqui lo que se dispara con
+/// HomeWidgetBackgroundIntent (cerrar, clima). Abrir y maletero van por
+/// HomeWidgetLaunchIntent a proposito, para que Android exija desbloqueo.
+@pragma('vm:entry-point')
+Future<void> widgetActionCallback(Uri? uri) async {
+  final cmd = _actionFromUri(uri);
+  if (cmd == null) return;
+  await CarLogBridge.log('widget accion fondo: ' + cmd);
+  final ok = await carQuickAction(cmd);
+  await CarLogBridge.log('widget accion fondo ' + cmd + ' -> ' + ok.toString());
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await loadVehicleProfile();
@@ -521,12 +542,25 @@ void main() async {
   try {
     gPendingRoutineId = _routineIdFromUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
   } catch (_) {}
+  try {
+    HomeWidget.registerInteractivityCallback(widgetActionCallback);
+  } catch (_) {}
+  try {
+    final cmd0 = _actionFromUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
+    if (cmd0 != null) {
+      // La Activity solo arranca tras desbloquear, asi que esto se ejecuta ya
+      // con el usuario autenticado.
+      unawaited(carQuickAction(cmd0));
+    }
+  } catch (_) {}
   HomeWidget.widgetClicked.listen((uri) {
     final id = _routineIdFromUri(uri);
     if (id != null) {
       gPendingRoutineId = id;
       gOnRoutinePending?.call();
     }
+    final cmd = _actionFromUri(uri);
+    if (cmd != null) unawaited(carQuickAction(cmd));
   });
   runApp(const LPB10App());
 }
@@ -1364,6 +1398,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
   await HomeWidget.saveWidgetData<String>('locked', s.isLocked ? '1' : '0');
   await HomeWidget.saveWidgetData<String>('updated', 'Actualizado ${TimeOfDay.now().format24Hour()}');
+  // Marca de tiempo cruda para poder decir "hace N min". Con el TCU
+  // durmiendose a los ~13 min, la hora exacta parece fresca aunque el dato
+  // tenga horas; la antiguedad es la informacion mas honesta del widget.
+  await HomeWidget.saveWidgetData<String>(
+      'updatedTs', DateTime.now().millisecondsSinceEpoch.toString());
   await HomeWidget.saveWidgetData<String>('lat', s.latitude != null ? s.latitude.toString() : '');
   await HomeWidget.saveWidgetData<String>('lon', s.longitude != null ? s.longitude.toString() : '');
   // --- Android Auto: datos extra para sub-pantallas Bateria/Ruedas ---
