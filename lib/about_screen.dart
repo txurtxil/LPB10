@@ -6,15 +6,16 @@ class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   // Version visible de la app. La actualiza release_apk.sh en cada release.
-  static const String kDisplayVersion = '3.60.28';
+  static const String kDisplayVersion = '3.60.29';
   static const _releasesUrl = 'https://github.com/txurtxil/LPB10/releases';
   static const _autismUrl = 'https://es.wikipedia.org/wiki/Trastornos_del_espectro_autista';
+  static const _kofiUrl = 'https://ko-fi.com/txurtxil';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(AppLocalizations.of(context)!.aboutScreenTitle)),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,6 +71,28 @@ class AboutScreen extends StatelessWidget {
                     : 'What is autism (Wikipedia)',
                 style: const TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline, fontSize: 13),
               ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text(
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Apoyar el desarrollo'
+                    : 'Support development',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'LMB10 es gratis, de codigo abierto y no tiene publicidad ni rastreadores. Si te resulta util y te apetece invitarme a un cafe, se agradece mucho. Es completamente opcional: no desbloquea nada dentro de la app ni da soporte prioritario.'
+                  : 'LMB10 is free, open source, with no ads or trackers. If it is useful to you and you feel like buying me a coffee, it is much appreciated. It is entirely optional: it unlocks nothing inside the app and buys no priority support.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => launchUrl(Uri.parse(_kofiUrl),
+                  mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.coffee_outlined, size: 18),
+              label: const Text('ko-fi.com/txurtxil'),
             ),
             const SizedBox(height: 24),
             Text(

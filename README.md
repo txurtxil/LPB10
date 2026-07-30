@@ -8,6 +8,9 @@ DISCLAIMER: Unofficial, independent project. Not affiliated with, endorsed by, o
 
 AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, ni asociado con Leapmotor. Usa la API en la nube de Leapmotor mediante ingenieria inversa documentada por la comunidad (ver seccion Creditos). Usalo bajo tu propia responsabilidad: Leapmotor puede cambiar la API en cualquier momento. Se recomienda una cuenta secundaria (no la principal) para evitar conflictos de sesion con la app oficial.
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar%20el%20proyecto-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/txurtxil)
+[![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+
 ---
 
 ## Capturas / Screenshots
@@ -455,9 +458,9 @@ LMB10 is free, open source, and has no ads or trackers. If it's useful to you an
 
 LMB10 es gratis, de codigo abierto, y no tiene publicidad ni rastreadores. Si te resulta util y te apetece invitarme a un cafe, se agradece mucho, y es completamente opcional.
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/txurtxil)
+[![Invitame a un cafe en Ko-fi](https://img.shields.io/badge/Ko--fi-Invitame%20a%20un%20caf%C3%A9-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/txurtxil)
 
-**https://ko-fi.com/txurtxil**
+### ☕ [ko-fi.com/txurtxil](https://ko-fi.com/txurtxil)
 
 To be clear: donations don't buy priority support, feature requests or any guarantee. This is a spare-time project and it stays that way.
 
