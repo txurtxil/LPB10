@@ -10,9 +10,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_selector/file_selector.dart';
+import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
 const _haStorage = FlutterSecureStorage();
-const double _haBatteryKwh = 67.1;
+// Copia privada que se quedo fuera del perfil de vehiculo (ver
+// efficiency_coach.dart). Getter para que refleje el modelo elegido.
+double get _haBatteryKwh => gBatteryKwh;
 
 class HistoryArchive {
   static Future<Directory> _dir() async {

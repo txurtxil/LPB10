@@ -359,51 +359,57 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
 }
 
 /// Comparativa de eficiencia: consumo medio (% cada 100 km) de esta semana
-/// frente a la semana anterior, usando los puntos de viaje ya guardados.
+/// frente a la semana anterior.
+///
+/// Antes recorria TripPointStore.load(), el almacen corto en memoria, y por eso
+/// la tarjeta mostraba "--" pese a haber semanas enteras de datos: el historico
+/// de verdad vive en trips.jsonl. Ahora se apoya en DailyStats.weeks(), que lee
+/// el archivo permanente y esta validado contra los datos reales (diferencia
+/// 0,000 %/100 km frente al calculo directo).
 class WeeklyEfficiency {
   final double? thisWeek;
   final double? lastWeek;
-  WeeklyEfficiency({this.thisWeek, this.lastWeek});
-}
-
-int _isoWeekKey(DateTime d) {
-  final firstDayOfYear = DateTime(d.year, 1, 1);
-  final dayOfYear = d.difference(firstDayOfYear).inDays + 1;
-  final week = ((dayOfYear - d.weekday + 10) / 7).floor();
-  return d.year * 100 + week;
+  final double kmThis;
+  final double kmLast;
+  WeeklyEfficiency({this.thisWeek, this.lastWeek, this.kmThis = 0, this.kmLast = 0});
 }
 
 Future<WeeklyEfficiency> computeWeeklyEfficiency() async {
-  final points = await TripPointStore.load();
-  if (points.length < 2) return WeeklyEfficiency();
+  try {
+    final dias = await DailyStats.load();
+    if (dias.isEmpty) return WeeklyEfficiency();
+    final semanas = DailyStats.weeks(dias);
+    if (semanas.isEmpty) return WeeklyEfficiency();
 
-  final nowKey = _isoWeekKey(DateTime.now());
-  final lastWeekKey = _isoWeekKey(DateTime.now().subtract(const Duration(days: 7)));
+    final kNow = DailyStats.weekKey(DateTime.now());
+    final kPrev = DailyStats.weekKey(DateTime.now().subtract(const Duration(days: 7)));
 
-  double thisWeekKm = 0, thisWeekSocDrop = 0;
-  double lastWeekKm = 0, lastWeekSocDrop = 0;
-
-  for (var i = 1; i < points.length; i++) {
-    final prev = points[i - 1];
-    final curr = points[i];
-    final kmDelta = curr.totalMileage - prev.totalMileage;
-    final socDelta = prev.soc - curr.soc;
-    if (kmDelta <= 0 || socDelta <= 0) continue;
-
-    final weekKey = _isoWeekKey(DateTime.fromMillisecondsSinceEpoch(curr.ts));
-    if (weekKey == nowKey) {
-      thisWeekKm += kmDelta;
-      thisWeekSocDrop += socDelta;
-    } else if (weekKey == lastWeekKey) {
-      lastWeekKm += kmDelta;
-      lastWeekSocDrop += socDelta;
+    DayAgg? buscar(String clave) {
+      for (final w in semanas) {
+        if (w.d == clave) return w;
+      }
+      return null;
     }
-  }
 
-  return WeeklyEfficiency(
-    thisWeek: thisWeekKm > 0 ? (thisWeekSocDrop / thisWeekKm) * 100 : null,
-    lastWeek: lastWeekKm > 0 ? (lastWeekSocDrop / lastWeekKm) * 100 : null,
-  );
+    final a = buscar(kNow);
+    final b = buscar(kPrev);
+
+    double? avg(DayAgg? w) {
+      if (w == null || w.km < DailyStats.kMinKm) return null;
+      final v = w.soc / w.km * 100.0;
+      if (v < DailyStats.kMinAvg || v > DailyStats.kMaxAvg) return null;
+      return v;
+    }
+
+    return WeeklyEfficiency(
+      thisWeek: avg(a),
+      lastWeek: avg(b),
+      kmThis: a?.km ?? 0,
+      kmLast: b?.km ?? 0,
+    );
+  } catch (_) {
+    return WeeklyEfficiency();
+  }
 }
 
 class WeeklyEfficiencyCard extends StatefulWidget {

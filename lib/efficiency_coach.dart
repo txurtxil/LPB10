@@ -11,10 +11,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'leapmotor_engine.dart';
+import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
-const double _battKwh = 67.1;
-const double _maxRange = 430.0;
-final double _target = _battKwh / _maxRange * 100.0; // 15,6
+// Estas tres se quedaron fuera cuando se creo el perfil de vehiculo: eran
+// copias privadas con otro nombre, asi que el renombrado no las cazo y esta
+// pantalla seguia calculando con la bateria del B10 aunque el usuario hubiese
+// elegido otro modelo. GETTERS, no final: un final de nivel superior se
+// calcula una sola vez y se quedaria con el valor por defecto si el perfil se
+// carga despues.
+double get _battKwh => gBatteryKwh;
+double get _maxRange => gMaxRangeKm;
+double get _target => gBatteryKwh / gMaxRangeKm * 100.0;
 const _storage = FlutterSecureStorage();
 
 class EfficiencyCoachScreen extends StatefulWidget {
@@ -163,8 +170,8 @@ class _EfficiencyCoachScreenState extends State<EfficiencyCoachScreen> {
             const SizedBox(height: 8),
             Text(
               es
-                  ? 'Objetivo: ${_d1(_target)} (430 km).  Tu autonomia real: ~$estKm km.'
-                  : 'Target: ${_d1(_target)} (430 km).  Your real range: ~$estKm km.',
+                  ? 'Objetivo: ${_d1(_target)} ($targetKm km).  Tu autonomia real: ~$estKm km.'
+                  : 'Target: ${_d1(_target)} ($targetKm km).  Your real range: ~$estKm km.',
               style: TextStyle(color: Colors.blueGrey.shade900, fontSize: 13),
             ),
             const SizedBox(height: 6),

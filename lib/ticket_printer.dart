@@ -12,9 +12,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
-const double kTicketBatteryKwh = 67.1;
-const double kTicketMaxRangeKm = 430.0;
+// Copias privadas que se quedaron fuera del perfil de vehiculo (ver
+// efficiency_coach.dart). Getters para que reflejen el modelo elegido.
+double get kTicketBatteryKwh => gBatteryKwh;
+double get kTicketMaxRangeKm => gMaxRangeKm;
 final double kTicketTarget = kTicketBatteryKwh / kTicketMaxRangeKm * 100.0; // 15,6
 
 const _tStorage = FlutterSecureStorage();
@@ -62,7 +65,7 @@ Future<String> buildEfficiencyTicket({
   b.writeln(sep());
   b.writeln(line('Ciclo: ${dm(from)} a ${dm(to)}'));
   b.writeln(line('Objetivo: ${_d1(kTicketTarget)} kWh/100'));
-  b.writeln(line('          (= 430 km/carga)'));
+  b.writeln(line('          (= ' + kTicketMaxRangeKm.round().toString() + ' km/carga)'));
   b.writeln(sep());
   b.writeln('');
 
