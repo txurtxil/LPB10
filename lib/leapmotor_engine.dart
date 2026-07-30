@@ -1030,42 +1030,79 @@ class LeapmotorApiClient {
   // kWh o en Wh, y si chargeGunStartTs/chargeGunEndTs son segundos o
   // milisegundos. Se decide viendo la respuesta real, no adivinando.
   // ============================================================
+  /// Una sola llamada al endpoint de cargas, con los parametros dados.
+  Future<String> _probeCargas(String vin, String startTime, String endTime,
+      String timeZone, String etiqueta) async {
+    try {
+      final headers = _signedHeaders(vin: vin, bodyParams: {
+        'timeZone': timeZone,
+        'startTime': startTime,
+        'endTime': endTime,
+        'pageNum': '1',
+        'pageSize': '20',
+      })..addAll(_authHeaders());
+      headers['Content-Type'] = 'application/json';
+      final body = json.encode({
+        'vin': vin,
+        'timeZone': timeZone,
+        'startTime': startTime,
+        'endTime': endTime,
+        'pageNum': 1,
+        'pageSize': 20,
+      });
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/charge/daily/detail/page'),
+        headers: headers,
+        body: body,
+      );
+      var cuerpo = r.body;
+      if (cuerpo.length > 700) cuerpo = cuerpo.substring(0, 700) + '...';
+      return '### $etiqueta\n$startTime .. $endTime  tz=$timeZone\nHTTP ${r.statusCode}  $cuerpo\n';
+    } catch (e) {
+      return '### $etiqueta\nEXCEPCION: $e\n';
+    }
+  }
+
+  /// SONDA v2: barrido de variantes.
+  ///
+  /// La v1 devolvio HTTP 200 con code 0 ("Request successful") pero list=null y
+  /// total=0, pese a haber una carga real dentro de la ventana. Eso descarta
+  /// que falle la firma (daria codigo != 0) y deja tres sospechosos: el formato
+  /// de fecha, la zona horaria, o que el B10 sencillamente no suba sus sesiones
+  /// a la nube. Se prueban todos de una vez para no gastar una publicacion por
+  /// hipotesis.
   Future<String> probeChargeHistoryRaw(String vin, {int days = 7}) => withTokenRetry(() async {
     if (_accountClient == null) throw Exception('Not logged in');
-    String iso(DateTime d) =>
-        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-    final end = DateTime.now().toUtc();
-    final start = end.subtract(Duration(days: days));
-    final startTime = iso(start);
-    final endTime = iso(end);
-    const timeZone = 'GMT+00:00';
-    const pageNum = 1;
-    const pageSize = 20;
+    String d(DateTime x) =>
+        '${x.year.toString().padLeft(4, '0')}-${x.month.toString().padLeft(2, '0')}-${x.day.toString().padLeft(2, '0')}';
+    String dSlash(DateTime x) =>
+        '${x.year.toString().padLeft(4, '0')}/${x.month.toString().padLeft(2, '0')}/${x.day.toString().padLeft(2, '0')}';
 
-    final headers = _signedHeaders(vin: vin, bodyParams: {
-      'timeZone': timeZone,
-      'startTime': startTime,
-      'endTime': endTime,
-      'pageNum': pageNum.toString(),
-      'pageSize': pageSize.toString(),
-    })..addAll(_authHeaders());
-    headers['Content-Type'] = 'application/json';
+    final hoy = DateTime.now();
+    final d7 = hoy.subtract(const Duration(days: 7));
+    final d30 = hoy.subtract(const Duration(days: 30));
+    final d90 = hoy.subtract(const Duration(days: 90));
 
-    final body = json.encode({
-      'vin': vin,
-      'timeZone': timeZone,
-      'startTime': startTime,
-      'endTime': endTime,
-      'pageNum': pageNum,
-      'pageSize': pageSize,
-    });
+    final buf = StringBuffer();
+    buf.writeln('SONDA v2 - barrido de variantes');
+    buf.writeln('Hora local: ${hoy.toIso8601String()}');
+    buf.writeln('');
 
-    final response = await _accountClient!.post(
-      Uri.parse('$kBaseUrl/carownerservice/charge/daily/detail/page'),
-      headers: headers,
-      body: body,
-    );
-    return 'HTTP ${response.statusCode}  ($startTime .. $endTime)\n${response.body}';
+    buf.write(await _probeCargas(vin, d(d7), d(hoy), 'GMT+00:00', '1. control, 7 dias, UTC'));
+    buf.write(await _probeCargas(vin, d(d30), d(hoy), 'GMT+02:00', '2. 30 dias, GMT+02'));
+    buf.write(await _probeCargas(vin, d(d90), d(hoy), 'GMT+02:00', '3. 90 dias, GMT+02'));
+    buf.write(await _probeCargas(vin, '${d(d30)} 00:00:00', '${d(hoy)} 23:59:59',
+        'GMT+02:00', '4. con hora'));
+    buf.write(await _probeCargas(vin, dSlash(d30), dSlash(hoy), 'GMT+02:00', '5. barras'));
+    buf.write(await _probeCargas(
+        vin,
+        d30.millisecondsSinceEpoch.toString(),
+        hoy.millisecondsSinceEpoch.toString(),
+        'GMT+02:00',
+        '6. epoch en milisegundos'));
+    buf.write(await _probeCargas(vin, d(d30), d(hoy), 'Europe/Madrid', '7. zona con nombre'));
+
+    return buf.toString();
   });
 
 

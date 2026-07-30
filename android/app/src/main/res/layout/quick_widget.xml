@@ -20,7 +20,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:text="LMB10"
-            android:textColor="#F2F7FB"
+            android:textColor="#0D3B66"
             android:textStyle="bold"
             android:letterSpacing="0.04"
             android:textSize="13sp" />
@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:maxLines="1"
             android:text=""
-            android:textColor="#8FA8BC"
+            android:textColor="#5B87AC"
             android:textSize="11sp" />
     </LinearLayout>
 
@@ -49,7 +49,7 @@
         android:layout_marginTop="10dp"
         android:fontFamily="monospace"
         android:textSize="15sp"
-        android:textColor="#F2F7FB"
+        android:textColor="#0D3B66"
         android:visibility="gone"
         android:text="" />
 
@@ -60,7 +60,7 @@
         android:layout_marginTop="8dp"
         android:maxLines="1"
         android:ellipsize="end"
-        android:textColor="#D2E0EC"
+        android:textColor="#144E7A"
         android:textSize="13sp"
         android:text="-- km" />
 
@@ -71,8 +71,33 @@
         android:layout_marginTop="2dp"
         android:maxLines="1"
         android:ellipsize="end"
-        android:textColor="#8FA8BC"
+        android:textColor="#5B87AC"
         android:textSize="12sp"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/qw_info3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#5B87AC"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/qw_alert"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#B3341F"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:visibility="gone"
         android:text="" />
 
     <LinearLayout
@@ -100,7 +125,7 @@
             android:paddingBottom="9dp"
             android:textSize="11sp"
             android:textAllCaps="false"
-            android:textColor="#E8F1F8"
+            android:textColor="#0D3B66"
             android:background="@drawable/qw_btn"
             android:drawableTop="@drawable/qw_ic_lock"
             android:drawablePadding="3dp"
@@ -117,7 +142,7 @@
             android:paddingBottom="9dp"
             android:textSize="11sp"
             android:textAllCaps="false"
-            android:textColor="#E8F1F8"
+            android:textColor="#0D3B66"
             android:background="@drawable/qw_btn"
             android:drawableTop="@drawable/qw_ic_clima"
             android:drawablePadding="3dp"
@@ -134,7 +159,7 @@
             android:paddingBottom="9dp"
             android:textSize="11sp"
             android:textAllCaps="false"
-            android:textColor="#FFD9A0"
+            android:textColor="#8A5A12"
             android:background="@drawable/qw_btn_warn"
             android:drawableTop="@drawable/qw_ic_unlock"
             android:drawablePadding="3dp"
@@ -151,7 +176,7 @@
             android:paddingBottom="9dp"
             android:textSize="11sp"
             android:textAllCaps="false"
-            android:textColor="#FFD9A0"
+            android:textColor="#8A5A12"
             android:background="@drawable/qw_btn_warn"
             android:drawableTop="@drawable/qw_ic_trunk"
             android:drawablePadding="3dp"

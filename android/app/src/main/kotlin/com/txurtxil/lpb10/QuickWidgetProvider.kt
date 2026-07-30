@@ -60,7 +60,7 @@ class QuickWidgetProvider : AppWidgetProvider() {
         v.setTextViewText(R.id.qw_fresh, antiguedad(ts, updated))
         v.setTextColor(R.id.qw_fresh, if (ts != null &&
                 System.currentTimeMillis() - ts > 30 * 60 * 1000L)
-            Color.parseColor("#E9A23B") else Color.parseColor("#8FA8BC"))
+            Color.parseColor("#B3341F") else Color.parseColor("#5B87AC"))
 
         val estado = when (locked) {
             "1" -> "Cerrado"; "0" -> "Abierto"; else -> "Estado desconocido"
@@ -80,6 +80,44 @@ class QuickWidgetProvider : AppWidgetProvider() {
         if (charging == "1" && !kw.isNullOrEmpty()) partes.add("cargando " + kw + " kW")
         if (!temp.isNullOrEmpty()) partes.add("interior " + temp + "\u00B0")
         v.setTextViewText(R.id.qw_info2, partes.joinToString("  ·  "))
+
+        // Tercera linea: si esta cargando manda el tiempo restante; si no,
+        // consumo medio y kilometros del ciclo, que es lo que la app sabe y
+        // el widget oficial no da.
+        val restante = p.getString("chargeRemainTime", null)?.toIntOrNull()
+        val avg7 = p.getString("avg7_kwh100", null)
+        val ciclo = p.getString("cycleKm", null)
+        val l3 = when {
+            charging == "1" && restante != null && restante > 0 ->
+                "Completa en " + (if (restante >= 60) (restante / 60).toString() + " h " +
+                    (restante % 60).toString() + " min" else restante.toString() + " min")
+            else -> {
+                val t = ArrayList<String>()
+                if (!avg7.isNullOrEmpty()) t.add("media 7d " + avg7 + " kWh/100")
+                if (!ciclo.isNullOrEmpty() && ciclo != "pocos datos")
+                    t.add(ciclo + " km desde la carga")
+                t.joinToString("  ·  ")
+            }
+        }
+        if (l3.isNotEmpty()) {
+            v.setTextViewText(R.id.qw_info3, l3)
+            v.setViewVisibility(R.id.qw_info3, View.VISIBLE)
+        } else {
+            v.setViewVisibility(R.id.qw_info3, View.GONE)
+        }
+
+        // Aviso solo cuando hay algo que avisar. Un widget que siempre dice
+        // "todo bien" deja de mirarse.
+        val avisos = ArrayList<String>()
+        val ruedas = (p.getString("tireAlerts", "") ?: "").split("|").filter { it.isNotEmpty() }
+        if (ruedas.isNotEmpty()) avisos.add("Presion: " + ruedas.joinToString(", "))
+        if (locked == "0") avisos.add("El coche esta abierto")
+        if (avisos.isEmpty()) {
+            v.setViewVisibility(R.id.qw_alert, View.GONE)
+        } else {
+            v.setTextViewText(R.id.qw_alert, "\u26A0  " + avisos.joinToString("  ·  "))
+            v.setViewVisibility(R.id.qw_alert, View.VISIBLE)
+        }
 
         var pintado = false
         if (pct != null) {
@@ -140,12 +178,12 @@ class QuickWidgetProvider : AppWidgetProvider() {
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         val f = pct.coerceIn(0f, 100f) / 100f
         val color = when {
-            f <= 0.15f -> Color.parseColor("#E63946")
-            f <= 0.35f -> Color.parseColor("#E9A23B")
-            else -> Color.parseColor("#2A9D8F")
+            f <= 0.15f -> Color.parseColor("#D3455B")
+            f <= 0.35f -> Color.parseColor("#E0913B")
+            else -> Color.parseColor("#1E9E88")
         }
         p.style = Paint.Style.FILL
-        p.color = Color.parseColor("#1F3446")
+        p.color = Color.parseColor("#A9CCE8")
         c.drawRoundRect(RectF(0f, 18f, w.toFloat(), h - 6f), 18f, 18f, p)
         p.color = color
         c.drawRoundRect(RectF(0f, 18f, w * f, h - 6f), 18f, 18f, p)
@@ -158,10 +196,10 @@ class QuickWidgetProvider : AppWidgetProvider() {
         val txt = pct.toInt().toString() + "%"
         val ancho = p.measureText(txt)
         if (w * f > ancho + 40f) {
-            p.color = Color.parseColor("#0B1A18")
+            p.color = Color.WHITE
             c.drawText(txt, 22f, h - 24f, p)
         } else {
-            p.color = Color.WHITE
+            p.color = Color.parseColor("#0D3B66")
             c.drawText(txt, w * f + 22f, h - 24f, p)
         }
         return bmp
