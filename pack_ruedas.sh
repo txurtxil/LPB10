@@ -1,3 +1,48 @@
+set -euo pipefail
+cd ~/LP10
+TS=$(date +%Y%m%d_%H%M%S)
+K=android/app/src/main/kotlin/com/txurtxil/lpb10
+cp lib/main.dart "backups_widget/main.dart.bak_$TS"
+cp "$K/TiresScreen.kt" "backups_widget/TiresScreen.kt.bak_$TS"
+echo "Backups con sufijo .bak_$TS"
+
+python3 - << 'PYEOF'
+import sys
+p = 'lib/main.dart'
+s = open(p, encoding='utf-8').read()
+antes = (s.count('('), s.count(')'), s.count('{'), s.count('}'))
+
+old = "  await HomeWidget.saveWidgetData<String>('tireAlerts', s.tirePressureAlerts.join('|'));"
+if s.count(old) != 1:
+    print("ABORTA: ancla tireAlerts aparece %d veces" % s.count(old)); sys.exit(1)
+
+nuevo = old + '''
+  // Presiones en kPa para la silueta de Android Auto. Hasta ahora solo viajaba
+  // tireAlerts (nombres de ruedas en alerta), asi que la pantalla del coche no
+  // tenia los numeros y pintaba una barra que en realidad no media nada.
+  // Orden fijo: delantera izq, delantera der, trasera izq, trasera der.
+  // Vacio = sin lectura; NO se manda 0, que se confundiria con una presion.
+  await HomeWidget.saveWidgetData<String>(
+      'tireKpa',
+      [s.leftFrontTireKpa, s.rightFrontTireKpa, s.leftRearTireKpa, s.rightRearTireKpa]
+          .map((v) => v?.toString() ?? '')
+          .join('|'));
+  await HomeWidget.saveWidgetData<String>(
+      'tireState',
+      ['leftFrontTirePressureState', 'rightFrontTirePressureState',
+       'leftRearTirePressureState', 'rightRearTirePressureState']
+          .map((k) => s.raw[k]?.toString() ?? '')
+          .join('|'));'''
+s = s.replace(old, nuevo)
+open(p, 'w', encoding='utf-8').write(s)
+d = (s.count('('), s.count(')'), s.count('{'), s.count('}'))
+print("  main.dart parentesis %d/%d -> %d/%d" % (antes[0], antes[1], d[0], d[1]))
+if d[0] != d[1] or d[2] != d[3]:
+    print("ABORTA: descuadre en main.dart"); sys.exit(1)
+print("OK dart")
+PYEOF
+
+cat > "$K/TiresScreen.kt" << 'KTEOF'
 package com.txurtxil.lpb10
 
 import android.graphics.Bitmap
@@ -22,7 +67,7 @@ import es.antonborri.home_widget.HomeWidgetPlugin
  * La version anterior pintaba una barra de bloques que NO media nada: era
  * binaria, llena si la rueda estaba bien y a medias si estaba en alerta,
  * porque solo llegaba tireAlerts con los nombres de las ruedas afectadas.
- * Ahora viajan tambien tireKpa y tireState desde Dart.
+ * Desde la v3.60.32 viajan tambien tireKpa y tireState.
  *
  * Lienzo cuadrado: la ranura de imagen del Pane recorta los laterales.
  */
@@ -100,20 +145,22 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
 
+        // Carroceria esquematica, vista cenital
         p.style = Paint.Style.STROKE
         p.strokeWidth = 5f
         p.color = Color.parseColor("#55FFFFFF")
         c.drawRoundRect(RectF(160f, 78f, 320f, 402f), 58f, 58f, p)
         c.drawLine(240f, 150f, 240f, 330f, p)
 
+        // Ruedas: 0 del.izq  1 del.der  2 tras.izq  3 tras.der
         val posX = listOf(120f, 360f, 120f, 360f)
         val posY = listOf(150f, 150f, 330f, 330f)
 
         for (i in 0..3) {
-            val lectura = v.getOrNull(i)
+            val val_ = v.getOrNull(i)
             val mala = malas.getOrNull(i) ?: false
             val color = when {
-                lectura == null -> Color.parseColor("#66FFFFFF")
+                val_ == null -> Color.parseColor("#66FFFFFF")
                 mala -> Color.parseColor("#E63946")
                 else -> Color.parseColor("#2A9D8F")
             }
@@ -127,7 +174,8 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
             p.textAlign = Paint.Align.CENTER
             p.isFakeBoldText = true
             p.textSize = 34f
-            c.drawText(if (lectura == null) "--" else fmtBar(lectura), posX[i], posY[i] + 82f, p)
+            val txt = if (val_ == null) "--" else fmtBar(val_)
+            c.drawText(txt, posX[i], posY[i] + 82f, p)
             p.isFakeBoldText = false
             p.textSize = 20f
             p.color = Color.parseColor("#99FFFFFF")
@@ -136,3 +184,14 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
         return bmp
     }
 }
+KTEOF
+echo "TiresScreen.kt reescrita"
+
+echo "--- verificaciones ---"
+echo -n "tireKpa en dart: "; grep -c "'tireKpa'" lib/main.dart
+echo -n "tireState en dart: "; grep -c "'tireState'" lib/main.dart
+echo
+echo "--- analyze ---"
+flutter analyze 2>&1 | grep '• lib/' | grep error || echo "(sin errores)"
+echo "--- compilando ---"
+flutter build apk --release 2>&1 | tail -5

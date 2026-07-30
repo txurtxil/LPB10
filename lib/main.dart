@@ -1382,6 +1382,22 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   }
   await HomeWidget.saveWidgetData<String>('chargeRemainTime', s.raw['chargeRemainTime']?.toString() ?? '');
   await HomeWidget.saveWidgetData<String>('tireAlerts', s.tirePressureAlerts.join('|'));
+  // Presiones en kPa para la silueta de Android Auto. Hasta ahora solo viajaba
+  // tireAlerts (nombres de ruedas en alerta), asi que la pantalla del coche no
+  // tenia los numeros y pintaba una barra que en realidad no media nada.
+  // Orden fijo: delantera izq, delantera der, trasera izq, trasera der.
+  // Vacio = sin lectura; NO se manda 0, que se confundiria con una presion.
+  await HomeWidget.saveWidgetData<String>(
+      'tireKpa',
+      [s.leftFrontTireKpa, s.rightFrontTireKpa, s.leftRearTireKpa, s.rightRearTireKpa]
+          .map((v) => v?.toString() ?? '')
+          .join('|'));
+  await HomeWidget.saveWidgetData<String>(
+      'tireState',
+      ['leftFrontTirePressureState', 'rightFrontTirePressureState',
+       'leftRearTirePressureState', 'rightRearTirePressureState']
+          .map((k) => s.raw[k]?.toString() ?? '')
+          .join('|'));
   // Lista completa de rutinas para la rejilla del coche (id::nombre por linea)
   try {
     final all = await RoutineStore.load();

@@ -1,3 +1,28 @@
+set -euo pipefail
+cd ~/LP10
+K=android/app/src/main/kotlin/com/txurtxil/lpb10
+
+python3 - << 'PYEOF'
+import glob, sys
+def delta(p):
+    s = open(p, encoding='utf-8').read()
+    return (s.count('(')-s.count(')'), s.count('{')-s.count('}'), s.count('[')-s.count(']'))
+bak = sorted(glob.glob('backups_widget/main.dart.bak_20260730_183408'))
+if not bak:
+    print("ABORTA: no encuentro el backup de esta tanda"); sys.exit(1)
+a, b = delta(bak[0]), delta('lib/main.dart')
+print("  backup %s   actual %s" % (a, b))
+if a != b:
+    print("ABORTA: el parche de dart SI descuadro"); sys.exit(1)
+s = open('lib/main.dart', encoding='utf-8').read()
+if s.count("'tireKpa'") != 1 or s.count("'tireState'") != 1:
+    print("ABORTA: tireKpa/tireState no aparecen exactamente una vez"); sys.exit(1)
+print("OK: main.dart correcto, balance identico al original")
+PYEOF
+
+cp "$K/TiresScreen.kt" "backups_widget/TiresScreen.kt.bak_$(date +%Y%m%d_%H%M%S)"
+
+cat > "$K/TiresScreen.kt" << 'KTEOF'
 package com.txurtxil.lpb10
 
 import android.graphics.Bitmap
@@ -136,3 +161,13 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
         return bmp
     }
 }
+KTEOF
+echo "TiresScreen.kt reescrita"
+
+echo "--- verificaciones ---"
+echo -n "tireKpa en dart: "; grep -c "'tireKpa'" lib/main.dart
+echo -n "drawRoundRect en ruedas: "; grep -c 'drawRoundRect' "$K/TiresScreen.kt"
+echo
+flutter analyze 2>&1 | grep '• lib/' | grep error || echo "analyze: sin errores"
+echo "--- compilando ---"
+flutter build apk --release 2>&1 | tail -5
