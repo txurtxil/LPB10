@@ -1405,6 +1405,15 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       'updatedTs', DateTime.now().millisecondsSinceEpoch.toString());
   await HomeWidget.saveWidgetData<String>('lat', s.latitude != null ? s.latitude.toString() : '');
   await HomeWidget.saveWidgetData<String>('lon', s.longitude != null ? s.longitude.toString() : '');
+  // Direccion legible para el widget. La cache persistida evita llamar a
+  // Nominatim en cada refresco: solo sale peticion si el coche se ha movido
+  // mas de 300 m desde la ultima resuelta.
+  if (s.latitude != null && s.longitude != null) {
+    try {
+      final dir = await _AddressCache.resolve(s.latitude!, s.longitude!);
+      await HomeWidget.saveWidgetData<String>('carAddress', dir);
+    } catch (_) {}
+  }
   // --- Android Auto: datos extra para sub-pantallas Bateria/Ruedas ---
   await HomeWidget.saveWidgetData<String>('volt', s.raw['batteryVoltage']?.toString() ?? '');
   await HomeWidget.saveWidgetData<String>('amp', s.raw['batteryCurrent']?.toString() ?? '');
@@ -2378,7 +2387,40 @@ class _AddressCache {
   static double? _lastLon;
   static String? _lastAddress;
 
+  static const _kLat = 'addr_lat_v1';
+  static const _kLon = 'addr_lon_v1';
+  static const _kTxt = 'addr_txt_v1';
+
+  /// La cache era SOLO estatica en memoria, y el refresco de fondo corre en
+  /// OTRO isolate con sus propias estaticas: para el siempre estaba vacia. Si
+  /// se llama desde ahi sin persistir, cada refresco de WorkManager seria una
+  /// peticion a Nominatim cada 15 minutos por cada usuario, que es exactamente
+  /// el uso automatizado que su politica prohibe. Persistida, la regla de los
+  /// 300 m funciona entre isolates y solo se llama al mover el coche.
+  static Future<void> _cargarSiHaceFalta() async {
+    if (_lastAddress != null) return;
+    try {
+      final t = await _storage.read(key: _kTxt);
+      final la = double.tryParse(await _storage.read(key: _kLat) ?? '');
+      final lo = double.tryParse(await _storage.read(key: _kLon) ?? '');
+      if (t != null && t.isNotEmpty && la != null && lo != null) {
+        _lastAddress = t;
+        _lastLat = la;
+        _lastLon = lo;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _guardar(String txt, double lat, double lon) async {
+    try {
+      await _storage.write(key: _kTxt, value: txt);
+      await _storage.write(key: _kLat, value: lat.toString());
+      await _storage.write(key: _kLon, value: lon.toString());
+    } catch (_) {}
+  }
+
   static Future<String> resolve(double lat, double lon) async {
+    await _cargarSiHaceFalta();
     // Solo vuelve a consultar Nominatim si el coche se movio > ~300 metros,
     // para respetar su politica de uso (evitar peticiones repetidas cada 90s).
     if (_lastAddress != null && _lastLat != null && _lastLon != null) {
@@ -2401,6 +2443,7 @@ class _AddressCache {
         _lastAddress = resolved;
         _lastLat = lat;
         _lastLon = lon;
+        await _guardar(resolved, lat, lon);
         return resolved;
       }
     } catch (_) {}

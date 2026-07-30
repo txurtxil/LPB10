@@ -116,7 +116,15 @@ class QuickWidgetProvider : AppWidgetProvider() {
             v.setViewVisibility(R.id.qw_info2, View.GONE)
         }
 
-        v.setViewVisibility(R.id.qw_info3, View.GONE)
+        // Donde esta aparcado. Es la pregunta que mas veces hace mirar el
+        // movil y no la responde ningun otro widget.
+        val dir = p.getString("carAddress", null)
+        if (!dir.isNullOrEmpty()) {
+            v.setTextViewText(R.id.qw_info3, "\uD83D\uDCCD  " + dir)
+            v.setViewVisibility(R.id.qw_info3, View.VISIBLE)
+        } else {
+            v.setViewVisibility(R.id.qw_info3, View.GONE)
+        }
 
         // Aviso solo cuando hay algo que avisar. Un widget que siempre dice
         // "todo bien" deja de mirarse.
