@@ -2069,24 +2069,66 @@ class PowerCard extends StatelessWidget {
     const textColor = Color(0xFF0D3B66);
     if (kw == null) return const SizedBox.shrink();
 
-    // Color e interpretacion segun el flujo de potencia.
+    // La interpretacion la decide el ESTADO del coche, no la magnitud.
+    //
+    // Antes se clasificaba solo por kW, asi que con el coche aparcado y 1,1 kW
+    // de consumo parasito la tarjeta decia "Consumo eficiente" — que no
+    // significa nada, porque no hay nada que estar conduciendo. Y con el coche
+    // quieto "Regenerando" es fisicamente imposible: no hay ruedas girando.
+    //
+    // Ademas, el `sign` de antes devolvia cadena vacia en las DOS ramas, asi
+    // que el signo nunca llegaba a pintarse.
+    final enMarcha = (status.speed ?? 0) > 1.0;
+    final enchufado = status.isPluggedIn;
+    final abs = kw.abs();
+    final obj = (gMaxRangeKm > 0) ? gBatteryKwh / gMaxRangeKm * 100.0 : 0.0;
+    final kmPorHora = obj > 0 ? (abs * 100.0 / obj) : 0.0;
+
     Color c;
     String note;
-    if (kw < -1) {
-      c = const Color(0xFF2A6FD0); // azul: regenerando
-      note = es ? 'Regenerando (recuperas bateria)' : 'Regenerating (recovering)';
-    } else if (kw <= 10) {
-      c = const Color(0xFF2A9D8F); // verde: eficiente
-      note = es ? 'Consumo eficiente' : 'Efficient draw';
-    } else if (kw <= 30) {
-      c = const Color(0xFFE9A23B); // ambar
-      note = es ? 'Consumo medio' : 'Medium draw';
+    String detalle;
+    if (enchufado) {
+      c = const Color(0xFF2A6FD0);
+      note = es ? 'Entrando en la bateria' : 'Going into the battery';
+      detalle = es
+          ? 'El coche esta enchufado.'
+          : 'The car is plugged in.';
+    } else if (enMarcha && kw < -0.2) {
+      c = const Color(0xFF2A6FD0);
+      note = es ? 'Regenerando al frenar' : 'Regenerating while braking';
+      detalle = es
+          ? 'El motor devuelve energia a la bateria en lugar de perderla en los frenos.'
+          : 'The motor is returning energy to the battery instead of wasting it as heat.';
+    } else if (enMarcha) {
+      if (abs <= 10) {
+        c = const Color(0xFF2A9D8F);
+        note = es ? 'Consumo bajo en marcha' : 'Low draw while driving';
+      } else if (abs <= 30) {
+        c = const Color(0xFFE9A23B);
+        note = es ? 'Consumo medio en marcha' : 'Medium draw while driving';
+      } else {
+        c = const Color(0xFFE76F51);
+        note = es ? 'Consumo alto en marcha' : 'High draw while driving';
+      }
+      detalle = kmPorHora > 0
+          ? (es
+              ? 'A este ritmo sostenido gastarias la autonomia de unos ${kmPorHora.round()} km cada hora.'
+              : 'Held steady, this would use about ${kmPorHora.round()} km of range per hour.')
+          : (es ? 'Potencia que sale de la bateria ahora mismo.' : 'Power leaving the battery right now.');
     } else {
-      c = const Color(0xFFE76F51); // rojo: alto
-      note = es ? 'Consumo alto' : 'High draw';
+      // Coche parado y sin enchufar: clima, gestion termica, electronica.
+      // Aqui NO se juzga la eficiencia, porque no se esta conduciendo.
+      c = abs > 3 ? const Color(0xFFE9A23B) : const Color(0xFF2A9D8F);
+      note = es ? 'Consumo con el coche parado' : 'Draw while parked';
+      detalle = kmPorHora > 0
+          ? (es
+              ? 'Climatizacion, gestion termica de la bateria y electronica. A este ritmo perderias unos ${kmPorHora.round()} km de autonomia por hora.'
+              : 'Climate, battery thermal management and electronics. At this rate you would lose about ${kmPorHora.round()} km of range per hour.')
+          : (es
+              ? 'Climatizacion, gestion termica de la bateria y electronica.'
+              : 'Climate, battery thermal management and electronics.');
     }
-    final sign = kw < 0 ? '' : '';
-    final valueStr = '${sign}${kw.abs().toStringAsFixed(1)} kW';
+    final valueStr = '${abs.toStringAsFixed(1)} kW';
 
     return Container(
       decoration: BoxDecoration(color: const Color(0xFFBFE0FA), borderRadius: BorderRadius.circular(16)),
@@ -2094,12 +2136,13 @@ class PowerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(es ? 'Potencia de bateria (ahora)' : 'Battery power (now)',
+          Text(es ? 'Potencia de bateria' : 'Battery power',
               style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 15)),
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(kw < -1 ? Icons.battery_charging_full : Icons.bolt, color: c, size: 30),
+              Icon((enchufado || kw < -0.2) ? Icons.battery_charging_full : Icons.bolt,
+                  color: c, size: 30),
               const SizedBox(width: 8),
               Text(valueStr, style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 26)),
             ],
@@ -2107,8 +2150,13 @@ class PowerCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(note, style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 2),
+          const SizedBox(height: 4),
+          Text(detalle, style: const TextStyle(color: textColor, fontSize: 12)),
+          const SizedBox(height: 4),
           Text(
-            es ? 'Valor puntual del ultimo refresco.' : 'Snapshot from last refresh.',
+            es
+                ? 'Es una foto del ultimo refresco, no un promedio. El coche deja de responder unos minutos despues de cerrarlo, asi que el dato puede ser mas antiguo de lo que parece.'
+                : 'This is a snapshot from the last refresh, not an average. The car stops responding a few minutes after locking, so the value may be older than it looks.',
             style: const TextStyle(color: textColor, fontSize: 11),
           ),
         ],
