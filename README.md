@@ -8,6 +8,69 @@ DISCLAIMER: Unofficial, independent project. Not affiliated with, endorsed by, o
 
 AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, ni asociado con Leapmotor. Usa la API en la nube de Leapmotor mediante ingenieria inversa documentada por la comunidad (ver seccion Creditos). Usalo bajo tu propia responsabilidad: Leapmotor puede cambiar la API en cualquier momento. Se recomienda una cuenta secundaria (no la principal) para evitar conflictos de sesion con la app oficial.
 
+---
+
+## Capturas / Screenshots
+
+<table>
+  <tr>
+    <td width="33%"><img src="web/screenshots/01panel.jpg" alt="Panel principal"></td>
+    <td width="33%"><img src="web/screenshots/01controles.jpg" alt="Controles del vehiculo"></td>
+    <td width="33%"><img src="web/screenshots/01rutinas.jpg" alt="Rutinas"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Panel principal · Dashboard</sub></td>
+    <td align="center"><sub>Controles remotos · Remote controls</sub></td>
+    <td align="center"><sub>Rutinas · Routines</sub></td>
+  </tr>
+</table>
+
+**Android Auto** — bateria con arco de carga, consumo, acciones rapidas y buscador de cargadores.
+
+<img src="web/screenshots/01androidAuto.jpg" alt="Android Auto" width="640">
+
+**Widget de escritorio / Home-screen widget** — consumo diario, coste y totales.
+
+<img src="web/screenshots/widget.jpg" alt="Widget" width="320">
+
+<details>
+<summary><b>Mas capturas / More screenshots</b></summary>
+
+<table>
+  <tr>
+    <td width="33%"><img src="web/screenshots/02panel.jpg" alt="Consumo y cargas"></td>
+    <td width="33%"><img src="web/screenshots/02controles.jpg" alt="Mas controles"></td>
+    <td width="33%"><img src="web/screenshots/02rutinas.jpg" alt="Editor de rutinas"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Consumo, cargas y coste</sub></td>
+    <td align="center"><sub>Climatizacion y asientos</sub></td>
+    <td align="center"><sub>Editor de rutinas</sub></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="web/screenshots/01ajustes.jpg" alt="Ajustes"></td>
+    <td width="33%"><img src="web/screenshots/02ajustes.jpg" alt="Ajustes"></td>
+    <td width="33%"><img src="web/screenshots/03ajustes.jpg" alt="Ajustes"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Ajustes · Settings</sub></td>
+    <td align="center"><sub>Ajustes · Settings</sub></td>
+    <td align="center"><sub>Ajustes · Settings</sub></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="web/screenshots/01ticket.jpg" alt="Ticket para impresora termica"></td>
+    <td width="33%"></td>
+    <td width="33%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Ticket para impresora termica<br>Thermal printer receipt</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
+</details>
+
 ## Author / Autor
 
 SurferRule
@@ -65,13 +128,31 @@ The protocol layer talks to Leapmotor's shared international backend (appgateway
 
 Development and testing has been done on a B10. Owners of other models (C10, C16, T03, B05, etc.) are welcome to try it and report back — some remote actions may not apply to every model or trim.
 
-**Important caveat about energy figures.** The app currently assumes a **67.1 kWh** battery and a **430 km** manufacturer range. Every kWh and euro figure in the app — daily consumption, energy added per charge, widget costs, Android Auto totals, the 15.6 kWh/100 km target line — is derived from those two numbers. On a model with a different battery, the percentages and kilometres will be right but **the kWh and euro amounts will be wrong**. Making these configurable is the next planned change.
+Since every kWh and euro figure derives from battery capacity, the app has a **vehicle profile** (Settings → Vehicle profile) where you pick your model, or type capacity and range by hand:
+
+| Profile | Battery | WLTP range |
+|---|---|---|
+| B10 | 67.1 kWh | 430 km |
+| B05 Pro | 56.2 kWh | 401 km |
+| B05 ProMax | 67.1 kWh | 482 km |
+| C10 Life | 69.9 kWh | 420 km |
+| C10 ProMax RWD | 81.9 kWh | 510 km |
+| C10 ProMax AWD | 81.9 kWh | 437 km |
+| Other | manual | manual |
+
+Two traps worth knowing: **the same model name can ship two different batteries** (B05 Pro vs ProMax), and **the same battery can come with very different ranges** (C10 ProMax is 510 km in RWD but 437 km in AWD). That's why capacity and range are separate fields. If your car reports a full-charge range far from the selected profile, the app warns you — it usually means the wrong variant was picked.
+
+**Range-extender hybrids (C10 REEV) are not supported.** Their battery is recharged by the petrol generator while driving, which the app would read as a charging session, corrupting both the consumption calculation and the charge history.
 
 La capa de protocolo habla con el backend internacional compartido de Leapmotor (appgateway.leapmotor-international.de), no con endpoints exclusivos de un modelo. El listado de vehiculos, el login, la firma de peticiones y el flujo de comandos remotos son genericos en toda la gama; el unico detalle especifico por modelo que se gestiona explicitamente es la ruta de estado del vehiculo (B10 y B11 comparten el endpoint de estado del C10, segun el cliente de referencia de la comunidad).
 
 El desarrollo y las pruebas se han hecho sobre un B10. Si tienes otro modelo (C10, C16, T03, B05, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas no apliquen a todos los modelos o acabados.
 
-**Advertencia importante sobre las cifras de energia.** La app asume ahora mismo una bateria de **67,1 kWh** y **430 km** de autonomia de fabricante. Todos los kWh y todos los euros de la app — consumo diario, energia anadida por carga, coste en el widget, totales de Android Auto, la linea objetivo de 15,6 kWh/100 km — salen de esos dos numeros. En un modelo con otra bateria, los porcentajes y los kilometros seran correctos pero **los kWh y los euros no**. Hacerlos configurables es el siguiente cambio previsto.
+Como todos los kWh y euros salen de la capacidad de la bateria, la app tiene un **perfil de vehiculo** (Ajustes → Perfil del vehiculo) donde eliges tu modelo, o metes capacidad y autonomia a mano. Ver la tabla de arriba.
+
+Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos baterias distintas** (B05 Pro y ProMax), y **una misma bateria puede venir con autonomias muy distintas** (el C10 ProMax da 510 km en traccion trasera y 437 en total). Por eso capacidad y autonomia son campos separados. Si tu coche declara una autonomia a plena carga muy distinta a la del perfil elegido, la app te avisa: normalmente significa que se ha escogido la variante equivocada.
+
+**Los hibridos de autonomia extendida (C10 REEV) no estan soportados.** Su bateria se recarga con el generador de gasolina en marcha, y la app leeria eso como una sesion de carga, falseando tanto el calculo de consumo como el historial.
 
 ## Features / Caracteristicas
 
@@ -133,11 +214,12 @@ Flujo completo de verificacion de PIN (operatePassword cifrado AES-128-CBC, veri
 A car-screen interface built on androidx.car.app templates, available when the app is installed from Google Play:
 
 - Hub screen with Battery, Tires, Routines, Quick actions, Consumption and Chargers.
+- **Battery**: charge arc, live charging power, voltage and current, cabin and battery temperature, remaining charge time.
 - **Consumption**: current cycle, last 7 days (kWh/100 km, km, kWh and cost), month and year totals, and a per-day breakdown. Battery temperature is preserved with its age when the TCU is asleep, instead of showing a blank.
 - **Quick actions**: twelve remote commands. The ones that physically open the car (unlock, trunk) go through a confirmation screen first.
-- **Chargers**: nearby charging points from OpenStreetMap, with a detail screen that hands the route over to Google Maps.
+- **Chargers**: nearby charging points from OpenStreetMap, with a detail screen that opens the route in Google Maps on the car's own screen, without needing to unlock the phone.
 
-Android Auto templates cannot draw graphics of any kind, so charts are rendered as text block bars.
+Charts inside the templates are rendered as text block bars; the battery arc is a generated bitmap.
 
 Interfaz para la pantalla del coche construida sobre las plantillas de androidx.car.app, disponible cuando la app se instala desde Google Play:
 
@@ -208,6 +290,12 @@ Disparadas tanto en primer plano como en el refresco de fondo:
 - Desbloqueo inesperado (ignora las acciones hechas desde la propia app).
 - Coche desbloqueado y aparcado durante mas de 15 minutos.
 - Alertas de manipulacion del Modo Centinela (cuando esta armado).
+
+### Thermal printer receipts / Tickets en impresora termica
+
+A niche one, born out of curiosity: the app can lay out your consumption and charging listings as a receipt and send them to a thermal printer, the same kind used for shop tickets. Handy for keeping a paper record of a trip or of a month's charging, or just for the novelty of watching your car's data come out of a till roll.
+
+Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listados de consumo y cargas como un ticket y mandarlos a una impresora termica, de las de tickets de comercio. Util para tener registro en papel de un viaje o de las cargas de un mes, o simplemente por el gusto de ver los datos del coche saliendo de un rollo de papel.
 
 ### Other / Otros
 - Messages screen: shows the official app's message inbox, reachable from an envelope icon with an unread badge in the toolbar.
@@ -287,10 +375,14 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     lib/energy_cost.dart             Electricity price model and per-day cost totals
     lib/charge_cost.dart             Per-charge cost (total paid, price per kWh, or estimate)
     lib/price_screen.dart            Electricity price settings
+    lib/vehicle_profile.dart         Battery capacity / range profile per model
+    lib/vehicle_profile_screen.dart  Model selection UI
     lib/cert_store.dart              Encrypted storage for the user-supplied client certificate
     lib/cert_import_screen.dart      Certificate import flow
     lib/history_archive.dart         Permanent local history archive + backup export/import
-    lib/car_log_screen.dart          On-device viewer for the Android Auto diagnostic log
+    lib/ticket_printer.dart          Receipt layout for thermal printers
+    lib/car_log_bridge.dart          File-based diagnostic log, shared with the Kotlin side
+    lib/car_log_screen.dart          On-device viewer for that log
     lib/sentry/                      Sentry Mode: engine, adapter, notifier and screen
     lib/routines/                    Routines engine and screen
     lib/about_screen.dart            About screen
@@ -308,7 +400,8 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     android/.../ChargerDetailScreen.kt     Charger detail and navigation hand-off
     android/.../QuickActionsScreen.kt      Remote commands from the car screen
     android/.../CarLog.kt                  File-based diagnostic log
-    docs/screenshots/                Screenshots used in this README
+    android/.../BatteryScreen.kt           Android Auto battery screen with the charge arc
+    web/screenshots/                 Screenshots used in this README
 
 Note: `lib/l10n/generated/` is produced by `flutter gen-l10n` on every build (`generate: true` in pubspec.yaml). Edit the `.arb` files, never the generated Dart.
 
@@ -355,6 +448,20 @@ Additional requirements / Requisitos adicionales:
 - Para instalar el widget de escritorio: mantener pulsado un espacio vacio del escritorio, tocar Widgets, buscar LMB10, y arrastrarlo. Puede que haga falta quitarlo y volver a anadirlo tras alguna actualizacion.
 - Para un refresco de fondo fiable: excluye la app de la optimizacion de bateria en los ajustes de tu telefono (la ruta varia segun el fabricante).
 - Las pantallas de Android Auto solo se pueden probar en un head unit real instalando desde Google Play, o en local con el Desktop Head Unit (DHU).
+
+## Support the project / Apoyar el proyecto
+
+LMB10 is free, open source, and has no ads or trackers. If it's useful to you and you feel like buying me a coffee, it's very welcome — and entirely optional.
+
+LMB10 es gratis, de codigo abierto, y no tiene publicidad ni rastreadores. Si te resulta util y te apetece invitarme a un cafe, se agradece mucho, y es completamente opcional.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/txurtxil)
+
+**https://ko-fi.com/txurtxil**
+
+To be clear: donations don't buy priority support, feature requests or any guarantee. This is a spare-time project and it stays that way.
+
+Que quede claro: las donaciones no compran soporte prioritario, peticiones de funciones ni ninguna garantia. Esto es un proyecto de tiempo libre y va a seguir siendolo.
 
 ## Credits / Creditos
 
