@@ -84,7 +84,7 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .addText("Gasto real del ciclo actual")
                 .setImage(icon(R.drawable.ic_car_routine))
                 .setBrowsable(true)
-                .setOnClickListener { screenManager.push(ConsumoScreen(carContext)) }
+                .setOnClickListener { screenManager.push(ConsumoChartScreen(carContext)) }
                 .build()
         )
 
