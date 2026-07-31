@@ -372,6 +372,56 @@ Future<({String widget, String car})> buildCostLines() async {
 ///
 /// El ano arranca donde arranque el historico: si la app se instalo en julio,
 /// el total anual son los meses que haya, no doce.
+/// Series para el grafico del coche: dias, semanas y meses.
+///
+/// Cada elemento es "etiqueta:kwh100:euros:km". Se agrupa desde el archivo
+/// permanente con las mismas claves que usa DailyStats, y los euros se
+/// calculan sumando los dias de cada grupo: aplicar totalizar() sobre un
+/// agregado ya reducido no encontraria su precio, porque los precios van por
+/// dia y la clave de una semana no es la de ningun dia.
+Future<({String dias, String semanas, String meses})> buildCarSeries() async {
+  const vacio = (dias: '', semanas: '', meses: '');
+  try {
+    final days = await DailyStats.load();
+    if (days.isEmpty) return vacio;
+    final precios = await preciosPorDia();
+
+    String serie(String Function(DateTime) clave, int max) {
+      final grupos = <String, List<DayAgg>>{};
+      for (final a in days) {
+        final dt = DateTime.tryParse(a.d);
+        if (dt == null) continue;
+        (grupos[clave(dt)] ??= []).add(a);
+      }
+      final claves = grupos.keys.toList()..sort();
+      final recorte = claves.length > max ? claves.sublist(claves.length - max) : claves;
+      final out = <String>[];
+      for (final k in recorte) {
+        final g = grupos[k]!;
+        final t = totalizar(g, precios);
+        if (t.km <= 0) continue;
+        final socTot = g.fold<double>(0, (s, a) => s + a.soc);
+        final kmTot = g.fold<double>(0, (s, a) => s + a.km);
+        if (kmTot <= 0) continue;
+        final kwh100 = socTot / kmTot * gBatteryKwh;
+        out.add(k.split('-').last +
+            ':' + kwh100.toStringAsFixed(1) +
+            ':' + (t.hayEur ? t.eur.toStringAsFixed(2) : '') +
+            ':' + t.km.toStringAsFixed(0));
+      }
+      return out.join(',');
+    }
+
+    return (
+      dias: serie((t) => t.toIso8601String().substring(0, 10), 14),
+      semanas: serie(DailyStats.weekKey, 8),
+      meses: serie(DailyStats.monthKey, 12),
+    );
+  } catch (_) {
+    return vacio;
+  }
+}
+
 Future<({String d7, String mes, String ano})> buildCarTotals() async {
   const vacio = (d7: '', mes: '', ano: '');
   try {

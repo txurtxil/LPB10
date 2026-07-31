@@ -8,6 +8,7 @@ import android.graphics.RectF
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
+import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
@@ -30,10 +31,26 @@ import es.antonborri.home_widget.HomeWidgetPlugin
  */
 class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
 
+    // 0 dias, 1 semanas, 2 meses. La pantalla se redibuja con invalidate().
+    private var modo = 0
+
+
     override fun onGetTemplate(): Template {
         val p = HomeWidgetPlugin.getData(carContext)
         val es = (p.getString("lang", "es") ?: "es").startsWith("es")
-        val daysRaw = p.getString("cycle_days", "") ?: ""
+        // Series completas desde el archivo permanente. cycle_days solo tiene
+        // el ciclo actual y por eso no se veia mas alla de la semana en curso.
+        val serie = when (modo) {
+            1 -> p.getString("hist_semanas", "") ?: ""
+            2 -> p.getString("hist_meses", "") ?: ""
+            else -> p.getString("hist_dias", "") ?: ""
+        }
+        val daysRaw = if (serie.isNotEmpty()) serie else (p.getString("cycle_days", "") ?: "")
+        val unidad = when (modo) {
+            1 -> if (es) "semana" else "week"
+            2 -> if (es) "mes" else "month"
+            else -> if (es) "dia" else "day"
+        }
         val avg7 = (p.getString("avg7_kwh100", "") ?: "").replace(",", ".").toFloatOrNull()
 
         // Formato por dia: dd/MM:kwh100:euros:km
@@ -44,7 +61,7 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 val v = c.getOrNull(1)?.replace(",", ".")?.toFloatOrNull()
                 if (v == null || v <= 0f) null else Pair(c[0], v)
             }
-            .takeLast(7)
+            .takeLast(if (modo == 0) 10 else 12)
 
         val pane = Pane.Builder()
 
@@ -124,8 +141,18 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
+        val tira = ActionStrip.Builder()
+            .addAction(Action.Builder().setTitle(if (es) "Dias" else "Days")
+                .setOnClickListener { modo = 0; invalidate() }.build())
+            .addAction(Action.Builder().setTitle(if (es) "Semanas" else "Weeks")
+                .setOnClickListener { modo = 1; invalidate() }.build())
+            .addAction(Action.Builder().setTitle(if (es) "Meses" else "Months")
+                .setOnClickListener { modo = 2; invalidate() }.build())
+            .build()
+
         return PaneTemplate.Builder(pane.build())
-            .setTitle(if (es) "Consumo por dia" else "Consumption per day")
+            .setActionStrip(tira)
+            .setTitle(if (es) "Consumo por " + unidad else "Consumption per " + unidad)
             .setHeaderAction(Action.BACK)
             .build()
     }

@@ -1581,6 +1581,10 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         await HomeWidget.saveWidgetData<String>('tot_7d', tot.d7);
         await HomeWidget.saveWidgetData<String>('tot_mes', tot.mes);
         await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
+        final ser = await buildCarSeries();
+        await HomeWidget.saveWidgetData<String>('hist_dias', ser.dias);
+        await HomeWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
+        await HomeWidget.saveWidgetData<String>('hist_meses', ser.meses);
       } catch (_) {}
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       // El lado Kotlin llevaba 430 y 15,6 escritos a mano, asi que Android Auto
