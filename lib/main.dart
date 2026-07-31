@@ -560,7 +560,7 @@ String? _actionFromUri(Uri? uri) {
 Future<void> widgetActionCallback(Uri? uri) async {
   final cmd = _actionFromUri(uri);
   if (cmd == null) return;
-  await CarLogBridge.log('widget accion fondo: ' + cmd);
+  await CarLogBridge.log('VIA-FONDO ' + cmd);
   // El comando tarda: hay que verificar el PIN contra el servidor y luego
   // esperar al resultado. Sin aviso, el widget parece roto.
   Future<void> aviso(String t) async {
@@ -602,6 +602,7 @@ void main() async {
   try {
     final cmd0 = _actionFromUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
     if (cmd0 != null) {
+      await CarLogBridge.log('VIA-ARRANQUE ' + cmd0);
       // La Activity solo arranca tras desbloquear, asi que esto se ejecuta ya
       // con el usuario autenticado.
       unawaited(carQuickAction(cmd0));
@@ -614,7 +615,10 @@ void main() async {
       gOnRoutinePending?.call();
     }
     final cmd = _actionFromUri(uri);
-    if (cmd != null) unawaited(carQuickAction(cmd));
+    if (cmd != null) {
+      unawaited(CarLogBridge.log('VIA-CLIC ' + cmd));
+      unawaited(carQuickAction(cmd));
+    }
   });
   runApp(const LPB10App());
 }
@@ -2602,6 +2606,8 @@ class _AddressCache {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lon&zoom=16&addressdetails=1',
       );
+      await CarLogBridge.log('NOMINATIM peticion lat=' +
+          lat.toStringAsFixed(4) + ' lon=' + lon.toStringAsFixed(4));
       final response = await plain_http.get(uri, headers: {'User-Agent': 'LMB10-app (uso personal)'});
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
