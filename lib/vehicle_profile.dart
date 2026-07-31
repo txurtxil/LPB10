@@ -22,16 +22,26 @@ class VehicleProfile {
   final String label;
   final double kwh;
   final double rangeKm;
-  const VehicleProfile(this.id, this.label, this.kwh, this.rangeKm);
+
+  /// Datos de ficha tecnica. El coche NO los reporta: no viajan en el payload,
+  /// asi que salen de aqui. Un 0 o una cadena vacia significan "no verificado"
+  /// y la interfaz simplemente no muestra ese dato, en vez de inventarlo.
+  final String chemistry;
+  final int dcKw;
+  final int acKw;
+
+  const VehicleProfile(this.id, this.label, this.kwh, this.rangeKm,
+      {this.chemistry = '', this.dcKw = 0, this.acKw = 0});
 }
 
 const kVehicleProfiles = <VehicleProfile>[
-  VehicleProfile('b10', 'B10  ·  67,1 kWh  ·  430 km', 67.1, 430.0),
-  VehicleProfile('b05_pro', 'B05 Pro  ·  56,2 kWh  ·  401 km', 56.2, 401.0),
-  VehicleProfile('b05_promax', 'B05 ProMax  ·  67,1 kWh  ·  482 km', 67.1, 482.0),
-  VehicleProfile('c10_life', 'C10 Life  -  69,9 kWh  -  420 km', 69.9, 420.0),
-  VehicleProfile('c10_promax_rwd', 'C10 ProMax RWD  -  81,9 kWh  -  510 km', 81.9, 510.0),
-  VehicleProfile('c10_promax_awd', 'C10 ProMax AWD  -  81,9 kWh  -  437 km', 81.9, 437.0),
+  VehicleProfile('b10_life', 'B10 Life - 56,2 kWh - 361 km', 56.2, 361.0, chemistry: 'LFP', dcKw: 140, acKw: 11),
+  VehicleProfile('b10', 'B10  ·  67,1 kWh  ·  430 km', 67.1, 430.0, chemistry: 'LFP', dcKw: 168, acKw: 11),
+  VehicleProfile('b05_pro', 'B05 Pro  ·  56,2 kWh  ·  401 km', 56.2, 401.0, chemistry: 'LFP'),
+  VehicleProfile('b05_promax', 'B05 ProMax  ·  67,1 kWh  ·  482 km', 67.1, 482.0, chemistry: 'LFP'),
+  VehicleProfile('c10_life', 'C10 Life  -  69,9 kWh  -  420 km', 69.9, 420.0, chemistry: 'LFP'),
+  VehicleProfile('c10_promax_rwd', 'C10 ProMax RWD  -  81,9 kWh  -  510 km', 81.9, 510.0, chemistry: 'LFP'),
+  VehicleProfile('c10_promax_awd', 'C10 ProMax AWD  -  81,9 kWh  -  437 km', 81.9, 437.0, chemistry: 'LFP'),
   VehicleProfile('custom', 'Otro  ·  a mano', 67.1, 430.0),
 ];
 
@@ -44,6 +54,22 @@ const _kProfileRange = 'lm_profile_range_v1';
 /// hacia la app antes y mantiene el comportamiento para los usuarios actuales.
 String gProfileId = 'b10';
 
+/// Ficha del perfil activo. Vacio o cero = dato no verificado para ese modelo.
+String gChemistry = 'LFP';
+int gDcKw = 168;
+int gAcKw = 11;
+
+void _aplicarFicha(String id) {
+  for (final p in kVehicleProfiles) {
+    if (p.id == id) {
+      gChemistry = p.chemistry;
+      gDcKw = p.dcKw;
+      gAcKw = p.acKw;
+      return;
+    }
+  }
+}
+
 /// Carga el perfil y fija las globales. DEBE llamarse antes de runApp Y
 /// tambien en el isolate de segundo plano del WorkManager: si no, el refresco
 /// del widget de madrugada usaria los valores por defecto y daria cifras
@@ -54,6 +80,7 @@ Future<void> loadVehicleProfile() async {
     final kwh = double.tryParse(await _pStore.read(key: _kProfileKwh) ?? '');
     final range = double.tryParse(await _pStore.read(key: _kProfileRange) ?? '');
     if (id != null) gProfileId = id;
+    _aplicarFicha(gProfileId);
     if (kwh != null && kwh > 5 && kwh < 250) gBatteryKwh = kwh;
     if (range != null && range > 50 && range < 1200) gMaxRangeKm = range;
   } catch (_) {}
@@ -72,6 +99,7 @@ Future<void> saveVehicleProfile({
   gProfileId = id;
   gBatteryKwh = kwh;
   gMaxRangeKm = rangeKm;
+  _aplicarFicha(id);
   await _pStore.write(key: _kProfileId, value: id);
   await _pStore.write(key: _kProfileKwh, value: kwh.toString());
   await _pStore.write(key: _kProfileRange, value: rangeKm.toString());

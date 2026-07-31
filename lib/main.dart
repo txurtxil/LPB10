@@ -1587,6 +1587,23 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       // seguia mostrando el objetivo del B10 aunque el perfil fuera otro coche.
       await HomeWidget.saveWidgetData<String>(
           'max_range_km', gMaxRangeKm.round().toString());
+      await HomeWidget.saveWidgetData<String>('bat_kwh', gBatteryKwh.toString());
+      await HomeWidget.saveWidgetData<String>('bat_chem', gChemistry);
+      await HomeWidget.saveWidgetData<String>('bat_dc_kw', gDcKw.toString());
+      await HomeWidget.saveWidgetData<String>('bat_ac_kw', gAcKw.toString());
+      // Limite de carga y horario ya vienen en config.3 del propio payload,
+      // sin peticion aparte. Se reenvian para la pantalla del coche.
+      try {
+        final cfg = (s.raw['config'] as Map?)?['3'] as Map?;
+        if (cfg != null) {
+          await HomeWidget.saveWidgetData<String>(
+              'charge_limit', cfg['percent']?.toString() ?? '');
+          await HomeWidget.saveWidgetData<String>(
+              'charge_window',
+              (cfg['beginTime']?.toString() ?? '') + '-' +
+                  (cfg['endTime']?.toString() ?? ''));
+        }
+      } catch (_) {}
       await HomeWidget.saveWidgetData<String>('target_kwh100',
           (gBatteryKwh / gMaxRangeKm * 100.0).toStringAsFixed(1));
       if (avgPct != null) {
