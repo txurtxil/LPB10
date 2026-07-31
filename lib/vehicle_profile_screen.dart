@@ -17,6 +17,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   late String _id;
   final _kwhCtrl = TextEditingController();
   final _rangeCtrl = TextEditingController();
+  final _tyreCtrl = TextEditingController();
+  final _barCtrl = TextEditingController();
   double? _rangeSegunCoche;
 
   @override
@@ -25,6 +27,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     _id = kVehicleProfiles.any((p) => p.id == gProfileId) ? gProfileId : 'custom';
     _kwhCtrl.text = gBatteryKwh.toString().replaceAll('.', ',');
     _rangeCtrl.text = gMaxRangeKm.round().toString();
+    _tyreCtrl.text = gTyreSize;
+    _barCtrl.text = gTyreBar > 0 ? gTyreBar.toString().replaceAll('.', ',') : '';
     _estimarDelCoche();
   }
 
@@ -32,6 +36,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   void dispose() {
     _kwhCtrl.dispose();
     _rangeCtrl.dispose();
+    _tyreCtrl.dispose();
+    _barCtrl.dispose();
     super.dispose();
   }
 
@@ -160,11 +166,38 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           const SizedBox(height: 24),
+          Text(es ? 'Neumaticos' : 'Tyres',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _tyreCtrl,
+            decoration: InputDecoration(
+              labelText: es ? 'Medida' : 'Size',
+              hintText: '215/60 R18',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _barCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: es ? 'Presion recomendada (bar)' : 'Recommended pressure (bar)',
+              helperText: es
+                  ? 'Esta en la pegatina del marco de la puerta del conductor'
+                  : 'On the sticker in the driver door frame',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 24),
           FilledButton(
             onPressed: !valido
                 ? null
                 : () async {
                     await saveVehicleProfile(id: _id, kwh: kwh, rangeKm: range);
+                    await saveTyreInfo(
+                        _tyreCtrl.text.trim(),
+                        double.tryParse(_barCtrl.text.replaceAll(',', '.')) ?? 0);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(es

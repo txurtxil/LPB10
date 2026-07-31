@@ -1588,6 +1588,9 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       await HomeWidget.saveWidgetData<String>(
           'max_range_km', gMaxRangeKm.round().toString());
       await HomeWidget.saveWidgetData<String>('bat_kwh', gBatteryKwh.toString());
+      await HomeWidget.saveWidgetData<String>('tyre_size', gTyreSize);
+      await HomeWidget.saveWidgetData<String>(
+          'tyre_bar', gTyreBar > 0 ? gTyreBar.toString() : '');
       await HomeWidget.saveWidgetData<String>('bat_chem', gChemistry);
       await HomeWidget.saveWidgetData<String>('bat_dc_kw', gDcKw.toString());
       await HomeWidget.saveWidgetData<String>('bat_ac_kw', gAcKw.toString());
