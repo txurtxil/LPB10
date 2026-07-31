@@ -39,7 +39,10 @@ const _cLine = Color(0xFFE63946); // linea 430 km
 
 class _DayBar {
   final String label;
+  /// Km que pasan los filtros de consumo. Alimenta la media, no se toca.
   double km = 0;
+  /// Km recorridos de verdad. Ver el comentario del bucle de acumulacion.
+  double kmAll = 0;
   double socDrop = 0;
   bool charged = false;
   double chargedKwh = 0;
@@ -164,12 +167,20 @@ Future<Map<String, String>> buildWidgetExtras(
       final curr = points[i];
       final kmDelta = (curr.km - prev.km).toDouble();
       final socDelta = prev.soc - curr.soc;
-      if (kmDelta <= 0 || socDelta <= 0) continue;
+      if (kmDelta <= 0) continue;
+      final bar = days[keyOf(curr.ts)];
+      if (bar == null) continue;
+
+      // Los kilometros recorridos se acumulan AQUI, antes de los filtros de
+      // consumo. Un tramo que mezcle conducir y cargar tiene socDelta <= 0 y
+      // se descartaba entero, kilometros incluidos. Con la app dormida un solo
+      // tramo puede abarcar un viaje completo y la recarga posterior.
+      bar.kmAll += kmDelta;
+
+      if (socDelta <= 0) continue;
       // Cordura: descartar solo tramos fisicamente imposibles.
       final pct = socDelta / kmDelta * 100;
       if (pct < 8.0 || pct > 70.0) continue;
-      final bar = days[keyOf(curr.ts)];
-      if (bar == null) continue;
       bar.km += kmDelta;
       bar.socDrop += socDelta;
     }
@@ -293,7 +304,8 @@ String _buildTextChart(List<_DayBar> bars, double? weekAvg, double? eurKwh) {
   for (final b in bars) {
     final v = b.kwh100;
     final bolt = b.charged ? ' \u26A1' : '';
-    final km = b.km <= 0 ? '' : b.km.toStringAsFixed(0);
+    final kmVis = b.kmAll > 0 ? b.kmAll : b.km;
+    final km = kmVis <= 0 ? '' : kmVis.toStringAsFixed(0);
     if (v == null) {
       sb.writeln('${b.label} ${'--'.padLeft(5)} ${km.padLeft(4)}$bolt');
       continue;

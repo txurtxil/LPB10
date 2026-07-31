@@ -404,8 +404,8 @@ Future<WeeklyEfficiency> computeWeeklyEfficiency() async {
     return WeeklyEfficiency(
       thisWeek: avg(a),
       lastWeek: avg(b),
-      kmThis: a?.km ?? 0,
-      kmLast: b?.km ?? 0,
+      kmThis: a?.kmAll ?? 0,
+      kmLast: b?.kmAll ?? 0,
     );
   } catch (_) {
     return WeeklyEfficiency();
@@ -1565,7 +1565,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
           final iso = ag.d.split('-');
           if (iso.length != 3) continue;
           final k = iso[2] + '/' + iso[1];
-          kmDia[k] = ag.km.toStringAsFixed(0);
+          kmDia[k] = ag.kmAll.toStringAsFixed(0);
           if (precioDia != null) {
             eurDia[k] = (ag.soc / 100.0 * gBatteryKwh * precioDia.eurKwh)
                 .toStringAsFixed(2);

@@ -129,7 +129,7 @@ Future<Map<String, double>> preciosPorDia() async {
   var hay = false;
   for (final a in ds) {
     final k = kwhOf(a);
-    km += a.km;
+    km += a.kmAll;
     kwh += k;
     final p = precios[a.d];
     if (p != null) {

@@ -29,7 +29,26 @@ class DayAgg {
   int segs;
   int pts;
 
-  DayAgg(this.d, {this.km = 0, this.soc = 0, this.segs = 0, this.pts = 0});
+  /// Kilometros recorridos de verdad, sin filtrar por consumo. Ver kmAll.
+  double kmAllRaw;
+
+  DayAgg(this.d,
+      {this.km = 0,
+      this.soc = 0,
+      this.segs = 0,
+      this.pts = 0,
+      this.kmAllRaw = 0});
+
+  /// Distancia recorrida del dia.
+  ///
+  /// `km` solo acumula los tramos que pasan los filtros de consumo, porque esa
+  /// cifra alimenta la media y no puede contaminarse. Pero para MOSTRAR
+  /// kilometros eso deja fuera trayectos reales: un tramo que mezcle conducir y
+  /// cargar tiene socDelta <= 0 y se descarta entero.
+  ///
+  /// El respaldo a `km` es deliberado: los agregados antiguos y los rollups que
+  /// todavia no sumen kmAllRaw devuelven lo de siempre en vez de cero.
+  double get kmAll => kmAllRaw > 0 ? kmAllRaw : km;
 
   /// Consumo en % de bateria por 100 km, o null si no es creible.
   double? get pct {
@@ -44,8 +63,14 @@ class DayAgg {
     return p == null ? null : p / 100.0 * gBatteryKwh;
   }
 
-  Map<String, dynamic> toMap() =>
-      {'d': d, 'km': km, 'soc': soc, 'segs': segs, 'pts': pts};
+  Map<String, dynamic> toMap() => {
+        'd': d,
+        'km': km,
+        'soc': soc,
+        'segs': segs,
+        'pts': pts,
+        'kmAll': kmAllRaw,
+      };
 
   static DayAgg? fromMap(Map<String, dynamic> m) {
     final d = m['d'];
@@ -54,7 +79,8 @@ class DayAgg {
         km: (m['km'] as num?)?.toDouble() ?? 0,
         soc: (m['soc'] as num?)?.toDouble() ?? 0,
         segs: (m['segs'] as num?)?.toInt() ?? 0,
-        pts: (m['pts'] as num?)?.toInt() ?? 0);
+        pts: (m['pts'] as num?)?.toInt() ?? 0,
+        kmAllRaw: (m['kmAll'] as num?)?.toDouble() ?? 0);
   }
 }
 
@@ -153,7 +179,16 @@ class DailyStats {
       if (kPrev != kCur) continue;
       final kmDelta = (cur[1] - prev[1]).toDouble();
       final socDelta = (prev[2] - cur[2]).toDouble();
-      if (kmDelta <= 0 || socDelta <= 0) continue;
+      if (kmDelta <= 0) continue;
+
+      // Los kilometros se acumulan AQUI, antes de los filtros de consumo.
+      // Antes se sumaban despues, asi que un tramo con socDelta <= 0 perdia sus
+      // kilometros enteros. Con la app abierta apenas se nota (se muestrea cada
+      // 90 s), pero con la app dormida un tramo puede abarcar un viaje de 30 km
+      // y la recarga posterior, y esos 30 km desaparecian del total.
+      agg.kmAllRaw += kmDelta;
+
+      if (socDelta <= 0) continue;
       final pct = socDelta / kmDelta * 100.0;
       if (pct < kSegMin || pct > kSegMax) continue;
       agg.km += kmDelta;
@@ -173,7 +208,9 @@ class DailyStats {
   }
 
   static Future<void> _saveMeta(int len, List<num>? last) async {
-    final m = <String, dynamic>{'len': len};
+    // v2: los kilometros dejan de filtrarse por consumo. Al subir de version
+    // se fuerza un rebuild para que el historico tambien salga corregido.
+    final m = <String, dynamic>{'len': len, 'v': 2};
     if (last != null) {
       m['lastTs'] = last[0];
       m['lastKm'] = last[1];
@@ -197,6 +234,7 @@ class DailyStats {
     } catch (_) {
       return rebuild();
     }
+    if (((meta['v'] as num?)?.toInt() ?? 1) < 2) return rebuild();
     final prevLen = (meta['len'] as num?)?.toInt() ?? 0;
     final len = await f.length();
     if (len < prevLen) return rebuild();
@@ -304,6 +342,7 @@ class DailyStats {
       final k = key(t);
       final b = out.putIfAbsent(k, () => DayAgg(k));
       b.km += a.km;
+      b.kmAllRaw += a.kmAll;
       b.soc += a.soc;
       b.segs += a.segs;
       b.pts += a.pts;
