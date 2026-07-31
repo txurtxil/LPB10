@@ -58,7 +58,9 @@ class QuickWidgetProvider : AppWidgetProvider() {
             "LMB10" + (if (charging == "1") "  \u26A1" else "") +
             (if (locked == "1") "  \uD83D\uDD12" else ""))
         val ts = p.getString("updatedTs", null)?.toLongOrNull()
-        v.setTextViewText(R.id.qw_fresh, antiguedad(ts, updated))
+        val estado = p.getString("qw_status", "") ?: ""
+        v.setTextViewText(R.id.qw_fresh,
+            if (estado.isNotEmpty()) estado else antiguedad(ts, updated))
         v.setTextColor(R.id.qw_fresh, if (ts != null &&
                 System.currentTimeMillis() - ts > 30 * 60 * 1000L)
             Color.parseColor("#B3341F") else Color.parseColor("#5B87AC"))

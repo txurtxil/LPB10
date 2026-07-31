@@ -529,8 +529,20 @@ Future<void> widgetActionCallback(Uri? uri) async {
   final cmd = _actionFromUri(uri);
   if (cmd == null) return;
   await CarLogBridge.log('widget accion fondo: ' + cmd);
+  // El comando tarda: hay que verificar el PIN contra el servidor y luego
+  // esperar al resultado. Sin aviso, el widget parece roto.
+  Future<void> aviso(String t) async {
+    try {
+      await HomeWidget.saveWidgetData<String>('qw_status', t);
+      await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
+    } catch (_) {}
+  }
+  await aviso('...');
   final ok = await carQuickAction(cmd);
   await CarLogBridge.log('widget accion fondo ' + cmd + ' -> ' + ok.toString());
+  await aviso(ok ? 'OK' : 'ERROR');
+  await Future.delayed(const Duration(seconds: 6));
+  await aviso('');
 }
 
 void main() async {
