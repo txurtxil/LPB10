@@ -38,3 +38,6 @@ backups/
 .DS_Store
 .idea/
 .vscode/
+
+# Scripts historicos y de un solo uso
+_scripts_viejos/
