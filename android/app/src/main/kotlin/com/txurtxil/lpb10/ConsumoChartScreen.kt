@@ -66,22 +66,54 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 CarLog.log(carContext, "GRAF", "bitmap fallo: " + e)
             }
 
-            val mejor = dias.minByOrNull { it.second }
-            val peor = dias.maxByOrNull { it.second }
+            // "km|kWh|euros" -> "265 km  ·  41,1 kWh  ·  5,34 EUR"
+            fun fmtTot(raw: String): String {
+                val c = raw.split("|")
+                if (c.size < 2) return ""
+                var t = c[0] + " km  \u00B7  " + c[1].replace('.', ',') + " kWh"
+                if (c.size > 2 && c[2].isNotEmpty())
+                    t += "  \u00B7  " + c[2].replace('.', ',') + " \u20AC"
+                return t
+            }
+
+            val tot7 = fmtTot(p.getString("tot_7d", "") ?: "")
             pane.addRow(
                 Row.Builder()
-                    .setTitle(if (es) "Media 7 dias" else "7-day average")
-                    .addText(if (avg7 != null) fmt(avg7) + " kWh/100 km" else "--")
+                    .setTitle(if (es) "Ultimos 7 dias" else "Last 7 days")
+                    .addText((if (avg7 != null) fmt(avg7) + " kWh/100 km" else "--") +
+                        (if (tot7.isEmpty()) "" else "\n" + tot7))
                     .build()
             )
-            if (mejor != null && peor != null) {
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle(if (es) "Mejor y peor dia" else "Best and worst day")
-                        .addText(mejor.first + ": " + fmt(mejor.second) +
-                                 "   ·   " + peor.first + ": " + fmt(peor.second))
-                        .build()
-                )
+
+            val totMes = fmtTot(p.getString("tot_mes", "") ?: "")
+            if (totMes.isNotEmpty()) {
+                pane.addRow(Row.Builder()
+                    .setTitle(if (es) "Este mes" else "This month")
+                    .addText(totMes).build())
+            }
+
+            val totAno = fmtTot(p.getString("tot_ano", "") ?: "")
+            if (totAno.isNotEmpty()) {
+                pane.addRow(Row.Builder()
+                    .setTitle(if (es) "Este ano" else "This year")
+                    .addText(totAno).build())
+            }
+
+            // Dia mas caro. OJO: cycle_days es del CICLO actual, desde la
+            // ultima recarga, NO del mes. Se etiqueta asi para no mentir.
+            var caroDia = ""
+            var caroEur = -1f
+            for (d in daysRaw.split(",")) {
+                val c = d.split(":")
+                val e = c.getOrNull(2)?.replace(",", ".")?.toFloatOrNull() ?: continue
+                if (e > caroEur) { caroEur = e; caroDia = c.getOrNull(0) ?: "" }
+            }
+            if (caroEur > 0f) {
+                pane.addRow(Row.Builder()
+                    .setTitle(if (es) "Dia mas caro del ciclo" else "Priciest day this cycle")
+                    .addText(caroDia + "  \u00B7  " +
+                        String.format("%.2f", caroEur).replace('.', ',') + " \u20AC")
+                    .build())
             }
         }
 

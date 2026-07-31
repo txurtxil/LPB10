@@ -1583,6 +1583,12 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
       } catch (_) {}
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
+      // El lado Kotlin llevaba 430 y 15,6 escritos a mano, asi que Android Auto
+      // seguia mostrando el objetivo del B10 aunque el perfil fuera otro coche.
+      await HomeWidget.saveWidgetData<String>(
+          'max_range_km', gMaxRangeKm.round().toString());
+      await HomeWidget.saveWidgetData<String>('target_kwh100',
+          (gBatteryKwh / gMaxRangeKm * 100.0).toStringAsFixed(1));
       if (avgPct != null) {
         final kwh100 = avgPct / 100.0 * gBatteryKwh;
         // Cap a la autonomia fisica del coche: con pocos datos el consumo

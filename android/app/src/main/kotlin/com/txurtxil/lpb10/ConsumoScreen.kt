@@ -36,6 +36,12 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
         val estRange = p.getString("cycle_est_range", "") ?: ""
         val cycleKm = p.getString("cycle_km", "") ?: ""
         val daysRaw = p.getString("cycle_days", "") ?: ""
+        // Objetivo y autonomia del perfil elegido. Antes iban 430 y 15,6
+        // escritos a mano, asi que Android Auto mostraba las cifras del B10
+        // aunque el usuario tuviera un C10.
+        val maxRange = (p.getString("max_range_km", "") ?: "").toIntOrNull() ?: 430
+        val target = (p.getString("target_kwh100", "") ?: "").toFloatOrNull() ?: 15.6f
+        val targetTxt = String.format("%.1f", target).replace('.', ',')
 
         val list = ItemList.Builder()
 
@@ -45,7 +51,7 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
             if (es) "Media: -- (datos insuficientes)" else "Average: -- (insufficient data)"
         } else {
             val est = estRange.toIntOrNull() ?: 0
-            val diff = est - 430
+            val diff = est - maxRange
             val rel = if (es) {
                 if (diff >= 0) "+$diff km sobre objetivo" else "$diff km bajo objetivo"
             } else {
@@ -55,9 +61,9 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
                 if (es) "$cycleKm km en este ciclo\n" else "$cycleKm km this cycle\n"
             } else ""
             if (es)
-                kmPart + "$avg kWh/100 · ~$estRange km reales\nObjetivo 430 km (15,6): $rel"
+                kmPart + "$avg kWh/100 · ~$estRange km reales\nObjetivo $maxRange km ($targetTxt): $rel"
             else
-                kmPart + "$avg kWh/100 · ~$estRange km real\nTarget 430 km (15.6): $rel"
+                kmPart + "$avg kWh/100 · ~$estRange km real\nTarget $maxRange km ($targetTxt): $rel"
         }
         list.addItem(Row.Builder().setTitle(titSummary).addText(summaryText).build())
 
@@ -104,7 +110,7 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
         }
         if (daysWithData.isNotEmpty()) {
             val vals = daysWithData.mapNotNull { it.split(":").getOrNull(1)?.toFloatOrNull() }
-            val maxV = (vals.maxOrNull() ?: 0f).coerceAtLeast(15.6f)
+            val maxV = (vals.maxOrNull() ?: 0f).coerceAtLeast(target)
             val titDays = if (es) "Por dia" else "Per day"
             // El gasto ya va dentro de las filas de 7 dias y Totales, asi que
             // aqui se aprovecha el hueco para explicar como se lee el grafico.
@@ -115,8 +121,8 @@ class ConsumoScreen(carContext: CarContext) : Screen(carContext) {
                         "La barra compara cada dia con el que mas gasto de la semana: llena = el peor."
                         else "The bar compares each day with the worst one of the week: full = worst.")
                     .addText(if (es)
-                        "kWh/100 = energia gastada cada 100 km. Cuanto menos, mejor. Objetivo 15,6."
-                        else "kWh/100 = energy used per 100 km. Lower is better. Target 15.6.")
+                        "kWh/100 = energia gastada cada 100 km. Cuanto menos, mejor. Objetivo $targetTxt."
+                        else "kWh/100 = energy used per 100 km. Lower is better. Target $targetTxt.")
                     .build()
             )
             list.addItem(Row.Builder().setTitle(titDays).addText(if (es) "Un dia por barra" else "One day per bar").build())
