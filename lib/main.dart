@@ -2903,9 +2903,17 @@ class _ControlsScreenState extends State<ControlsScreen> {
   Future<void> _loadCurrentChargeLimit() async {
     try {
       final status = await widget.client.getVehicleStatus(widget.vehicle.vin);
+      final sl = (status.raw['speedLimit'] as num?)?.toDouble();
+      final sa = (status.raw['speedLimitActive'] as num?)?.toInt();
       setState(() {
         _chargeLimit = (status.chargeLimitPercent ?? 100).toDouble().clamp(50, 100);
         _loadingChargeLimit = false;
+        // Mismo viaje, sin peticion extra.
+        if (sl != null && sl > 0) {
+          _carSpeedLimit = sl;
+          _speedLimit = sl.clamp(30, 150);
+        }
+        if (sa != null) _carSpeedActive = sa != 0;
       });
     } catch (_) {
       setState(() { _chargeLimit = 100; _loadingChargeLimit = false; });
@@ -2919,6 +2927,13 @@ class _ControlsScreenState extends State<ControlsScreen> {
   double? _chargeLimit;
   bool _loadingChargeLimit = true;
   double _speedLimit = 130;
+
+  /// Limite de velocidad TAL COMO LO TIENE EL COCHE. El deslizador arrancaba
+  /// siempre en 130 sin leer nada, asi que mostraba un valor inventado: en un
+  /// coche con 110 configurados, la pantalla decia 130. Y speedLimitActive se
+  /// parseaba desde la senal 12054 sin usarse en ninguna parte.
+  double? _carSpeedLimit;
+  bool? _carSpeedActive;
 
   Future<void> _run(String label, Future<void> Function() action) async {
     setState(() { _busy = true; _lastMessage = null; });
@@ -3001,6 +3016,29 @@ class _ControlsScreenState extends State<ControlsScreen> {
             ]),
             
             _sectionTitle(AppLocalizations.of(context)!.sectionSpeedLimit),
+            if (_carSpeedActive != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  (Localizations.localeOf(context).languageCode == 'es'
+                          ? (_carSpeedActive!
+                              ? 'Activo en el coche'
+                              : 'Inactivo en el coche')
+                          : (_carSpeedActive!
+                              ? 'Active in the car'
+                              : 'Inactive in the car')) +
+                      (_carSpeedLimit != null
+                          ? '  -  ' + _carSpeedLimit!.round().toString() + ' km/h'
+                          : ''),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _carSpeedActive!
+                        ? const Color(0xFFB35A00)
+                        : const Color(0xFF5B87AC),
+                  ),
+                ),
+              ),
             Text(AppLocalizations.of(context)!.speedLimitValue(_speedLimit.round())),
             Slider(
               value: _speedLimit,
@@ -3010,6 +3048,12 @@ class _ControlsScreenState extends State<ControlsScreen> {
               label: '${_speedLimit.round()} km/h',
               onChanged: (v) => setState(() => _speedLimit = v),
               onChangeEnd: (v) => _run('Limite de velocidad', () => c.setSpeedLimit(vin, pin, v.round())),
+            ),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'La app puede fijar el valor, pero no activar ni desactivar el limitador: eso se hace desde la pantalla del coche.'
+                  : 'The app can set the value, but cannot switch the limiter on or off: that is done from the car screen.',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF5B87AC)),
             ),
             _sectionTitle(AppLocalizations.of(context)!.sectionBattery),
             _actionGrid([
