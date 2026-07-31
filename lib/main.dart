@@ -219,12 +219,42 @@ Future<String> carRunRoutineById(String id) async {
 /// Ejecuta un comando directo (accion rapida) desde el coche, sin UI.
 /// Reutiliza el mismo patron de cliente que carRunRoutineById.
 @pragma('vm:entry-point')
+/// Motivo del ultimo fallo de carQuickAction, en lenguaje llano.
+///
+/// La funcion devolvia false en cuatro sitios distintos y desde fuera todos se
+/// veian igual, asi que el widget solo podia decir "ERROR". Con el coche en un
+/// garaje sin cobertura eso parece que la app esta rota, cuando lo unico que
+/// pasa es que el coche no es alcanzable.
+String gQuickActionError = '';
+
+String _motivoFallo(Object e) {
+  final m = e.toString();
+  if (m.contains('Error 71') || m.contains('Poor vehicle network')) {
+    return 'Sin cobertura';
+  }
+  if (m.contains('Error 40') || m.contains('No such permission')) {
+    return 'No disponible';
+  }
+  if (m.contains('Not logged in') || m.contains('token')) return 'Sesion caducada';
+  if (m.contains('SocketException') || m.contains('TimeoutException')) {
+    return 'Sin conexion';
+  }
+  return 'Error';
+}
+
 Future<bool> carQuickAction(String action) async {
+  gQuickActionError = '';
   final raw = await _storage.read(key: _sessionKey);
-  if (raw == null) return false;
+  if (raw == null) {
+    gQuickActionError = 'Sin sesion';
+    return false;
+  }
   final vin = await _storage.read(key: _vinKey) ?? '';
   final pin = await _storage.read(key: _pinKey) ?? '';
-  if (vin.isEmpty || pin.isEmpty) return false;
+  if (vin.isEmpty || pin.isEmpty) {
+    gQuickActionError = 'Falta el PIN';
+    return false;
+  }
   try {
     final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
     final session = SessionData.fromMap(sessionMap);
@@ -248,12 +278,14 @@ Future<bool> carQuickAction(String action) async {
       case 'charger_unlock': await c.unlockCharger(vin, pin); break;
       default:
         await CarLogBridge.log('quickAction desconocida: $action');
+        gQuickActionError = 'Accion desconocida';
         return false;
     }
     await CarLogBridge.log('quickAction OK: $action');
     return true;
   } catch (e) {
     await CarLogBridge.log('quickAction FALLO $action: $e');
+    gQuickActionError = _motivoFallo(e);
     return false;
   }
 }
@@ -537,11 +569,15 @@ Future<void> widgetActionCallback(Uri? uri) async {
       await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
     } catch (_) {}
   }
-  await aviso('...');
+  await aviso('enviando...');
   final ok = await carQuickAction(cmd);
-  await CarLogBridge.log('widget accion fondo ' + cmd + ' -> ' + ok.toString());
-  await aviso(ok ? 'OK' : 'ERROR');
-  await Future.delayed(const Duration(seconds: 6));
+  await CarLogBridge.log('widget accion fondo ' + cmd + ' -> ' + ok.toString() +
+      (ok ? '' : ' (' + gQuickActionError + ')'));
+  await aviso(ok
+      ? 'hecho'
+      : (gQuickActionError.isEmpty ? 'Error' : gQuickActionError));
+  // Los fallos se dejan mas tiempo: "Sin cobertura" hay que poder leerlo.
+  await Future.delayed(Duration(seconds: ok ? 5 : 12));
   await aviso('');
 }
 
