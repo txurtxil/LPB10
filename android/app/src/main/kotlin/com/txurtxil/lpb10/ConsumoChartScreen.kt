@@ -116,7 +116,7 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
             val totAno = fmtTot(p.getString("tot_ano", "") ?: "")
             if (totAno.isNotEmpty()) {
                 pane.addRow(Row.Builder()
-                    .setTitle(if (es) "Este ano" else "This year")
+                    .setTitle(if (es) "Este año" else "This year")
                     .addText(totAno).build())
             }
 
@@ -130,8 +130,13 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 if (e > caroEur) { caroEur = e; caroDia = c.getOrNull(0) ?: "" }
             }
             if (caroEur > 0f) {
+                val tituloCaro = when (modo) {
+                    1 -> if (es) "Semana mas cara" else "Priciest week"
+                    2 -> if (es) "Mes mas caro" else "Priciest month"
+                    else -> if (es) "Dia mas caro" else "Priciest day"
+                }
                 pane.addRow(Row.Builder()
-                    .setTitle(if (es) "Dia mas caro del ciclo" else "Priciest day this cycle")
+                    .setTitle(tituloCaro)
                     .addText(caroDia + "  \u00B7  " +
                         String.format("%.2f", caroEur).replace('.', ',') + " \u20AC")
                     .build())
