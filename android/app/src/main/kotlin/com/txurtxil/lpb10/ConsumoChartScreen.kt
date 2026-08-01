@@ -8,6 +8,7 @@ import android.graphics.RectF
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
+import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
@@ -31,7 +32,7 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
 
     // 0 dias, 1 semanas, 2 meses. La pantalla se redibuja con invalidate().
-    private val modo = 0
+    private var modo = 0
 
 
     override fun onGetTemplate(): Template {
@@ -73,9 +74,13 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                     .build()
             )
         } else {
+            // Media de LA SERIE que se esta mostrando, no la fija de 7 dias.
+            val mediaSerie: Float? = if (modo == 0) avg7
+                else dias.map { it.second }.average().toFloat()
             try {
                 pane.setImage(
-                    CarIcon.Builder(IconCompat.createWithBitmap(dibuja(dias, avg7, es))).build()
+                    CarIcon.Builder(
+                        IconCompat.createWithBitmap(dibuja(dias, mediaSerie, es))).build()
                 )
                 CarLog.log(carContext, "GRAF", "bitmap ok, dias=" + dias.size)
             } catch (e: Exception) {
@@ -140,7 +145,32 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        return PaneTemplate.Builder(pane.build())
+        var tira: ActionStrip? = null
+        try {
+            val etiqueta = when (modo) {
+                1 -> if (es) "Ver meses" else "Show months"
+                2 -> if (es) "Ver dias" else "Show days"
+                else -> if (es) "Ver semanas" else "Show weeks"
+            }
+            tira = ActionStrip.Builder()
+                .addAction(
+                    Action.Builder()
+                        .setTitle(etiqueta)
+                        .setOnClickListener {
+                            modo = (modo + 1) % 3
+                            android.os.Handler(android.os.Looper.getMainLooper())
+                                .post { invalidate() }
+                        }
+                        .build()
+                )
+                .build()
+        } catch (e: Exception) {
+            CarLog.log(carContext, "GRAF", "ActionStrip rechazado: " + e)
+        }
+
+        val b = PaneTemplate.Builder(pane.build())
+        if (tira != null) b.setActionStrip(tira)
+        return b
             .setTitle(if (es) "Consumo por " + unidad else "Consumption per " + unidad)
             .setHeaderAction(Action.BACK)
             .build()
