@@ -224,4 +224,63 @@
             android:drawablePadding="2dp"
             android:text="Cerrar mal." />
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp"
+        android:baselineAligned="false">
+        <Button
+            android:id="@+id/qw_defrost"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="10sp"
+            android:textAllCaps="false"
+            android:textColor="#0D3B66"
+            android:background="@drawable/qw_btn"
+            android:drawableTop="@drawable/qw_ic_defrost"
+            android:drawablePadding="2dp"
+            android:text="Desempanar" />
+        <Button
+            android:id="@+id/qw_find"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="10sp"
+            android:textAllCaps="false"
+            android:textColor="#0D3B66"
+            android:background="@drawable/qw_btn"
+            android:drawableTop="@drawable/qw_ic_find"
+            android:drawablePadding="2dp"
+            android:text="Localizar" />
+        <Button
+            android:id="@+id/qw_wheel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="10sp"
+            android:textAllCaps="false"
+            android:textColor="#0D3B66"
+            android:background="@drawable/qw_btn"
+            android:drawableTop="@drawable/qw_ic_wheel"
+            android:drawablePadding="2dp"
+            android:text="Volante" />
+    </LinearLayout>
+
 </LinearLayout>

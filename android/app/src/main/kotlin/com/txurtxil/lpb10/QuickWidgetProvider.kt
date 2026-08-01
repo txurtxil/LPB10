@@ -177,6 +177,16 @@ class QuickWidgetProvider : AppWidgetProvider() {
             HomeWidgetBackgroundIntent.getBroadcast(
                 context, Uri.parse("lmb10://action?cmd=trunk_close")))
 
+        v.setOnClickPendingIntent(R.id.qw_defrost,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=defrost")))
+        v.setOnClickPendingIntent(R.id.qw_find,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=find")))
+        v.setOnClickPendingIntent(R.id.qw_wheel,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=wheel_heat")))
+
         v.setOnClickPendingIntent(R.id.qw_root,
             HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java))
 
