@@ -8,7 +8,6 @@ import android.graphics.RectF
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
-import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
@@ -32,7 +31,7 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
 
     // 0 dias, 1 semanas, 2 meses. La pantalla se redibuja con invalidate().
-    private var modo = 0
+    private val modo = 0
 
 
     override fun onGetTemplate(): Template {
@@ -141,17 +140,7 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        val tira = ActionStrip.Builder()
-            .addAction(Action.Builder().setTitle(if (es) "Dias" else "Days")
-                .setOnClickListener { modo = 0; invalidate() }.build())
-            .addAction(Action.Builder().setTitle(if (es) "Semanas" else "Weeks")
-                .setOnClickListener { modo = 1; invalidate() }.build())
-            .addAction(Action.Builder().setTitle(if (es) "Meses" else "Months")
-                .setOnClickListener { modo = 2; invalidate() }.build())
-            .build()
-
         return PaneTemplate.Builder(pane.build())
-            .setActionStrip(tira)
             .setTitle(if (es) "Consumo por " + unidad else "Consumption per " + unidad)
             .setHeaderAction(Action.BACK)
             .build()
