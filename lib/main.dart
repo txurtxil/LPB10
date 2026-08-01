@@ -1633,11 +1633,28 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         await HomeWidget.saveWidgetData<String>('tot_7d', tot.d7);
         await HomeWidget.saveWidgetData<String>('tot_mes', tot.mes);
         await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
-        final ser = await buildCarSeries();
-        await HomeWidget.saveWidgetData<String>('hist_dias', ser.dias);
-        await HomeWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
-        await HomeWidget.saveWidgetData<String>('hist_meses', ser.meses);
-      } catch (_) {}
+        // buildCarSeries va en su PROPIO try con log: metida en el try mudo de
+        // arriba, cualquier excepcion suya desaparecia sin dejar rastro y las
+        // tres claves simplemente no se escribian. Asi es imposible saber por
+        // que el selector del coche no tenia datos.
+        try {
+          final ser = await buildCarSeries();
+          await HomeWidget.saveWidgetData<String>('hist_dias', ser.dias);
+          await HomeWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
+          await HomeWidget.saveWidgetData<String>('hist_meses', ser.meses);
+          await CarLogBridge.log('SERIES dias=' + ser.dias.length.toString() +
+              ' sem=' + ser.semanas.length.toString() +
+              ' mes=' + ser.meses.length.toString());
+          if (ser.dias.isNotEmpty) {
+            await CarLogBridge.log('SERIES muestra=' +
+                (ser.dias.length > 120 ? ser.dias.substring(0, 120) : ser.dias));
+          }
+        } catch (e) {
+          await CarLogBridge.log('SERIES FALLO: ' + e.toString());
+        }
+      } catch (e) {
+        await CarLogBridge.log('TOTALES FALLO: ' + e.toString());
+      }
       await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       // El lado Kotlin llevaba 430 y 15,6 escritos a mano, asi que Android Auto
       // seguia mostrando el objetivo del B10 aunque el perfil fuera otro coche.
