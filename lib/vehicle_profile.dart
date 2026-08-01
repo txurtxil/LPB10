@@ -49,6 +49,8 @@ const _pStore = FlutterSecureStorage();
 const _kProfileId = 'lm_profile_id_v1';
 const _kTyreSize = 'lm_tyre_size_v1';
 const _kTyreBar = 'lm_tyre_bar_v1';
+const _kTyreSizeR = 'lm_tyre_size_r_v1';
+const _kTyreBarR = 'lm_tyre_bar_r_v1';
 const _kProfileKwh = 'lm_profile_kwh_v1';
 const _kProfileRange = 'lm_profile_range_v1';
 
@@ -63,6 +65,8 @@ String gChemistry = 'LFP';
 /// la presion recomendada esta en la pegatina de la puerta, no en el payload.
 String gTyreSize = '';
 double gTyreBar = 0;
+String gTyreSizeR = '';
+double gTyreBarR = 0;
 int gDcKw = 168;
 int gAcKw = 11;
 
@@ -90,6 +94,8 @@ Future<void> loadVehicleProfile() async {
     _aplicarFicha(gProfileId);
     gTyreSize = await _pStore.read(key: _kTyreSize) ?? '';
     gTyreBar = double.tryParse(await _pStore.read(key: _kTyreBar) ?? '') ?? 0;
+    gTyreSizeR = await _pStore.read(key: _kTyreSizeR) ?? '';
+    gTyreBarR = double.tryParse(await _pStore.read(key: _kTyreBarR) ?? '') ?? 0;
     if (kwh != null && kwh > 5 && kwh < 250) gBatteryKwh = kwh;
     if (range != null && range > 50 && range < 1200) gMaxRangeKm = range;
   } catch (_) {}
@@ -100,11 +106,16 @@ String vehicleProfileSummary() =>
     gBatteryKwh.toStringAsFixed(1).replaceAll('.', ',') +
     ' kWh  \u00b7  ' + gMaxRangeKm.round().toString() + ' km';
 
-Future<void> saveTyreInfo(String size, double bar) async {
+Future<void> saveTyreInfo(String size, double bar,
+    {String sizeR = '', double barR = 0}) async {
   gTyreSize = size;
   gTyreBar = bar;
+  gTyreSizeR = sizeR;
+  gTyreBarR = barR;
   await _pStore.write(key: _kTyreSize, value: size);
   await _pStore.write(key: _kTyreBar, value: bar.toString());
+  await _pStore.write(key: _kTyreSizeR, value: sizeR);
+  await _pStore.write(key: _kTyreBarR, value: barR.toString());
 }
 
 Future<void> saveVehicleProfile({

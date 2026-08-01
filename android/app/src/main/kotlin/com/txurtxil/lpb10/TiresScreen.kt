@@ -43,6 +43,8 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
 
         val medida = p.getString("tyre_size", "") ?: ""
         val recom = (p.getString("tyre_bar", "") ?: "").toFloatOrNull() ?: 0f
+        val medidaR = p.getString("tyre_size_r", "") ?: ""
+        val recomR = (p.getString("tyre_bar_r", "") ?: "").toFloatOrNull() ?: 0f
 
         val pane = Pane.Builder()
 
@@ -88,7 +90,12 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
             // Comparacion con la recomendada. Es el dato que de verdad dice si
             // hay que inflar: el coche solo avisa cuando ya esta muy baja.
             if (recom > 0f) {
-                val mediaBar = leidas.average().toFloat() / 100f
+                val del = listOfNotNull(valores.getOrNull(0), valores.getOrNull(1))
+                val tra = listOfNotNull(valores.getOrNull(2), valores.getOrNull(3))
+                val refT = if (recomR > 0f) recomR else recom
+                val mediaBar = if (recomR > 0f && del.isNotEmpty())
+                    del.average().toFloat() / 100f
+                    else leidas.average().toFloat() / 100f
                 val delta = mediaBar - recom
                 val txt = StringBuilder()
                 txt.append(if (es) "Recomendada " else "Recommended ")
@@ -103,6 +110,23 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
                         (if (es) " bar por encima" else " bar above")
                     else -> if (es) "dentro de rango" else "within range"
                 })
+                if (recomR > 0f && tra.isNotEmpty()) {
+                    val mediaT = tra.average().toFloat() / 100f
+                    val dT = mediaT - refT
+                    txt.append("\n")
+                    txt.append(if (es) "Traseras " else "Rear ")
+                    txt.append(String.format("%.2f", refT).replace('.', ',')).append(" bar")
+                    txt.append("  -  ")
+                    txt.append(when {
+                        dT < -0.15f -> (if (es) "estas " else "you are ") +
+                            String.format("%.2f", -dT).replace('.', ',') +
+                            (if (es) " bar por debajo" else " bar below")
+                        dT > 0.25f -> (if (es) "estas " else "you are ") +
+                            String.format("%.2f", dT).replace('.', ',') +
+                            (if (es) " bar por encima" else " bar above")
+                        else -> if (es) "dentro de rango" else "within range"
+                    })
+                }
                 pane.addRow(
                     Row.Builder()
                         .setTitle(if (es) "Frente a la recomendada" else "Against recommended")
@@ -114,7 +138,18 @@ class TiresScreen(carContext: CarContext) : Screen(carContext) {
             // Medida y consejo. La presion sube al rodar, asi que una lectura
             // en caliente da de mas y no sirve para decidir si hay que inflar.
             val info = StringBuilder()
-            if (medida.isNotEmpty()) info.append(medida).append("\n")
+            if (medida.isNotEmpty()) {
+                if (medidaR.isNotEmpty() && medidaR != medida) {
+                    info.append(if (es) "Delanteras " else "Front ").append(medida)
+                    info.append(if (es) "  -  Traseras " else "  -  Rear ").append(medidaR)
+                } else {
+                    info.append(medida)
+                }
+                info.append(" (")
+                info.append(if (es) "segun la pegatina de tu puerta"
+                            else "from your door sticker")
+                info.append(")\n")
+            }
             info.append(if (es)
                 "Mide en frio: rodando la presion sube unos 0,3 bar y parece correcta cuando no lo esta."
                 else "Check cold: driving raises pressure by about 0.3 bar and hides a low tyre.")

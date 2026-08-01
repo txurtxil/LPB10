@@ -6,7 +6,7 @@ class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   // Version visible de la app. La actualiza release_apk.sh en cada release.
-  static const String kDisplayVersion = '3.60.51';
+  static const String kDisplayVersion = '3.60.52';
   static const _releasesUrl = 'https://github.com/txurtxil/LPB10/releases';
   static const _autismUrl = 'https://es.wikipedia.org/wiki/Trastornos_del_espectro_autista';
   static const _kofiUrl = 'https://ko-fi.com/txurtxil';

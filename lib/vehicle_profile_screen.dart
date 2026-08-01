@@ -19,6 +19,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   final _rangeCtrl = TextEditingController();
   final _tyreCtrl = TextEditingController();
   final _barCtrl = TextEditingController();
+  final _tyreRCtrl = TextEditingController();
+  final _barRCtrl = TextEditingController();
   double? _rangeSegunCoche;
 
   @override
@@ -29,6 +31,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     _rangeCtrl.text = gMaxRangeKm.round().toString();
     _tyreCtrl.text = gTyreSize;
     _barCtrl.text = gTyreBar > 0 ? gTyreBar.toString().replaceAll('.', ',') : '';
+    _tyreRCtrl.text = gTyreSizeR;
+    _barRCtrl.text = gTyreBarR > 0 ? gTyreBarR.toString().replaceAll('.', ',') : '';
     _estimarDelCoche();
   }
 
@@ -38,6 +42,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     _rangeCtrl.dispose();
     _tyreCtrl.dispose();
     _barCtrl.dispose();
+    _tyreRCtrl.dispose();
+    _barRCtrl.dispose();
     super.dispose();
   }
 
@@ -169,25 +175,91 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           Text(es ? 'Neumaticos' : 'Tyres',
               style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: Theme.of(context).dividerColor, width: 1),
+            ),
+            child: Text(
+              es
+                  ? 'Abre la puerta del conductor y busca la pegatina pegada en el '
+                      'marco, a la altura de la cerradura. Ahi vienen las medidas y '
+                      'las presiones que recomienda el fabricante para tu coche.\n\n'
+                      'Muchos modelos, entre ellos el B10, llevan ruedas mas anchas '
+                      'detras que delante, con presiones distintas. Si en tu pegatina '
+                      'las cuatro son iguales, rellena solo los dos primeros campos.\n\n'
+                      'La medida tambien esta escrita en el lateral del propio '
+                      'neumatico, con el formato 225/50 R18.'
+                  : 'Open the driver door and look for the sticker on the frame, '
+                      'level with the latch. It lists the sizes and the pressures '
+                      'the manufacturer recommends for your car.\n\n'
+                      'Many models, the B10 among them, fit wider tyres at the rear, '
+                      'with different pressures. If yours are all the same, fill in '
+                      'only the first two fields.\n\n'
+                      'The size is also written on the tyre sidewall, like 225/50 R18.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(es ? 'Delanteras' : 'Front',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
           TextField(
             controller: _tyreCtrl,
             decoration: InputDecoration(
               labelText: es ? 'Medida' : 'Size',
-              hintText: '215/60 R18',
+              hintText: '225/50 R18',
               border: const OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextField(
             controller: _barCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: es ? 'Presion recomendada (bar)' : 'Recommended pressure (bar)',
-              helperText: es
-                  ? 'Esta en la pegatina del marco de la puerta del conductor'
-                  : 'On the sticker in the driver door frame',
+              hintText: '2,5',
               border: const OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 16),
+          Text(es ? 'Traseras (si son distintas)' : 'Rear (if different)',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _tyreRCtrl,
+            decoration: InputDecoration(
+              labelText: es ? 'Medida' : 'Size',
+              hintText: '235/50 R18',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _barRCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: es ? 'Presion recomendada (bar)' : 'Recommended pressure (bar)',
+              hintText: '2,6',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            es
+                ? 'Si tu pegatina indica presiones distintas segun la carga, usa la de '
+                    'uso normal. La app solo compara tus lecturas con este valor, no '
+                    'modifica nada del coche.'
+                : 'If your sticker lists different pressures by load, use the normal '
+                    'one. The app only compares your readings against this value.',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
           ),
           const SizedBox(height: 24),
           FilledButton(
@@ -197,7 +269,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     await saveVehicleProfile(id: _id, kwh: kwh, rangeKm: range);
                     await saveTyreInfo(
                         _tyreCtrl.text.trim(),
-                        double.tryParse(_barCtrl.text.replaceAll(',', '.')) ?? 0);
+                        double.tryParse(_barCtrl.text.replaceAll(',', '.')) ?? 0,
+                        sizeR: _tyreRCtrl.text.trim(),
+                        barR: double.tryParse(_barRCtrl.text.replaceAll(',', '.')) ?? 0);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(es
