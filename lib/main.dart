@@ -276,6 +276,12 @@ Future<bool> carQuickAction(String action) async {
       case 'preheat_off':   await c.batteryPreheatOff(vin, pin); break;
       case 'wheel_heat':    await c.steeringWheelHeatOn(vin, pin); break;
       case 'charger_unlock': await c.unlockCharger(vin, pin); break;
+      case 'openall':
+        // En serie y con pausa: dos comandos simultaneos el coche los encola mal.
+        await c.openTrunk(vin, pin);
+        await Future.delayed(const Duration(milliseconds: 1200));
+        await c.unlockVehicle(vin, pin);
+        break;
       default:
         await CarLogBridge.log('quickAction desconocida: $action');
         gQuickActionError = 'Accion desconocida';

@@ -31,7 +31,17 @@ enum RoutineAction {
   sentryOn, // sentryModeOn
   windowsClose, // windowsClose
   efficientClimate, // clima eficiente (intParam=modo, boolParam=permanente)
+  unlock, // unlockVehicle - SOLO manual
+  trunk, // openTrunk      - SOLO manual
 }
+
+/// Acciones que abren fisicamente el coche. Valen en rutinas que dispara el
+/// usuario, pero NUNCA en programadas: una rutina con horario que desbloquea
+/// el vehiculo a las 7 de la manana lo dejaria abierto en la calle.
+const kSoloManual = {RoutineAction.unlock, RoutineAction.trunk};
+
+bool rutinaEsSoloManual(Routine r) =>
+    r.steps.any((s) => kSoloManual.contains(s.action));
 
 /// Condicion previa a un paso (o a la rutina). Se evalua con el ultimo status.
 enum RoutineCondition {
@@ -349,6 +359,12 @@ class RoutineEngine {
       case RoutineAction.windowsClose:
         await client.windowsClose(vin, pin);
         break;
+      case RoutineAction.unlock:
+        await client.unlockVehicle(vin, pin);
+        break;
+      case RoutineAction.trunk:
+        await client.openTrunk(vin, pin);
+        break;
       case RoutineAction.efficientClimate:
         final mode = ClimateMode.values[
             step.intParam.clamp(0, ClimateMode.values.length - 1)];
@@ -393,6 +409,10 @@ String routineActionLabel(RoutineStep s, {required bool es}) {
       return es ? 'Activar centinela' : 'Arm sentry';
     case RoutineAction.windowsClose:
       return es ? 'Subir ventanillas' : 'Close windows';
+    case RoutineAction.unlock:
+      return es ? 'Desbloquear coche' : 'Unlock car';
+    case RoutineAction.trunk:
+      return es ? 'Abrir maletero' : 'Open trunk';
     case RoutineAction.efficientClimate:
       final mode = ClimateMode.values[s.intParam.clamp(0, ClimateMode.values.length - 1)];
       final tail = s.boolParam ? (es ? ' permanente' : ' permanent') : (es ? ' preacond.' : ' precond.');

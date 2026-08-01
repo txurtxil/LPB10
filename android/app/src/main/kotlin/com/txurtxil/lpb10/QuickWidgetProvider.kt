@@ -166,10 +166,16 @@ class QuickWidgetProvider : AppWidgetProvider() {
             HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("lmb10://action?cmd=heat")))
 
         // Abren la app: Android las retiene tras el keyguard
+        v.setOnClickPendingIntent(R.id.qw_openall, HomeWidgetLaunchIntent.getActivity(
+            context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=openall")))
         v.setOnClickPendingIntent(R.id.qw_unlock, HomeWidgetLaunchIntent.getActivity(
             context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=unlock")))
         v.setOnClickPendingIntent(R.id.qw_trunk, HomeWidgetLaunchIntent.getActivity(
             context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=trunk")))
+
+        v.setOnClickPendingIntent(R.id.qw_trunk_close,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=trunk_close")))
 
         v.setOnClickPendingIntent(R.id.qw_root,
             HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java))
