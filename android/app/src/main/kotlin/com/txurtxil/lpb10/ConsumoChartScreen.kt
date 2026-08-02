@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
+import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
@@ -150,8 +151,23 @@ class ConsumoChartScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
+        // Con el coche en marcha el host rechaza la plantilla por el ActionStrip
+        // y muestra "no usar mientras conduce". Se consulta cuantas filas
+        // permite ahora mismo: si el limite baja respecto al de parado, es que
+        // estamos conduciendo y se omite el selector.
+        var enMarcha = false
+        try {
+            val cm = carContext.getCarService(ConstraintManager::class.java)
+            val lim = cm.getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+            enMarcha = lim <= 4
+            CarLog.log(carContext, "GRAF", "limite filas=" + lim)
+        } catch (e: Exception) {
+            CarLog.log(carContext, "GRAF", "ConstraintManager no disponible: " + e)
+        }
+
         var tira: ActionStrip? = null
         try {
+            if (enMarcha) throw Exception("en marcha, sin selector")
             val etiqueta = when (modo) {
                 1 -> if (es) "Ver meses" else "Show months"
                 2 -> if (es) "Ver dias" else "Show days"
