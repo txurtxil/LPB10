@@ -2829,6 +2829,51 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
   /// SONDA del endpoint de cargas. Vuelca el cuerpo crudo sin interpretarlo:
   /// se desconoce si chargeInEnergy viene en kWh o Wh, y si los timestamps del
   /// conector son segundos o milisegundos. Se decide viendo la respuesta real.
+  /// SONDA del PVPC. Vuelca la respuesta CRUDA de Red Electrica sin
+  /// interpretarla: no esta confirmado el nombre exacto del endpoint, ni la
+  /// estructura de "included", ni si el valor viene con impuestos incluidos.
+  /// Se decide viendo la respuesta, no adivinando.
+  Future<void> _probePvpc() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Consultando precios de Red Electrica...';
+    });
+    final buf = StringBuffer();
+    final hoy = DateTime.now();
+    String d(DateTime x) => x.year.toString().padLeft(4, '0') + '-' +
+        x.month.toString().padLeft(2, '0') + '-' +
+        x.day.toString().padLeft(2, '0');
+
+    for (final prueba in [
+      ['REData precios-mercados-tiempo-real',
+       'https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real'
+           '?start_date=' + d(hoy) + 'T00:00&end_date=' + d(hoy) +
+           'T23:59&time_trunc=hour&geo_limit=peninsula'],
+      ['REData sin geo_limit',
+       'https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real'
+           '?start_date=' + d(hoy) + 'T00:00&end_date=' + d(hoy) +
+           'T23:59&time_trunc=hour'],
+      ['preciodelaluz.org (alternativa sin token)',
+       'https://api.preciodelaluz.org/v1/prices/all?zone=PCB'],
+    ]) {
+      buf.writeln('### ' + prueba[0]);
+      try {
+        final r = await plain_http
+            .get(Uri.parse(prueba[1]), headers: {'Accept': 'application/json'})
+            .timeout(const Duration(seconds: 15));
+        var cuerpo = r.body;
+        if (cuerpo.length > 1400) cuerpo = cuerpo.substring(0, 1400) + '...(recortado)';
+        buf.writeln('HTTP ' + r.statusCode.toString());
+        buf.writeln(cuerpo);
+      } catch (e) {
+        buf.writeln('EXCEPCION: ' + e.toString());
+      }
+      buf.writeln('');
+    }
+    if (mounted) setState(() { _text = buf.toString(); _loading = false; });
+  }
+
   Future<void> _probeCharges() async {
     setState(() {
       _loading = true;
@@ -2942,6 +2987,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: historial de cargas (nube)'
                     : 'Probe: charge history (cloud)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probePvpc,
+                icon: const Icon(Icons.bolt_outlined, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: precios PVPC (Red Electrica)'
+                    : 'Probe: PVPC prices (grid operator)'),
               ),
             ),
           ),
