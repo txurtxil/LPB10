@@ -20,16 +20,13 @@ import 'package:http/http.dart' as http;
 
 const _pvpcStore = FlutterSecureStorage();
 const _kCache = 'lm_pvpc_cache_v1';
-const _kZona = 'lm_pvpc_zona_v1';
 const _kDto = 'lm_pvpc_dto_v1';
 
-/// Zonas con sistema electrico propio y por tanto precio distinto.
-const kPvpcZonas = <String, String>{
-  'peninsula': 'Peninsula',
-  'canarias': 'Canarias',
-  'baleares': 'Baleares',
-  'ceuta_melilla': 'Ceuta y Melilla',
-};
+/// SOLO PENINSULA. El parametro geo_limit no altera la respuesta de este
+/// endpoint. Para Canarias, Baleares o Ceuta y Melilla haria falta otra
+/// fuente, sin identificar, asi que a esos usuarios NO hay que ofrecerles
+/// esta opcion como si fuera la suya.
+const kPvpcSoloPeninsula = true;
 
 class PvpcDia {
   /// Clave 'YYYY-MM-DD', valor: 24 precios en EUR/kWh, indice = hora local.
@@ -51,12 +48,6 @@ class Pvpc {
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
-
-  static Future<String> zona() async =>
-      (await _pvpcStore.read(key: _kZona)) ?? 'peninsula';
-
-  static Future<void> setZona(String z) =>
-      _pvpcStore.write(key: _kZona, value: z);
 
   /// Descuento del bono social, en porcentaje. 0 = sin descuento.
   static Future<double> descuento() async =>
@@ -103,13 +94,12 @@ class Pvpc {
     if (!permitirRed) return null;
 
     try {
-      final z = await zona();
       // Se pide el dia completo en hora local. REData devuelve los tramos con
       // su marca de tiempo, asi que el cambio de hora se resuelve solo.
       final uri = Uri.parse(
           'https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real'
           '?start_date=${clave}T00:00&end_date=${clave}T23:59'
-          '&time_trunc=hour&geo_limit=$z');
+          '&time_trunc=hour');
       final r = await http
           .get(uri, headers: {'Accept': 'application/json'})
           .timeout(const Duration(seconds: 12));
@@ -144,7 +134,8 @@ class Pvpc {
         final val = m['value'];
         if (ts == null || val is! num) continue;
         final h = ts.toLocal().hour;
-        // REData da EUR/MWh.
+        // Verificado en la sonda del 03/08: value viene en EUR/MWh
+        // (184,11 = 0,18411 EUR/kWh) y datetime trae el desfase local.
         horas[h] = val.toDouble() / 1000.0;
         vistas++;
       }

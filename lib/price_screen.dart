@@ -20,6 +20,7 @@ class _PriceScreenState extends State<PriceScreen> {
   final _ctrl = TextEditingController();
   String? _error;
   bool _guardado = false;
+  bool _pvpc = false;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _PriceScreenState extends State<PriceScreen> {
     final p = await EnergyPrice.load();
     if (p != null && mounted) {
       _ctrl.text = p.eurKwh.toStringAsFixed(4).replaceAll('.', ',');
+      _pvpc = p.esPvpc;
       setState(() {});
     }
   }
@@ -54,7 +56,7 @@ class _PriceScreenState extends State<PriceScreen> {
           _error = 'Ese precio no parece real. Suele estar entre 0,05 y 0,60');
       return;
     }
-    await EnergyPrice.save(v);
+    await EnergyPrice.save(v, pvpc: _pvpc);
     if (!mounted) return;
     setState(() {
       _error = null;
@@ -136,6 +138,55 @@ class _PriceScreenState extends State<PriceScreen> {
               ),
             ),
           const Divider(height: 32),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _pvpc,
+            onChanged: (v) => setState(() {
+              _pvpc = v;
+              _guardado = false;
+            }),
+            title: Text(es
+                ? 'Tarifa regulada PVPC'
+                : 'Regulated PVPC tariff'),
+            subtitle: Text(
+              es
+                  ? 'Precio distinto cada hora, publicado por Red Electrica'
+                  : 'A different price each hour, published by the grid operator',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          if (_pvpc)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Text(
+                es
+                    ? 'Cada carga se cobrara al precio medio de las horas en que ocurrio, '
+                        'segun los datos que publica Red Electrica.\n\n'
+                        'Es una aproximacion: el coche no informa de cuantos kilovatios '
+                        'entraron en cada hora, asi que la energia se reparte por igual '
+                        'entre el inicio y el final de la carga. En una carga lenta '
+                        'nocturna se acerca bastante.\n\n'
+                        'De momento solo hay datos de la peninsula. Si no se pueden '
+                        'consultar los precios de algun dia, se usara el precio fijo de '
+                        'arriba, que conviene dejar puesto como respaldo.'
+                    : 'Each charge is priced at the average of the hours it took place, '
+                        'using the grid operator data.\n\nIt is an approximation: the car '
+                        'does not report how many kWh entered each hour, so energy is '
+                        'spread evenly between start and end.\n\nMainland Spain only. If '
+                        'prices cannot be fetched, the fixed price above is used as '
+                        'fallback, so keep it set.',
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: Theme.of(context).colorScheme.onSurface),
+              ),
+            ),
           _bloque(
             es ? 'Como saber tu precio real' : 'Finding your real price',
             es

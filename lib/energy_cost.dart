@@ -18,6 +18,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'charge_cost.dart';
 import 'daily_stats.dart';
 import 'price_screen.dart';
+import 'pvpc.dart';
 import 'widget_chart.dart' show gBatteryKwh;
 
 const _priceStorage = FlutterSecureStorage();
@@ -47,10 +48,14 @@ class EnergyPrice {
     }
   }
 
-  static Future<void> save(double eurKwh) async {
+  /// true si el usuario tiene tarifa regulada con precio horario.
+  bool get esPvpc => mode == 'pvpc';
+
+  static Future<void> save(double eurKwh, {bool pvpc = false}) async {
     await _priceStorage.write(
         key: kEnergyPriceKey,
-        value: json.encode({'mode': 'single', 'eur_kwh': eurKwh}));
+        value: json.encode(
+            {'mode': pvpc ? 'pvpc' : 'single', 'eur_kwh': eurKwh}));
   }
 
   static Future<void> clear() async {
@@ -75,7 +80,9 @@ double kwhOf(DayAgg a) => a.soc / 100.0 * gBatteryKwh;
 Future<Map<String, double>> preciosPorDia() async {
   final out = <String, double>{};
   try {
-    final casa = (await EnergyPrice.load())?.eurKwh;
+    final cfg = await EnergyPrice.load();
+    final casa = cfg?.eurKwh;
+    final esPvpc = cfg?.esPvpc ?? false;
     final days = await DailyStats.load();
     if (days.isEmpty) return out;
     final cargas = await ChargeRebuild.fromTrips();
@@ -91,6 +98,18 @@ Future<Map<String, double>> preciosPorDia() async {
         p = m.eur! / kwh;
       } else if (m != null && m.eurKwh != null) {
         p = m.eurKwh! * (m.kwhCargador ?? kwh) / kwh;
+      } else if (esPvpc && c.endTs != null) {
+        // Tarifa regulada: se pide el precio medio de la franja en la que
+        // ocurrio la carga. Es APROXIMADO, se reparte la energia de forma
+        // uniforme entre inicio y fin porque el coche no dice cuantos kWh
+        // entraron en cada hora.
+        //
+        // Si REE no responde o no hay datos de ese dia, cae al precio fijo:
+        // NUNCA se inventa un precio.
+        p = await Pvpc.precioFranja(
+                DateTime.fromMillisecondsSinceEpoch(c.startTs),
+                DateTime.fromMillisecondsSinceEpoch(c.endTs!)) ??
+            casa;
       } else {
         p = casa;
       }
