@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 
 import 'energy_cost.dart';
+import 'pvpc.dart';
 
 class PriceScreen extends StatefulWidget {
   const PriceScreen({super.key});
@@ -21,6 +22,7 @@ class _PriceScreenState extends State<PriceScreen> {
   String? _error;
   bool _guardado = false;
   bool _pvpc = false;
+  final _dtoCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -29,6 +31,10 @@ class _PriceScreenState extends State<PriceScreen> {
   }
 
   Future<void> _cargar() async {
+    final dto = await Pvpc.descuento();
+    if (dto > 0 && mounted) {
+      _dtoCtrl.text = dto.toString().replaceAll('.', ',');
+    }
     final p = await EnergyPrice.load();
     if (p != null && mounted) {
       _ctrl.text = p.eurKwh.toStringAsFixed(4).replaceAll('.', ',');
@@ -40,6 +46,7 @@ class _PriceScreenState extends State<PriceScreen> {
   @override
   void dispose() {
     _ctrl.dispose();
+    _dtoCtrl.dispose();
     super.dispose();
   }
 
@@ -57,6 +64,11 @@ class _PriceScreenState extends State<PriceScreen> {
       return;
     }
     await EnergyPrice.save(v, pvpc: _pvpc);
+    // El descuento del bono social es del 42,5% y se aplica sobre el total, asi
+    // que sin el las cifras salen casi al doble. La API de Red Electrica no
+    // sabe nada de ayudas personales, hay que restarlo aparte.
+    final dto = double.tryParse(_dtoCtrl.text.replaceAll(',', '.')) ?? 0;
+    await Pvpc.setDescuento(dto.clamp(0, 90));
     if (!mounted) return;
     setState(() {
       _error = null;
@@ -155,6 +167,24 @@ class _PriceScreenState extends State<PriceScreen> {
               style: const TextStyle(fontSize: 12),
             ),
           ),
+          if (_pvpc) ...[
+            TextField(
+              controller: _dtoCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: es
+                    ? 'Descuento sobre la factura (%)'
+                    : 'Discount on the bill (%)',
+                hintText: '42,5',
+                helperText: es
+                    ? 'Bono social u otra ayuda. Dejalo vacio si no tienes ninguna'
+                    : 'Social discount or similar. Leave empty if none',
+                border: const OutlineInputBorder(),
+                suffixText: '%',
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_pvpc)
             Container(
               padding: const EdgeInsets.all(12),
@@ -174,7 +204,10 @@ class _PriceScreenState extends State<PriceScreen> {
                         'nocturna se acerca bastante.\n\n'
                         'De momento solo hay datos de la peninsula. Si no se pueden '
                         'consultar los precios de algun dia, se usara el precio fijo de '
-                        'arriba, que conviene dejar puesto como respaldo.'
+                        'arriba, que conviene dejar puesto como respaldo.\n\n'
+                        'El descuento se resta del precio publicado por Red Electrica. Si '
+                        'la cifra que tu ves en tu comercializadora ya viene descontada, '
+                        'deja el campo vacio para no restarlo dos veces.'
                     : 'Each charge is priced at the average of the hours it took place, '
                         'using the grid operator data.\n\nIt is an approximation: the car '
                         'does not report how many kWh entered each hour, so energy is '
