@@ -43,6 +43,7 @@ import 'energy_cost.dart';
 import 'charge_cost.dart';
 import 'car_log_bridge.dart';
 import 'vehicle_profile.dart';
+import 'maintenance.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1460,6 +1461,15 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   final soc = (s.preciseSoc ?? s.soc?.toDouble())?.toStringAsFixed(1);
   await HomeWidget.saveWidgetData<String>('soc', soc ?? '--');
   await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
+  // Odometro para el widget y el mantenimiento. No viajaba hasta ahora.
+  await HomeWidget.saveWidgetData<String>(
+      'odometro', s.totalMileage?.toString() ?? '');
+  // Aviso de mantenimiento: solo habla cuando queda poco. Un aviso permanente
+  // se deja de mirar.
+  try {
+    await HomeWidget.saveWidgetData<String>(
+        'mant_aviso', await Mantenimiento.aviso(s.totalMileage ?? 0));
+  } catch (_) {}
   await HomeWidget.saveWidgetData<String>('locked', s.isLocked ? '1' : '0');
   await HomeWidget.saveWidgetData<String>('updated', 'Actualizado ${TimeOfDay.now().format24Hour()}');
   // Marca de tiempo cruda para poder decir "hace N min". Con el TCU

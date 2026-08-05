@@ -10,6 +10,7 @@ import 'cert_import_screen.dart';
 import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
+import 'maintenance_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -80,6 +81,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final c = await hasClientCert();
                     if (mounted) setState(() => _hasCert = c);
                   },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.build_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Mantenimiento'
+                      : 'Maintenance'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Revisiones segun el manual del coche'
+                      : 'Servicing intervals from the manual'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const MaintenanceScreen())),
                 ),
                 const Divider(),
                 ListTile(

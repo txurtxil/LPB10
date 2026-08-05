@@ -132,8 +132,10 @@ class QuickWidgetProvider : AppWidgetProvider() {
         // "todo bien" deja de mirarse.
         val avisos = ArrayList<String>()
         val ruedasMal = (p.getString("tireAlerts", "") ?: "").split("|").filter { it.isNotEmpty() }
+        val mant = p.getString("mant_aviso", "") ?: ""
         if (ruedasMal.isNotEmpty()) avisos.add("Presion: " + ruedasMal.joinToString(", "))
         if (locked == "0") avisos.add("El coche esta abierto")
+        if (mant.isNotEmpty()) avisos.add(mant)
         if (avisos.isEmpty()) {
             v.setViewVisibility(R.id.qw_alert, View.GONE)
         } else {
@@ -165,13 +167,19 @@ class QuickWidgetProvider : AppWidgetProvider() {
         v.setOnClickPendingIntent(R.id.qw_clima,
             HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("lmb10://action?cmd=heat")))
 
-        // Abren la app: Android las retiene tras el keyguard
-        v.setOnClickPendingIntent(R.id.qw_openall, HomeWidgetLaunchIntent.getActivity(
-            context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=openall")))
-        v.setOnClickPendingIntent(R.id.qw_unlock, HomeWidgetLaunchIntent.getActivity(
-            context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=unlock")))
-        v.setOnClickPendingIntent(R.id.qw_trunk, HomeWidgetLaunchIntent.getActivity(
-            context, MainActivity::class.java, Uri.parse("lmb10://action?cmd=trunk")))
+        // Estos tres abren fisicamente el coche. Van tambien por segundo plano:
+        // el widget no se usa en la pantalla de bloqueo, asi que no hay motivo
+        // para forzar el desbloqueo. El ambar sigue marcandolos como acciones
+        // que abren el vehiculo.
+        v.setOnClickPendingIntent(R.id.qw_openall,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=openall")))
+        v.setOnClickPendingIntent(R.id.qw_unlock,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=unlock")))
+        v.setOnClickPendingIntent(R.id.qw_trunk,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=trunk")))
 
         v.setOnClickPendingIntent(R.id.qw_trunk_close,
             HomeWidgetBackgroundIntent.getBroadcast(
