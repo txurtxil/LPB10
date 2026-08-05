@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
+import 'history_archive.dart';
 
 /// Copia de seguridad automatica del historico a una carpeta accesible.
 /// Ruta: /Android/data/com.txurtxil.lpb10/files/backups/ (sin permisos).
@@ -60,6 +61,7 @@ class BackupHelper {
     return <String, dynamic>{
       'version': 1,
       'exportedAt': DateTime.now().toIso8601String(),
+      'ajustes': await ajustesParaBackup(),
       'tripPoints': trips,
       'chargeSessions': charges,
     };

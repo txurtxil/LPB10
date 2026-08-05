@@ -199,6 +199,9 @@ const _kAjustes = <String>[
   'lm_mantenimiento_v1',
 ];
 
+/// Version publica de _leerAjustes, para la exportacion de backup_helper.
+Future<Map<String, String>> ajustesParaBackup() => _leerAjustes();
+
 Future<Map<String, String>> _leerAjustes() async {
   const st = FlutterSecureStorage();
   final out = <String, String>{};
