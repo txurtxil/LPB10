@@ -5,13 +5,13 @@
 // resumen de medias. Objetivo: ver de un vistazo que dias te pasas del
 // objetivo de 15,6 kWh/100 (= 430 km por carga) para mejorar el consumo.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
+import 'charge_cost.dart';
+import 'daily_stats.dart';
+import 'energy_cost.dart';
 import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
 // Copias privadas que se quedaron fuera del perfil de vehiculo (ver
@@ -20,111 +20,211 @@ double get kTicketBatteryKwh => gBatteryKwh;
 double get kTicketMaxRangeKm => gMaxRangeKm;
 final double kTicketTarget = kTicketBatteryKwh / kTicketMaxRangeKm * 100.0; // 15,6
 
-const _tStorage = FlutterSecureStorage();
 const int _cols = 32;
 
-class DayEff {
-  final DateTime day;
-  double km = 0;
-  double socDrop = 0;
-  double chargedKwh = 0;
-  DayEff(this.day);
-  double? get kwh100 {
-    if (km <= 0 || socDrop <= 0) return null;
-    // Red de seguridad: un dia con consumo implausible no se imprime.
-    final pct = socDrop / km * 100;
-    if (pct < 12.0 || pct > 70.0) return null;
-    return socDrop * kTicketBatteryKwh / km;
-  }
-}
 
-/// Construye el texto del ticket para el rango [from, to] (inclusive por dia).
+/// Informe de eficiencia y coste para el rango [from, to], inclusive por dia.
+///
+/// Reescrito para que sirva como justificante: identifica el vehiculo y el
+/// periodo, detalla cargas y coste, y lleva notas metodologicas al pie. Sin
+/// esas notas, cualquiera que revise el documento puede rebatirlo.
+///
+/// Antes leia las cargas de 'lm_charge_history_v1', el almacen de la deteccion
+/// en vivo que NUNCA llego a funcionar, asi que siempre imprimia "Cargas: 0".
+/// Ahora usa ChargeRebuild.fromTrips() como el resto de la app.
 Future<String> buildEfficiencyTicket({
   required DateTime from,
   required DateTime to,
   String? nickname,
 }) async {
-  final days = await _computeDays(from, to);
-  final b = StringBuffer();
+  final agg = await DailyStats.load();
+  final d0 = DateTime(from.year, from.month, from.day);
+  final d1 = DateTime(to.year, to.month, to.day);
+  final desde = DailyStats.dayKey(d0);
+  final hasta = DailyStats.dayKey(d1);
+  final dias = agg.where((a) => a.d.compareTo(desde) >= 0 && a.d.compareTo(hasta) <= 0)
+      .toList()
+    ..sort((a, b) => a.d.compareTo(b.d));
 
+  final precios = await preciosPorDia();
+  final tot = totalizar(dias, precios);
+
+  final todasCargas = await ChargeRebuild.fromTrips();
+  final costes = await ChargeCostStore.loadAll();
+  final cargas = todasCargas.where((c) {
+    final t = DateTime.fromMillisecondsSinceEpoch(c.endTs);
+    return !DateTime(t.year, t.month, t.day).isBefore(d0) &&
+        !DateTime(t.year, t.month, t.day).isAfter(d1);
+  }).toList();
+
+  final b = StringBuffer();
   String line(String s) => s.length > _cols ? s.substring(0, _cols) : s;
   String center(String s) {
     if (s.length >= _cols) return s.substring(0, _cols);
-    final pad = (_cols - s.length) ~/ 2;
-    return ' ' * pad + s;
+    return ' ' * ((_cols - s.length) ~/ 2) + s;
   }
-
   String sep() => '-' * _cols;
+  String sep2() => '=' * _cols;
   String dm(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+      d.day.toString().padLeft(2, '0') + '/' + d.month.toString().padLeft(2, '0');
+  String dmy(DateTime d) => dm(d) + '/' + d.year.toString();
 
-  b.writeln(center('LMB10  EFICIENCIA'));
+  final ahora = DateTime.now();
+
+  // ---------- IDENTIFICACION ----------
+  b.writeln(center('INFORME DE USO Y COSTE'));
+  b.writeln(center('VEHICULO ELECTRICO'));
   if (nickname != null && nickname.trim().isNotEmpty) {
     b.writeln(center(nickname.trim()));
   }
-  b.writeln(sep());
-  b.writeln(line('Ciclo: ${dm(from)} a ${dm(to)}'));
-  b.writeln(line('Objetivo: ${_d1(kTicketTarget)} kWh/100'));
-  b.writeln(line('          (= ' + kTicketMaxRangeKm.round().toString() + ' km/carga)'));
-  b.writeln(sep());
+  b.writeln(sep2());
+  b.writeln(_kv('Periodo:', dm(d0) + ' a ' + dm(d1)));
+  b.writeln(_kv('Dias:', (d1.difference(d0).inDays + 1).toString()));
+  b.writeln(_kv('Bateria:', _d1(kTicketBatteryKwh) + ' kWh'));
+  b.writeln(_kv('Autonomia cat.:', kTicketMaxRangeKm.round().toString() + ' km'));
+  b.writeln(_kv('Objetivo:', _d1(kTicketTarget) + ' kWh/100'));
+  b.writeln(sep2());
   b.writeln('');
 
-  final withData = days.where((d) => d.kwh100 != null).toList();
-  final maxVal = withData.isEmpty
-      ? kTicketTarget
-      : withData.map((d) => d.kwh100!).reduce((a, x) => a > x ? a : x);
-  const barMax = 8;
+  // ---------- CONSUMO POR DIA ----------
+  b.writeln(line('CONSUMO DIARIO'));
+  b.writeln(sep());
 
-  var totalKm = 0.0, totalDrop = 0.0, totalCharged = 0.0, charges = 0;
-  DayEff? best, worst;
-
-  for (final d in days) {
-    final v = d.kwh100;
-    if (d.chargedKwh > 0.05) {
-      totalCharged += d.chargedKwh;
-      charges++;
+  final conDato = <DayAgg>[];
+  for (final a in dias) {
+    if (a.km >= DailyStats.kMinKm && a.soc > 0) {
+      final v = a.soc / a.km * 100.0;
+      if (v >= DailyStats.kSegMin && v <= DailyStats.kSegMax) conDato.add(a);
     }
-    if (v == null) {
-      b.writeln(line('${dm(d.day)}        --'));
+  }
+  double kwh100De(DayAgg a) => a.soc / a.km * gBatteryKwh;
+
+  final maxVal = conDato.isEmpty
+      ? kTicketTarget
+      : conDato.map(kwh100De).reduce((x, y) => x > y ? x : y);
+  const barMax = 7;
+
+  DayAgg? mejor, peor;
+  for (final a in dias) {
+    final dt = DateTime.tryParse(a.d);
+    final et = dt == null ? a.d : dm(dt);
+    if (!conDato.contains(a)) {
+      b.writeln(line(et + '            --'));
       continue;
     }
-    totalKm += d.km;
-    totalDrop += d.socDrop;
-    best = (best == null || v < best!.kwh100!) ? d : best;
-    worst = (worst == null || v > worst!.kwh100!) ? d : worst;
-
+    final v = kwh100De(a);
+    mejor = (mejor == null || v < kwh100De(mejor)) ? a : mejor;
+    peor = (peor == null || v > kwh100De(peor)) ? a : peor;
     final blocks = maxVal <= 0 ? 0 : (v / maxVal * barMax).round().clamp(0, barMax);
     final bar = '\u2588' * blocks + ' ' * (barMax - blocks);
-    final over = v > kTicketTarget ? '>' : ' ';
-    b.writeln(line('${dm(d.day)} $bar ${_pad5(v)}$over'));
+    b.writeln(line(et + ' ' + bar + ' ' + _pad5(v) + (v > kTicketTarget ? '>' : ' ')));
+  }
+  b.writeln(line('> = por encima del objetivo'));
+  b.writeln('');
+
+  // ---------- RESUMEN ----------
+  b.writeln(line('RESUMEN DEL PERIODO'));
+  b.writeln(sep());
+  b.writeln(_kv('Distancia:', tot.km.round().toString() + ' km'));
+  b.writeln(_kv('Energia:', _d1(tot.kwh) + ' kWh'));
+  final media = tot.km > 0 ? tot.kwh / tot.km * 100.0 : null;
+  b.writeln(_kv('Consumo medio:', media == null ? '--' : _d1(media) + ' kWh/100'));
+  if (media != null) {
+    final desv = (media - kTicketTarget) / kTicketTarget * 100.0;
+    b.writeln(_kv('Frente a objetivo:',
+        (desv >= 0 ? '+' : '') + _d1(desv) + ' %'));
+    b.writeln(_kv('Autonomia real:',
+        (kTicketBatteryKwh / media * 100).round().toString() + ' km'));
+  }
+  if (mejor != null) {
+    final dt = DateTime.tryParse(mejor.d);
+    b.writeln(_kv('Mejor dia:',
+        (dt == null ? mejor.d : dm(dt)) + '  ' + _d1(kwh100De(mejor))));
+  }
+  if (peor != null) {
+    final dt = DateTime.tryParse(peor.d);
+    b.writeln(_kv('Peor dia:',
+        (dt == null ? peor.d : dm(dt)) + '  ' + _d1(kwh100De(peor))));
+  }
+  b.writeln('');
+
+  // ---------- CARGAS ----------
+  b.writeln(line('CARGAS DEL PERIODO'));
+  b.writeln(sep());
+  if (cargas.isEmpty) {
+    b.writeln(line('Sin cargas registradas.'));
+  } else {
+    var kwhCargado = 0.0, pagado = 0.0;
+    var hayImporte = false;
+    for (final c in cargas) {
+      final t = DateTime.fromMillisecondsSinceEpoch(c.endTs);
+      final k = c.kwh;
+      kwhCargado += k;
+      final m = costes[c.startTs];
+      String imp = '';
+      if (m != null && m.eur != null) {
+        pagado += m.eur!;
+        hayImporte = true;
+        imp = _d2(m.eur!) + 'E';
+      } else {
+        final pr = precios[DailyStats.dayKey(t)];
+        if (pr != null) {
+          pagado += k * pr;
+          hayImporte = true;
+          imp = '~' + _d2(k * pr) + 'E';
+        }
+      }
+      b.writeln(line(dm(t) + '  ' +
+          c.startSoc.round().toString().padLeft(3) + '>' +
+          c.endSoc.round().toString().padLeft(3) + '%  ' +
+          (_d1(k) + 'kWh').padLeft(9)));
+      if (imp.isNotEmpty) b.writeln(_kv('', imp));
+    }
+    b.writeln(sep());
+    b.writeln(_kv('Sesiones:', cargas.length.toString()));
+    b.writeln(_kv('Energia cargada:', _d1(kwhCargado) + ' kWh'));
+    if (hayImporte) b.writeln(_kv('Importe:', _d2(pagado) + ' EUR'));
+  }
+  b.writeln('');
+
+  // ---------- COSTE ----------
+  if (tot.hayEur && tot.km > 0) {
+    b.writeln(line('COSTE DE USO'));
+    b.writeln(sep());
+    b.writeln(_kv('Coste energia:', _d2(tot.eur) + ' EUR'));
+    final eurKm = tot.eur / tot.km;
+    b.writeln(_kv('Coste por km:', _d3(eurKm) + ' EUR/km'));
+    b.writeln(_kv('Coste por 100km:', _d2(eurKm * 100) + ' EUR'));
+    // Referencia: un termico equivalente a 7 l/100 y 1,55 EUR/l son 10,85
+    // EUR/100 km. Sirve para dimensionar el ahorro, no es una medida.
+    const refTermico = 10.85;
+    final ahorro = (refTermico - eurKm * 100) / 100.0 * tot.km;
+    if (ahorro > 0) {
+      b.writeln(_kv('Ahorro estimado:', _d2(ahorro) + ' EUR'));
+      b.writeln(line('  (vs. termico 7 l/100 a 1,55)'));
+    }
+    b.writeln('');
   }
 
-  b.writeln('');
+  // ---------- NOTAS ----------
   b.writeln(sep());
-  final mediaAll = totalKm > 0 && totalDrop > 0
-      ? totalDrop * kTicketBatteryKwh / totalKm
-      : null;
-  b.writeln(_kv('Media kWh/100:', mediaAll == null ? '--' : _d1(mediaAll)));
-  if (mediaAll != null) {
-    final estKm = (kTicketBatteryKwh / mediaAll * 100).round();
-    b.writeln(_kv('Autonomia real:', '$estKm km'));
-    final verdict = mediaAll <= kTicketTarget ? 'DENTRO objetivo' : 'SOBRE objetivo';
-    b.writeln(_kv('Estado:', verdict));
-  }
-  if (best != null) {
-    b.writeln(_kv('Mejor dia:', '${dm(best!.day)} ${_d1(best!.kwh100!)}'));
-  }
-  if (worst != null) {
-    b.writeln(_kv('Peor dia:', '${dm(worst!.day)} ${_d1(worst!.kwh100!)}'));
-  }
-  b.writeln(_kv('Total km:', totalKm.round().toString()));
-  final totalKwh = totalDrop / 100.0 * kTicketBatteryKwh;
-  b.writeln(_kv('kWh consumidos:', _d1(totalKwh)));
-  b.writeln(_kv('Cargas:', charges.toString()));
-  if (totalCharged > 0.05) {
-    b.writeln(_kv('kWh cargados:', _d1(totalCharged)));
-  }
+  b.writeln(line('NOTAS'));
+  b.writeln(line('- Energia medida EN BATERIA, no'));
+  b.writeln(line('  en el enchufe. La factura es'));
+  b.writeln(line('  un 12-15% mayor por perdidas'));
+  b.writeln(line('  de carga.'));
+  b.writeln(line('- Las cargas se reconstruyen'));
+  b.writeln(line('  del historico de bateria; el'));
+  b.writeln(line('  fabricante no las publica.'));
+  b.writeln(line('- Importes con ~ son estimados'));
+  b.writeln(line('  con el precio configurado.'));
+  b.writeln(line('- Dias sin datos suficientes'));
+  b.writeln(line('  aparecen como --'));
   b.writeln(sep());
+  b.writeln(line('Emitido: ' + dmy(ahora) + ' ' +
+      ahora.hour.toString().padLeft(2, '0') + ':' +
+      ahora.minute.toString().padLeft(2, '0')));
+  b.writeln(line('LMB10 - app no oficial'));
   b.writeln(center('lmb10'));
   b.writeln('');
   b.writeln('');
@@ -133,94 +233,13 @@ Future<String> buildEfficiencyTicket({
 }
 
 String _d1(num v) => v.toStringAsFixed(1).replaceAll('.', ',');
+String _d2(num v) => v.toStringAsFixed(2).replaceAll('.', ',');
+String _d3(num v) => v.toStringAsFixed(3).replaceAll('.', ',');
 String _pad5(double v) => _d1(v).padLeft(5);
 String _kv(String k, String v) {
   final avail = _cols - k.length;
   final val = v.length > avail ? v.substring(0, avail) : v;
-  return k + val.padLeft(_cols - k.length);
-}
-
-Future<List<({int ts, int km, double soc})>> _readPermanentTripsT() async {
-  final out = <({int ts, int km, double soc})>[];
-  try {
-    final base = await getApplicationDocumentsDirectory();
-    final f = File('${base.path}/lmb10_history/trips.jsonl');
-    if (!await f.exists()) return out;
-    for (final line in await f.readAsLines()) {
-      final t = line.trim();
-      if (t.isEmpty) continue;
-      try {
-        final m = Map<String, dynamic>.from(json.decode(t) as Map);
-        if (m['ts'] is int && m['km'] is int && m['soc'] is num) {
-          out.add((ts: m['ts'] as int, km: m['km'] as int, soc: (m['soc'] as num).toDouble()));
-        }
-      } catch (_) {}
-    }
-    out.sort((a, b) => a.ts.compareTo(b.ts));
-  } catch (_) {}
-  return out;
-}
-
-Future<List<DayEff>> _computeDays(DateTime from, DateTime to) async {
-  final chargeRaw = await _tStorage.read(key: 'lm_charge_history_v1');
-
-  var points = await _readPermanentTripsT();
-  if (points.isEmpty) {
-    final tripRaw = await _tStorage.read(key: 'lm_trip_points_v1');
-    if (tripRaw != null) {
-      for (final e in (json.decode(tripRaw) as List)) {
-        final m = Map<String, dynamic>.from(e as Map);
-        points.add((ts: m['ts'] as int, km: m['km'] as int, soc: (m['soc'] as num).toDouble()));
-      }
-    }
-  }
-  final sessions = <({int startTs, int? endTs, double startSoc, double? endSoc})>[];
-  if (chargeRaw != null) {
-    for (final e in (json.decode(chargeRaw) as List)) {
-      final m = Map<String, dynamic>.from(e as Map);
-      sessions.add((
-        startTs: m['startTs'] as int,
-        endTs: m['endTs'] as int?,
-        startSoc: (m['startSoc'] as num).toDouble(),
-        endSoc: (m['endSoc'] as num?)?.toDouble(),
-      ));
-    }
-  }
-
-  final d0 = DateTime(from.year, from.month, from.day);
-  final d1 = DateTime(to.year, to.month, to.day);
-  final map = <String, DayEff>{};
-  final order = <String>[];
-  for (var d = d0; !d.isAfter(d1); d = d.add(const Duration(days: 1))) {
-    final key = '${d.year}-${d.month}-${d.day}';
-    map[key] = DayEff(d);
-    order.add(key);
-  }
-  String keyOf(int ts) {
-    final d = DateTime.fromMillisecondsSinceEpoch(ts);
-    return '${d.year}-${d.month}-${d.day}';
-  }
-
-  for (var i = 1; i < points.length; i++) {
-    final prev = points[i - 1], curr = points[i];
-    final kmDelta = (curr.km - prev.km).toDouble();
-    final socDelta = prev.soc - curr.soc;
-    if (kmDelta <= 0 || socDelta <= 0) continue;
-    // Cordura: descartar solo tramos fisicamente imposibles.
-    final pct = socDelta / kmDelta * 100;
-    if (pct < 8.0 || pct > 70.0) continue;
-    final bar = map[keyOf(curr.ts)];
-    if (bar == null) continue;
-    bar.km += kmDelta;
-    bar.socDrop += socDelta;
-  }
-  for (final s in sessions) {
-    if (s.endTs != null && s.endSoc != null && (s.endSoc! - s.startSoc) >= 1.0) {
-      final bar = map[keyOf(s.endTs!)];
-      if (bar != null) bar.chargedKwh += (s.endSoc! - s.startSoc) / 100.0 * kTicketBatteryKwh;
-    }
-  }
-  return order.map((k) => map[k]!).toList();
+  return k + val.padLeft(avail);
 }
 
 class TicketPrinter {
