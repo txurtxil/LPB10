@@ -154,6 +154,8 @@ Future<String> buildEfficiencyTicket({
   if (cargas.isEmpty) {
     b.writeln(line('Sin cargas registradas.'));
   } else {
+    final cfgPrecio = await EnergyPrice.load();
+    final precioCasa = cfgPrecio?.eurKwh;
     var kwhCargado = 0.0, pagado = 0.0;
     var hayImporte = false;
     for (final c in cargas) {
@@ -162,17 +164,17 @@ Future<String> buildEfficiencyTicket({
       kwhCargado += k;
       final m = costes[c.startTs];
       String imp = '';
-      if (m != null && m.eur != null) {
-        pagado += m.eur!;
+      var estimado = false;
+      final coste = costeCarga(
+        kwhBateria: k,
+        manual: m,
+        precioCasa: precioCasa,
+        marca: (e) => estimado = e,
+      );
+      if (coste != null) {
+        pagado += coste;
         hayImporte = true;
-        imp = _d2(m.eur!) + 'E';
-      } else {
-        final pr = precios[DailyStats.dayKey(t)];
-        if (pr != null) {
-          pagado += k * pr;
-          hayImporte = true;
-          imp = '~' + _d2(k * pr) + 'E';
-        }
+        imp = (estimado ? '~' : '') + _d2(coste) + 'E';
       }
       b.writeln(line(dm(t) + '  ' +
           c.startSoc.round().toString().padLeft(3) + '>' +
