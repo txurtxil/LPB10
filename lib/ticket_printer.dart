@@ -185,7 +185,15 @@ Future<String> buildEfficiencyTicket({
     b.writeln(sep());
     b.writeln(_kv('Sesiones:', cargas.length.toString()));
     b.writeln(_kv('Energia cargada:', _d1(kwhCargado) + ' kWh'));
-    if (hayImporte) b.writeln(_kv('Importe:', _d2(pagado) + ' EUR'));
+    if (hayImporte) b.writeln(_kv('Importe pagado:', _d2(pagado) + ' EUR'));
+    if (kwhCargado > 0 && tot.kwh > 0) {
+      final saldo = kwhCargado - tot.kwh;
+      b.writeln('');
+      b.writeln(line('Cargado ' + _d1(kwhCargado) + ' kWh, consumido'));
+      b.writeln(line(_d1(tot.kwh) + ' kWh. Diferencia de'));
+      b.writeln(line(_d1(saldo.abs()) + ' kWh ' +
+          (saldo >= 0 ? 'que queda en bateria.' : 'que ya estaba en bateria.')));
+    }
   }
   b.writeln('');
 
@@ -193,17 +201,25 @@ Future<String> buildEfficiencyTicket({
   if (tot.hayEur && tot.km > 0) {
     b.writeln(line('COSTE DE USO'));
     b.writeln(sep());
-    b.writeln(_kv('Coste energia:', _d2(tot.eur) + ' EUR'));
+    b.writeln(_kv('Energia consumida:', _d2(tot.eur) + ' EUR'));
     final eurKm = tot.eur / tot.km;
     b.writeln(_kv('Coste por km:', _d3(eurKm) + ' EUR/km'));
     b.writeln(_kv('Coste por 100km:', _d2(eurKm * 100) + ' EUR'));
+    b.writeln('');
+    b.writeln(line('Calculado sobre la energia'));
+    b.writeln(line('consumida en el periodo, no'));
+    b.writeln(line('sobre lo cargado.'));
     // Referencia: un termico equivalente a 7 l/100 y 1,55 EUR/l son 10,85
     // EUR/100 km. Sirve para dimensionar el ahorro, no es una medida.
+    // Referencia orientativa: 7 l/100 a 1,55 EUR/l = 10,85 EUR/100 km.
     const refTermico = 10.85;
     final ahorro = (refTermico - eurKm * 100) / 100.0 * tot.km;
     if (ahorro > 0) {
+      b.writeln('');
       b.writeln(_kv('Ahorro estimado:', _d2(ahorro) + ' EUR'));
-      b.writeln(line('  (vs. termico 7 l/100 a 1,55)'));
+      b.writeln(line('frente a un termico de'));
+      b.writeln(line('7 l/100 km a 1,55 EUR/l'));
+      b.writeln(line('(' + _d2(refTermico) + ' EUR/100 km)'));
     }
     b.writeln('');
   }

@@ -18,6 +18,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'car_log_bridge.dart';
+
 const _pvpcStore = FlutterSecureStorage();
 const _kCache = 'lm_pvpc_cache_v1';
 const _kDto = 'lm_pvpc_dto_v1';
@@ -104,7 +106,7 @@ class Pvpc {
           .get(uri, headers: {'Accept': 'application/json'})
           .timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) {
-        debugPrint('PVPC HTTP ${r.statusCode}');
+        await CarLogBridge.log('PVPC HTTP ${r.statusCode} pidiendo ' + clave);
         return null;
       }
       final body = json.decode(r.body) as Map<String, dynamic>;
@@ -156,14 +158,14 @@ class Pvpc {
       if (porFecha.isNotEmpty) await _guardarCache(c);
 
       if (pedido == null) {
-        debugPrint('PVPC pedido ' + clave + ' pero llegaron ' +
+        await CarLogBridge.log('PVPC pedido ' + clave + ' pero llegaron ' +
             porFecha.keys.join(',') );
         return null;
       }
       final d = pedido;
       return d;
     } catch (e) {
-      debugPrint('PVPC fallo: $e');
+      await CarLogBridge.log('PVPC excepcion pidiendo ' + clave + ': ' + e.toString());
       return null;
     }
   }
@@ -175,13 +177,19 @@ class Pvpc {
   /// asi que no hay forma de hacerlo exacto. Una carga lenta nocturna se acerca
   /// bastante; una rapida que empiece al final de una hora, menos.
   static Future<double?> precioFranja(DateTime ini, DateTime fin) async {
-    if (!fin.isAfter(ini)) return null;
+    if (!fin.isAfter(ini)) {
+      await CarLogBridge.log('PVPC franja invalida');
+      return null;
+    }
     final dias = <String, PvpcDia>{};
     for (var t = DateTime(ini.year, ini.month, ini.day);
         !t.isAfter(DateTime(fin.year, fin.month, fin.day));
         t = t.add(const Duration(days: 1))) {
       final d = await dia(t);
-      if (d == null) return null;
+      if (d == null) {
+        await CarLogBridge.log('PVPC sin datos para ' + _hoy(t));
+        return null;
+      }
       dias[_hoy(t)] = d;
     }
 
@@ -199,10 +207,18 @@ class Pvpc {
       }
       t = corte;
     }
-    if (minutos == 0) return null;
+    if (minutos == 0) {
+      await CarLogBridge.log('PVPC 0 minutos en la franja');
+      return null;
+    }
     final medio = suma / minutos;
     final dto = await descuento();
-    return dto > 0 ? medio * (1 - dto / 100.0) : medio;
+    final res = dto > 0 ? medio * (1 - dto / 100.0) : medio;
+    await CarLogBridge.log('PVPC ok ' + _hoy(ini) + ' ' +
+        ini.hour.toString() + 'h-' + fin.hour.toString() + 'h medio=' +
+        medio.toStringAsFixed(4) + ' dto=' + dto.toString() +
+        ' final=' + res.toStringAsFixed(4));
+    return res;
   }
 
   /// Las N horas mas baratas de manana, para saber cuando enchufar.
