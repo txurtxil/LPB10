@@ -162,10 +162,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     es
                         ? 'Intervalos del manual del vehiculo. El coche no informa de '
                             'sus revisiones, asi que hay que anotar cuando se hizo cada '
-                            'una.\\n\\nSe avisa por lo que ocurra primero, kilometros o '
+                            'una.\n\nSe avisa por lo que ocurra primero, kilometros o '
                             'tiempo, tal como indica el fabricante.'
                         : 'Intervals from the vehicle manual. The car does not report '
-                            'its servicing, so each one must be noted.\\n\\nWhichever '
+                            'its servicing, so each one must be noted.\n\nWhichever '
                             'comes first, distance or time, as the maker states.',
                     style: TextStyle(
                         fontSize: 12,
@@ -189,7 +189,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     child: ListTile(
                       title: Text(es ? e.item.nombre : e.item.nombreEn),
                       subtitle: Text(
-                        _intervalo(e.item, es) + '\\n' + _restante(e, es),
+                        _intervalo(e.item, es) + '\n' + _restante(e, es),
                         style: TextStyle(
                           fontSize: 12,
                           color: e.vencido

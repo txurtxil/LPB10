@@ -139,6 +139,9 @@ Future<bool> exportHistoryAndShare() async {
       'batteryKwh': _haBatteryKwh,
       'tripPoints': trips,
       'chargeSessions': charges,
+      // Ajustes configurados a mano. Sin esto, cambiar de movil o pasar de la
+      // version de GitHub a la de Play obligaba a reconfigurarlo todo.
+      'ajustes': await _leerAjustes(),
     }));
 
     final fT = File('${exDir.path}/LMB10_viajes_$stamp.csv');
@@ -173,6 +176,56 @@ Future<bool> exportHistoryAndShare() async {
 /// Importa un backup JSON generado por "Exportar historico": restaura los
 /// stores de la app (ultimos 200 puntos / 25 cargas) y lo vuelca entero al
 /// archivo permanente. Devuelve el mensaje para el SnackBar.
+/// Claves de configuracion que van en la copia.
+///
+/// NO se incluyen: la sesion, el PIN ni el certificado (son credenciales, y
+/// meterlas en un fichero que se comparte por mensajeria seria un problema de
+/// seguridad), ni la cache de precios PVPC ni la de direcciones (se rehacen
+/// solas y ocuparian de mas).
+const _kAjustes = <String>[
+  'lm_profile_id_v1',
+  'lm_profile_kwh_v1',
+  'lm_profile_range_v1',
+  'lm_tyre_size_v1',
+  'lm_tyre_bar_v1',
+  'lm_tyre_size_r_v1',
+  'lm_tyre_bar_r_v1',
+  'lm_energy_price_v1',
+  'lm_charge_costs_v1',
+  'lm_pvpc_dto_v1',
+  'lm_carga_ventana_v1',
+  'lm_term_litros_v1',
+  'lm_term_precio_v1',
+  'lm_mantenimiento_v1',
+];
+
+Future<Map<String, String>> _leerAjustes() async {
+  const st = FlutterSecureStorage();
+  final out = <String, String>{};
+  for (final k in _kAjustes) {
+    try {
+      final v = await st.read(key: k);
+      if (v != null && v.isNotEmpty) out[k] = v;
+    } catch (_) {}
+  }
+  return out;
+}
+
+Future<int> _escribirAjustes(Map<String, dynamic> m) async {
+  const st = FlutterSecureStorage();
+  var n = 0;
+  for (final k in _kAjustes) {
+    final v = m[k];
+    if (v is String && v.isNotEmpty) {
+      try {
+        await st.write(key: k, value: v);
+        n++;
+      } catch (_) {}
+    }
+  }
+  return n;
+}
+
 Future<String> importHistoryBackup() async {
   try {
     const grupo = XTypeGroup(label: 'Backup JSON', extensions: ['json']);
@@ -191,7 +244,18 @@ Future<String> importHistoryBackup() async {
         .where((m) => m['startTs'] is int && m['startSoc'] is num)
         .toList()
       ..sort((a, b) => (a['startTs'] as int).compareTo(b['startTs'] as int));
-    if (tp.isEmpty && ch.isEmpty) return 'Backup sin datos reconocibles';
+    // Los ajustes se restauran aunque el backup no traiga historico: puede
+    // venir de una instalacion recien configurada.
+    var nAj = 0;
+    final aj = map['ajustes'];
+    if (aj is Map) {
+      nAj = await _escribirAjustes(Map<String, dynamic>.from(aj));
+    }
+    if (tp.isEmpty && ch.isEmpty) {
+      return nAj > 0
+          ? 'Restaurados $nAj ajustes. El backup no traia historico.'
+          : 'Backup sin datos reconocibles';
+    }
 
     // Deduplicacion contra lo que YA hay en disco.
     //
