@@ -126,27 +126,41 @@ class Pvpc {
           as Map?)?['values']) as List?;
       if (valores == null || valores.isEmpty) return null;
 
-      final horas = List<double>.filled(24, 0);
-      var vistas = 0;
+      // El endpoint es de TIEMPO REAL: puede devolver el dia siguiente aunque
+      // se pida otro. Cada valor se archiva bajo la fecha de su propio
+      // datetime, no bajo la que se pidio.
+      final porFecha = <String, List<double>>{};
+      final vistasPorFecha = <String, int>{};
       for (final v in valores) {
         final m = Map<String, dynamic>.from(v as Map);
         final ts = DateTime.tryParse((m['datetime'] ?? '').toString());
         final val = m['value'];
         if (ts == null || val is! num) continue;
-        final h = ts.toLocal().hour;
-        // Verificado en la sonda del 03/08: value viene en EUR/MWh
-        // (184,11 = 0,18411 EUR/kWh) y datetime trae el desfase local.
-        horas[h] = val.toDouble() / 1000.0;
-        vistas++;
-      }
-      if (vistas < 20) {
-        debugPrint('PVPC solo $vistas horas, se descarta');
-        return null;
+        final local = ts.toLocal();
+        final k = _hoy(local);
+        porFecha.putIfAbsent(k, () => List<double>.filled(24, 0));
+        // REData da EUR/MWh.
+        porFecha[k]![local.hour] = val.toDouble() / 1000.0;
+        vistasPorFecha[k] = (vistasPorFecha[k] ?? 0) + 1;
       }
 
-      final d = PvpcDia(clave, horas);
-      c[clave] = d;
-      await _guardarCache(c);
+      // Se cachean TODOS los dias que hayan venido, no solo el pedido: si la
+      // respuesta trae el de manana, aprovecharlo evita otra peticion.
+      PvpcDia? pedido;
+      for (final e in porFecha.entries) {
+        if ((vistasPorFecha[e.key] ?? 0) < 20) continue;
+        final dd = PvpcDia(e.key, e.value);
+        c[e.key] = dd;
+        if (e.key == clave) pedido = dd;
+      }
+      if (porFecha.isNotEmpty) await _guardarCache(c);
+
+      if (pedido == null) {
+        debugPrint('PVPC pedido ' + clave + ' pero llegaron ' +
+            porFecha.keys.join(',') );
+        return null;
+      }
+      final d = pedido;
       return d;
     } catch (e) {
       debugPrint('PVPC fallo: $e');
