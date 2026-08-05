@@ -23,6 +23,10 @@ class _PriceScreenState extends State<PriceScreen> {
   bool _guardado = false;
   bool _pvpc = false;
   final _dtoCtrl = TextEditingController();
+  final _ventIniCtrl = TextEditingController();
+  final _ventFinCtrl = TextEditingController();
+  final _litrosCtrl = TextEditingController();
+  final _combCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -31,6 +35,21 @@ class _PriceScreenState extends State<PriceScreen> {
   }
 
   Future<void> _cargar() async {
+    final vent = await Pvpc.ventana();
+    if (vent.contains('-') && mounted) {
+      final p2 = vent.split('-');
+      _ventIniCtrl.text = p2[0];
+      _ventFinCtrl.text = p2[1];
+    }
+    final term = await Pvpc.termico();
+    if (mounted) {
+      if (term.litros > 0) {
+        _litrosCtrl.text = term.litros.toString().replaceAll('.', ',');
+      }
+      if (term.precio > 0) {
+        _combCtrl.text = term.precio.toString().replaceAll('.', ',');
+      }
+    }
     final dto = await Pvpc.descuento();
     if (dto > 0 && mounted) {
       _dtoCtrl.text = dto.toString().replaceAll('.', ',');
@@ -47,6 +66,10 @@ class _PriceScreenState extends State<PriceScreen> {
   void dispose() {
     _ctrl.dispose();
     _dtoCtrl.dispose();
+    _ventIniCtrl.dispose();
+    _ventFinCtrl.dispose();
+    _litrosCtrl.dispose();
+    _combCtrl.dispose();
     super.dispose();
   }
 
@@ -69,6 +92,13 @@ class _PriceScreenState extends State<PriceScreen> {
     // sabe nada de ayudas personales, hay que restarlo aparte.
     final dto = double.tryParse(_dtoCtrl.text.replaceAll(',', '.')) ?? 0;
     await Pvpc.setDescuento(dto.clamp(0, 90));
+    final vi = _ventIniCtrl.text.trim();
+    final vf = _ventFinCtrl.text.trim();
+    await Pvpc.setVentana(
+        (vi.contains(':') && vf.contains(':')) ? vi + '-' + vf : '');
+    await Pvpc.setTermico(
+        double.tryParse(_litrosCtrl.text.replaceAll(',', '.')) ?? 0,
+        double.tryParse(_combCtrl.text.replaceAll(',', '.')) ?? 0);
     if (!mounted) return;
     setState(() {
       _error = null;
@@ -168,6 +198,46 @@ class _PriceScreenState extends State<PriceScreen> {
             ),
           ),
           if (_pvpc) ...[
+            Text(es ? 'Cuando cargas habitualmente' : 'When you usually charge',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(
+              es
+                  ? 'La app no puede saber a que hora cargaste: el coche deja de '
+                      'responder al poco de aparcarlo, asi que solo ve el antes y el '
+                      'despues. Si nos dices tu franja, el precio se calcula con las '
+                      'horas correctas.'
+                  : 'The app cannot know when you charged: the car stops responding '
+                      'shortly after parking, so it only sees before and after.',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ventIniCtrl,
+                    decoration: InputDecoration(
+                      labelText: es ? 'Desde' : 'From',
+                      hintText: '00:00',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _ventFinCtrl,
+                    decoration: InputDecoration(
+                      labelText: es ? 'Hasta' : 'To',
+                      hintText: '08:00',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _dtoCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -232,6 +302,57 @@ class _PriceScreenState extends State<PriceScreen> {
                 ? 'La app mide la energia que hay en la bateria del coche, no la que pasa por tu contador. Cargar no es gratis en energia: entre el enchufe y la bateria se pierde alrededor de un 12% en forma de calor.\n\nEso significa que el coste que ves aqui es algo menor que el de tu factura. Es intencionado: mide lo que el coche realmente usa para moverse. Si quieres una estimacion de lo que pagas, sumale un 12% a ojo.'
                 : 'The app measures the energy in the car battery, not what goes through your meter. Charging is not free: around 12% is lost as heat between the socket and the battery.\n\nSo the cost shown here is somewhat lower than your bill. That is deliberate: it measures what the car actually uses to move. For a rough idea of what you pay, add about 12%.',
           ),
+          const Divider(height: 32),
+          Text(es ? 'Comparar con un termico' : 'Compare with a petrol car',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(
+            es
+                ? 'Si vienes de un diesel o gasolina, indica lo que gastaba y lo que '
+                    'cuesta el combustible. El informe calculara el ahorro con tus '
+                    'cifras en vez de con una referencia generica.'
+                : 'Coming from a petrol or diesel car? Enter its consumption and fuel '
+                    'price and the report will use your own figures.',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _litrosCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: es ? 'Consumo' : 'Consumption',
+                    hintText: '6,5',
+                    suffixText: 'l/100',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _combCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: es ? 'Precio' : 'Price',
+                    hintText: '1,55',
+                    suffixText: '\u20AC/l',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            es
+                ? 'Se guarda al pulsar Guardar, arriba.'
+                : 'Saved with the Save button above.',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
           _bloque(
             es ? 'Un solo precio, de momento' : 'A single price, for now',
             es

@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'charge_cost.dart';
 import 'daily_stats.dart';
 import 'energy_cost.dart';
+import 'pvpc.dart';
 import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
 // Copias privadas que se quedaron fuera del perfil de vehiculo (ver
@@ -211,15 +212,28 @@ Future<String> buildEfficiencyTicket({
     b.writeln(line('sobre lo cargado.'));
     // Referencia: un termico equivalente a 7 l/100 y 1,55 EUR/l son 10,85
     // EUR/100 km. Sirve para dimensionar el ahorro, no es una medida.
-    // Referencia orientativa: 7 l/100 a 1,55 EUR/l = 10,85 EUR/100 km.
-    const refTermico = 10.85;
-    final ahorro = (refTermico - eurKm * 100) / 100.0 * tot.km;
-    if (ahorro > 0) {
+    // Cifras del termico que el usuario tenia antes, si las indico. Una
+    // referencia generica no vale: un diesel de 5 l y un gasolina de 8 dan
+    // ahorros muy distintos.
+    final term = await Pvpc.termico();
+    if (term.litros > 0 && term.precio > 0) {
+      final ref100 = term.litros * term.precio;
+      final ahorro = (ref100 - eurKm * 100) / 100.0 * tot.km;
       b.writeln('');
-      b.writeln(_kv('Ahorro estimado:', _d2(ahorro) + ' EUR'));
-      b.writeln(line('frente a un termico de'));
-      b.writeln(line('7 l/100 km a 1,55 EUR/l'));
-      b.writeln(line('(' + _d2(refTermico) + ' EUR/100 km)'));
+      b.writeln(line('COMPARATIVA'));
+      b.writeln(sep());
+      b.writeln(_kv('Termico ref.:', _d1(term.litros) + ' l/100'));
+      b.writeln(_kv('Combustible:', _d3(term.precio) + ' EUR/l'));
+      b.writeln(_kv('Termico 100km:', _d2(ref100) + ' EUR'));
+      b.writeln(_kv('Electrico 100km:', _d2(eurKm * 100) + ' EUR'));
+      b.writeln(sep());
+      if (ahorro > 0) {
+        b.writeln(_kv('AHORRO:', _d2(ahorro) + ' EUR'));
+        b.writeln(_kv('Litros no gastados:',
+            _d1(term.litros * tot.km / 100.0) + ' l'));
+      } else {
+        b.writeln(_kv('Sobrecoste:', _d2(-ahorro) + ' EUR'));
+      }
     }
     b.writeln('');
   }

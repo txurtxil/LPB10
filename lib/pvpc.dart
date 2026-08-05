@@ -23,6 +23,9 @@ import 'car_log_bridge.dart';
 const _pvpcStore = FlutterSecureStorage();
 const _kCache = 'lm_pvpc_cache_v1';
 const _kDto = 'lm_pvpc_dto_v1';
+const _kVentana = 'lm_carga_ventana_v1';
+const _kTermLitros = 'lm_term_litros_v1';
+const _kTermPrecio = 'lm_term_precio_v1';
 
 /// SOLO PENINSULA. El parametro geo_limit no altera la respuesta de este
 /// endpoint. Para Canarias, Baleares o Ceuta y Melilla haria falta otra
@@ -57,6 +60,33 @@ class Pvpc {
 
   static Future<void> setDescuento(double pct) =>
       _pvpcStore.write(key: _kDto, value: pct.toString());
+
+  /// Ventana habitual de carga, "HH:MM-HH:MM", o vacio si no se usa.
+  ///
+  /// Hace falta porque la app NO sabe a que hora se cargo: el TCU duerme a los
+  /// ~13 minutos, asi que entre la ultima muestra de la tarde y la primera de
+  /// la manana no hay nada. Los timestamps de una carga son los de esas dos
+  /// observaciones, no los de la carga real. Promediar precios de esa franja
+  /// mete horas en las que el coche no estaba cargando y da precios absurdos
+  /// (se vieron medias de 0,01 EUR/kWh).
+  ///
+  /// Con la ventana declarada por el usuario se promedian SOLO sus horas.
+  static Future<String> ventana() async =>
+      (await _pvpcStore.read(key: _kVentana)) ?? '';
+
+  static Future<void> setVentana(String v) =>
+      _pvpcStore.write(key: _kVentana, value: v);
+
+  /// Consumo y precio del termico con el que comparar, para el informe.
+  static Future<({double litros, double precio})> termico() async => (
+        litros: double.tryParse(await _pvpcStore.read(key: _kTermLitros) ?? '') ?? 0,
+        precio: double.tryParse(await _pvpcStore.read(key: _kTermPrecio) ?? '') ?? 0,
+      );
+
+  static Future<void> setTermico(double litros, double precio) async {
+    await _pvpcStore.write(key: _kTermLitros, value: litros.toString());
+    await _pvpcStore.write(key: _kTermPrecio, value: precio.toString());
+  }
 
   static Future<Map<String, PvpcDia>> _cache() async {
     try {
@@ -180,6 +210,25 @@ class Pvpc {
     if (!fin.isAfter(ini)) {
       await CarLogBridge.log('PVPC franja invalida');
       return null;
+    }
+
+    // Si el usuario ha declarado su ventana de carga, se usa esa en vez de la
+    // franja observada: los timestamps de la carga son cuando la app se
+    // entero, no cuando el coche cargaba. Ver el comentario de ventana().
+    final vent = await ventana();
+    if (vent.contains('-')) {
+      final p2 = vent.split('-');
+      final h1 = int.tryParse(p2[0].split(':').first);
+      final h2 = int.tryParse(p2[1].split(':').first);
+      if (h1 != null && h2 != null && h1 != h2) {
+        final base = DateTime(ini.year, ini.month, ini.day);
+        ini = base.add(Duration(hours: h1));
+        // Ventana que cruza medianoche: la de fin es del dia siguiente.
+        fin = h2 > h1
+            ? base.add(Duration(hours: h2))
+            : base.add(Duration(days: 1, hours: h2));
+        await CarLogBridge.log('PVPC usando ventana ' + vent);
+      }
     }
     final dias = <String, PvpcDia>{};
     for (var t = DateTime(ini.year, ini.month, ini.day);
