@@ -573,50 +573,12 @@ Future<void> widgetActionCallback(Uri? uri) async {
   if (cmd == null) return;
   await CarLogBridge.log('VIA-FONDO ' + cmd);
 
-  // Doble toque para lo que abre el coche: el primero arma, el segundo
-  // ejecuta. Un toque accidental en el escritorio ya no deja el coche abierto.
+  // Defensa en profundidad: lo que abre el coche NUNCA se ejecuta por la via
+  // de fondo. Va por HomeWidgetLaunchIntent, detras del keyguard. Si algo
+  // emite uno de estos por fondo, es un bug: se registra y se descarta.
   if (const ['unlock', 'trunk', 'openall'].contains(cmd)) {
-    final ahora = DateTime.now().millisecondsSinceEpoch;
-    if (gWidgetArmado != cmd || ahora - gWidgetArmadoTs > 8000) {
-      gWidgetArmado = cmd;
-      gWidgetArmadoTs = ahora;
-      var aviso2 = 'Pulsa otra vez';
-      // La distancia AVISA, no bloquea: el GPS del coche puede llevar horas
-      // sin refrescarse y bloquear dejaria al usuario sin abrir su coche
-      // estando delante de el.
-      try {
-        final lat = double.tryParse(
-            await HomeWidget.getWidgetData<String>('lat') ?? '');
-        final lon = double.tryParse(
-            await HomeWidget.getWidgetData<String>('lon') ?? '');
-        if (lat != null && lon != null) {
-          final pos = await Geolocator.getLastKnownPosition();
-          if (pos != null) {
-            final m = Geolocator.distanceBetween(
-                pos.latitude, pos.longitude, lat, lon);
-            if (m > 300) {
-              aviso2 = m > 1500
-                  ? 'A ' + (m / 1000).toStringAsFixed(1) + ' km. Confirmar?'
-                  : 'A ' + m.round().toString() + ' m. Confirmar?';
-            }
-          }
-        }
-      } catch (_) {}
-      await CarLogBridge.log('widget armado: ' + cmd);
-      try {
-        await HomeWidget.saveWidgetData<String>('qw_status', aviso2);
-        await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
-        await Future.delayed(const Duration(seconds: 8));
-        if (gWidgetArmado == cmd && gWidgetArmadoTs == ahora) {
-          gWidgetArmado = null;
-          await HomeWidget.saveWidgetData<String>('qw_status', '');
-          await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
-        }
-      } catch (_) {}
-      return;
-    }
-    gWidgetArmado = null;
-    await CarLogBridge.log('widget confirmado: ' + cmd);
+    await CarLogBridge.log('RECHAZADO por via de fondo: ' + cmd);
+    return;
   }
   // El comando tarda: hay que verificar el PIN contra el servidor y luego
   // esperar al resultado. Sin aviso, el widget parece roto.

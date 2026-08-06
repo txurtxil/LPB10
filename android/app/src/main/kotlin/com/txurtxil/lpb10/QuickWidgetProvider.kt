@@ -37,17 +37,6 @@ import es.antonborri.home_widget.HomeWidgetPlugin
  */
 class QuickWidgetProvider : AppWidgetProvider() {
 
-    companion object {
-        /// Accion armada a la espera de confirmacion. En memoria a proposito:
-        /// si el proceso muere se desarma, que es el comportamiento seguro.
-        var armadaCmd: String? = null
-        var armadaTs: Long = 0
-        const val VENTANA_MS = 8000L
-
-        fun estaArmada(cmd: String): Boolean =
-            armadaCmd == cmd && System.currentTimeMillis() - armadaTs < VENTANA_MS
-    }
-
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
         for (id in ids) render(context, mgr, id)
     }
@@ -205,21 +194,25 @@ class QuickWidgetProvider : AppWidgetProvider() {
         v.setOnClickPendingIntent(R.id.qw_clima,
             HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("lmb10://action?cmd=heat")))
 
-        // Estos tres abren fisicamente el coche. Van tambien por segundo plano:
-        // el widget no se usa en la pantalla de bloqueo, asi que no hay motivo
-        // para forzar el desbloqueo. El ambar sigue marcandolos como acciones
-        // que abren el vehiculo.
-        // Estos tres abren fisicamente el coche: doble toque. Un widget no
-        // puede mostrar dialogos, asi que la confirmacion es el propio boton.
+        // Estos tres abren fisicamente el coche: van por HomeWidgetLaunchIntent.
+        // Lanzan la Activity y Android la RETIENE detras del keyguard hasta que
+        // el usuario desbloquea.
+        //
+        // REGRESION VERIFICADA EN LA v3.60.69 (06/08/2026): con
+        // HomeWidgetBackgroundIntent el coche se abria desde la pantalla de
+        // bloqueo. Comprobado en el dispositivo, no es teorico. El doble toque
+        // NO es un sustituto: protege del toque accidental, no de un tercero.
+        // No cambiar estos tres a segundo plano por ningun motivo.
         for (t in listOf(
             Triple(R.id.qw_openall, "openall", "Abrir todo"),
             Triple(R.id.qw_unlock, "unlock", "Abrir"),
             Triple(R.id.qw_trunk, "trunk", "Maletero")
         )) {
-            v.setTextViewText(t.first, if (estaArmada(t.second)) "Confirmar" else t.third)
+            v.setTextViewText(t.first, t.third)
             v.setOnClickPendingIntent(t.first,
-                HomeWidgetBackgroundIntent.getBroadcast(
-                    context, Uri.parse("lmb10://action?cmd=" + t.second)))
+                HomeWidgetLaunchIntent.getActivity(context,
+                    MainActivity::class.java,
+                    Uri.parse("lmb10://action?cmd=" + t.second)))
         }
 
         v.setOnClickPendingIntent(R.id.qw_trunk_close,
