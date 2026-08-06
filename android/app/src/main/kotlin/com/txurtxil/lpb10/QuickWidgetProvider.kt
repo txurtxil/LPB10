@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.net.Uri
+import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
@@ -40,9 +41,35 @@ class QuickWidgetProvider : AppWidgetProvider() {
         for (id in ids) render(context, mgr, id)
     }
 
+    // Sin esto el widget no se entera de que lo han redimensionado y sigue
+    // pintando lo mismo ocupe lo que ocupe.
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        render(context, appWidgetManager, appWidgetId)
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+    }
+
     private fun render(context: Context, mgr: AppWidgetManager, widgetId: Int) {
         val p = HomeWidgetPlugin.getData(context)
         val v = RemoteViews(context.packageName, R.layout.quick_widget)
+
+        // Tres tamanos, para poder ponerlo junto a otros widgets sin que se
+        // coma media pantalla. El alto disponible lo informa el propio Android.
+        //  - hasta 100dp: solo la barra y una fila de botones
+        //  - hasta 160dp: mas datos y dos filas
+        //  - por encima:  todo
+        val alto = try {
+            mgr.getAppWidgetOptions(widgetId)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
+        } catch (_: Exception) {
+            180
+        }
+        val compacto = alto < 100
+        val medio = alto < 160
 
         val soc = p.getString("soc", null)
         val range = p.getString("range", null)
@@ -197,6 +224,17 @@ class QuickWidgetProvider : AppWidgetProvider() {
 
         v.setOnClickPendingIntent(R.id.qw_root,
             HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java))
+
+        // Que se oculta en cada tamano
+        v.setViewVisibility(R.id.qw_row2, if (compacto) View.GONE else View.VISIBLE)
+        v.setViewVisibility(R.id.qw_row3, if (compacto || medio) View.GONE else View.VISIBLE)
+        if (compacto) {
+            v.setViewVisibility(R.id.qw_info, View.GONE)
+            v.setViewVisibility(R.id.qw_info2, View.GONE)
+            v.setViewVisibility(R.id.qw_info3, View.GONE)
+        } else if (medio) {
+            v.setViewVisibility(R.id.qw_info3, View.GONE)
+        }
 
         try { mgr.updateAppWidget(widgetId, v) } catch (_: Exception) { }
     }
