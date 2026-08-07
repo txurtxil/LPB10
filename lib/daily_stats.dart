@@ -235,6 +235,16 @@ class DailyStats {
       return rebuild();
     }
     if (((meta['v'] as num?)?.toInt() ?? 1) < 2) return rebuild();
+
+    // Guardia por sintoma, no por version. Si algun dia tiene kmAllRaw menor
+    // que km, ese agregado se construyo con la version que descartaba los
+    // kilometros de los tramos filtrados, y hay que rehacerlo.
+    try {
+      final actual = await load();
+      final incoherente = actual.any((d) => d.kmAllRaw > 0 && d.kmAllRaw < d.km);
+      final sinKmAll = actual.any((d) => d.kmAllRaw == 0 && d.km > 0);
+      if (incoherente || sinKmAll) return rebuild();
+    } catch (_) {}
     final prevLen = (meta['len'] as num?)?.toInt() ?? 0;
     final len = await f.length();
     if (len < prevLen) return rebuild();
