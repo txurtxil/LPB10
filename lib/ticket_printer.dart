@@ -128,7 +128,17 @@ Future<String> buildEfficiencyTicket({
   b.writeln(sep());
   b.writeln(_kv('Distancia:', tot.km.round().toString() + ' km'));
   b.writeln(_kv('Energia:', _d1(tot.kwh) + ' kWh'));
-  final media = tot.km > 0 ? tot.kwh / tot.km * 100.0 : null;
+  // OJO: tot.kwh son los kWh de los tramos que pasan los filtros de consumo,
+  // pero tot.km son TODOS los kilometros. Dividir uno entre otro mezcla dos
+  // poblaciones y da cifras imposibles (se vio 10,7 kWh/100 en un B10).
+  // La media se calcula solo con los dias de dato valido y su km filtrado.
+  var kmMedia = 0.0, socMedia = 0.0;
+  for (final a in conDato) {
+    kmMedia += a.km;
+    socMedia += a.soc;
+  }
+  final media =
+      kmMedia > 0 ? socMedia / kmMedia * gBatteryKwh : null;
   b.writeln(_kv('Consumo medio:', media == null ? '--' : _d1(media) + ' kWh/100'));
   if (media != null) {
     final desv = (media - kTicketTarget) / kTicketTarget * 100.0;
