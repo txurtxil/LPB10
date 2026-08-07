@@ -39,6 +39,14 @@ OUT="/tmp/LMB10-v${NEW_NAME}.apk"
 cp "$APK" "$OUT"
 echo "APK: $OUT ($(du -h "$OUT" | cut -f1))"
 
+echo "== Compilando AAB para Google Play =="
+flutter build appbundle --release
+AAB=build/app/outputs/bundle/release/app-release.aab
+[ -f "$AAB" ] || { echo "ERROR: no se encontro $AAB"; exit 1; }
+OUTAAB="/tmp/LMB10-v${NEW_NAME}.aab"
+cp "$AAB" "$OUTAAB"
+echo "AAB: $OUTAAB ($(du -h "$OUTAAB" | cut -f1))"
+
 echo "== Commit + push =="
 git add -A
 git commit -m "v${NEW_NAME}: ${REL_TITLE}" || echo "(sin cambios nuevos)"
@@ -70,9 +78,13 @@ else
   echo "AVISO: sin fichero de notas, se usan las de por defecto (obsoletas)."
 fi
 echo "== Creando release en GitHub =="
-gh release create "v${NEW_NAME}" "$OUT" \
+gh release create "v${NEW_NAME}" "$OUT" "$OUTAAB" \
   --title "$REL_TITLE" \
   --notes-file /tmp/lmb10_notes.md
 
+echo ""
+echo "Para Google Play, sube este fichero:"
+echo "  $OUTAAB"
+echo ""
 echo "LISTO:"
 gh release view "v${NEW_NAME}" --json url -q .url
