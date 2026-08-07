@@ -2855,6 +2855,62 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
   /// interpretarla: no esta confirmado el nombre exacto del endpoint, ni la
   /// estructura de "included", ni si el valor viene con impuestos incluidos.
   /// Se decide viendo la respuesta, no adivinando.
+  /// SONDA del agregado diario. El widget y el informe dan kilometros
+  /// distintos para el mismo dia (115 vs 92, 62 vs 41) y ambos leen de aqui.
+  /// Se vuelca el fichero crudo para ver si hay entradas duplicadas por dia.
+  Future<void> _probeAgg() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Leyendo agregado diario...';
+    });
+    final buf = StringBuffer();
+    try {
+      final dias = await DailyStats.load();
+      buf.writeln('ENTRADAS EN daily_agg: ' + dias.length.toString());
+      buf.writeln('');
+
+      // Duplicados por clave: si los hay, kmDia se queda con el ultimo y
+      // totalizar los suma todos, y de ahi la discrepancia.
+      final cuenta = <String, int>{};
+      for (final d in dias) {
+        cuenta[d.d] = (cuenta[d.d] ?? 0) + 1;
+      }
+      final dup = cuenta.entries.where((e) => e.value > 1).toList();
+      buf.writeln('DIAS DUPLICADOS: ' + dup.length.toString());
+      for (final e in dup) {
+        buf.writeln('  ' + e.key + ' x' + e.value.toString());
+      }
+      buf.writeln('');
+
+      buf.writeln('ULTIMOS 12 DIAS');
+      buf.writeln('dia         kmAll     km    soc  segs  pts');
+      final ult = dias.length > 12 ? dias.sublist(dias.length - 12) : dias;
+      for (final d in ult) {
+        buf.writeln(d.d +
+            '  ' + d.kmAll.toStringAsFixed(1).padLeft(8) +
+            '  ' + d.km.toStringAsFixed(1).padLeft(6) +
+            '  ' + d.soc.toStringAsFixed(1).padLeft(5) +
+            '  ' + d.segs.toString().padLeft(4) +
+            '  ' + d.pts.toString().padLeft(4));
+      }
+      buf.writeln('');
+
+      // Lo mismo que hace el informe, para comparar
+      final precios = await preciosPorDia();
+      for (final clave in ['2026-08-05', '2026-08-06']) {
+        final sel = dias.where((a) => a.d == clave);
+        final t = totalizar(sel, precios);
+        buf.writeln(clave + ': entradas=' + sel.length.toString() +
+            '  totalizar.km=' + t.km.toStringAsFixed(1) +
+            '  kWh=' + t.kwh.toStringAsFixed(1));
+      }
+    } catch (e) {
+      buf.writeln('EXCEPCION: ' + e.toString());
+    }
+    if (mounted) setState(() { _text = buf.toString(); _loading = false; });
+  }
+
   Future<void> _probePvpc() async {
     setState(() {
       _loading = true;
@@ -3022,6 +3078,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: precios PVPC (Red Electrica)'
                     : 'Probe: PVPC prices (grid operator)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeAgg,
+                icon: const Icon(Icons.table_chart_outlined, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: agregado diario (km)'
+                    : 'Probe: daily aggregate (km)'),
               ),
             ),
           ),
