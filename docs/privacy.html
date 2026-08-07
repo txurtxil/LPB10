@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad — LMB10</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+  }
+  h1 { font-size: 1.7rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid #8883; padding-bottom: .3rem; }
+  h3 { font-size: 1rem; margin-top: 1.6rem; }
+  .fecha { color: #888; font-size: .9rem; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .92rem; }
+  th, td { border: 1px solid #8884; padding: .5rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #8881; }
+  .destacado {
+    background: #8881;
+    border-left: 3px solid #4a90d9;
+    padding: .8rem 1rem;
+    margin: 1.2rem 0;
+    border-radius: 4px;
+  }
+  code { background: #8882; padding: .1rem .3rem; border-radius: 3px; font-size: .9em; }
+  footer { margin-top: 3rem; font-size: .85rem; color: #888; }
+</style>
+</head>
+<body>
+
+<h1>Política de privacidad de LMB10</h1>
+<p class="fecha">Última actualización: 7 de agosto de 2026</p>
+
+<p>LMB10 es una aplicación gratuita, de código abierto y sin ánimo de lucro,
+desarrollada por un particular. No es una aplicación oficial de Leapmotor ni
+está afiliada, respaldada ni asociada con Leapmotor de ninguna forma.</p>
+
+<div class="destacado">
+  <strong>Resumen:</strong> LMB10 no tiene servidores propios. No recopila,
+  almacena ni transmite tus datos a ningún sistema del desarrollador. Todo lo
+  que la aplicación guarda permanece cifrado en tu dispositivo. No hay
+  publicidad, ni analítica, ni rastreadores de ningún tipo.
+</div>
+
+<h2>1. Quién es el responsable</h2>
+
+<p>Esta aplicación la desarrolla y mantiene una persona física, sin
+organización detrás. El contacto para cualquier cuestión relacionada con la
+privacidad es a través del repositorio del proyecto:</p>
+
+<p><a href="https://github.com/txurtxil/LPB10/issues">github.com/txurtxil/LPB10/issues</a></p>
+
+<h2>2. Qué datos maneja la aplicación</h2>
+
+<h3>2.1 Datos que introduces tú</h3>
+
+<ul>
+  <li><strong>Credenciales de tu cuenta Leapmotor</strong> (usuario, contraseña
+      y PIN del vehículo).</li>
+  <li><strong>Certificado de cliente</strong> necesario para la conexión
+      segura, que debes obtener por tu cuenta. La aplicación no lo
+      distribuye.</li>
+  <li><strong>Ajustes de configuración</strong>: modelo de vehículo, medidas y
+      presiones de neumáticos, precio de la electricidad, datos de
+      mantenimiento y similares.</li>
+</ul>
+
+<p>Todo esto se guarda <strong>únicamente en tu dispositivo</strong>, usando el
+almacenamiento cifrado del sistema operativo Android
+(<code>flutter_secure_storage</code>, respaldado por Android Keystore).</p>
+
+<h3>2.2 Datos que la aplicación obtiene del vehículo</h3>
+
+<p>Al consultar el estado de tu coche, la aplicación recibe datos como nivel de
+batería, autonomía, cuentakilómetros, estado de puertas, temperatura, presión
+de neumáticos y la posición GPS del vehículo. Estos datos:</p>
+
+<ul>
+  <li>Se muestran en pantalla.</li>
+  <li>Se guardan en un histórico local para calcular consumos y costes.</li>
+  <li><strong>No salen de tu dispositivo</strong> salvo en los casos
+      detallados en el punto 3.</li>
+</ul>
+
+<h3>2.3 Ubicación de tu dispositivo</h3>
+
+<p>La aplicación solicita permiso de ubicación para dos usos concretos:</p>
+
+<ul>
+  <li>Calcular la distancia entre tú y tu vehículo.</li>
+  <li>Mostrar la temperatura exterior de donde te encuentras.</li>
+</ul>
+
+<p>Puedes denegar este permiso: la aplicación seguirá funcionando sin esas dos
+funciones.</p>
+
+<h2>3. Con quién se comparten datos</h2>
+
+<p>LMB10 no tiene servidores. Para funcionar se conecta a servicios de
+terceros, cada uno con su propia política de privacidad. Esto es exactamente
+qué se envía a cada uno:</p>
+
+<table>
+  <tr>
+    <th>Servicio</th>
+    <th>Qué se envía</th>
+    <th>Para qué</th>
+  </tr>
+  <tr>
+    <td><strong>Leapmotor</strong><br>
+        <span style="font-size:.85em">appgateway.leapmotor-international.de</span></td>
+    <td>Tus credenciales, el PIN del vehículo cifrado y las órdenes que
+        ejecutas</td>
+    <td>Es el mismo sistema que usa la aplicación oficial. Sin esta conexión la
+        aplicación no puede funcionar.</td>
+  </tr>
+  <tr>
+    <td><strong>OpenStreetMap / Nominatim</strong></td>
+    <td>Las coordenadas del vehículo</td>
+    <td>Convertir la posición en una dirección legible. Solo se consulta cuando
+        el coche cambia de sitio.</td>
+  </tr>
+  <tr>
+    <td><strong>Overpass API</strong> (OpenStreetMap)</td>
+    <td>Las coordenadas de la zona</td>
+    <td>Localizar puntos de recarga cercanos.</td>
+  </tr>
+  <tr>
+    <td><strong>Open-Meteo</strong></td>
+    <td>Las coordenadas de tu dispositivo</td>
+    <td>Obtener la temperatura exterior.</td>
+  </tr>
+  <tr>
+    <td><strong>Red Eléctrica</strong> (apidatos.ree.es)</td>
+    <td>Solo una fecha. Ninguna coordenada ni identificador.</td>
+    <td>Consultar el precio horario de la luz si usas tarifa regulada.</td>
+  </tr>
+</table>
+
+<p>Ninguno de estos servicios recibe tus credenciales salvo Leapmotor, que es
+quien las verifica.</p>
+
+<div class="destacado">
+  <strong>Lo que NO ocurre:</strong> no hay publicidad, ni redes publicitarias,
+  ni herramientas de analítica, ni informes automáticos de errores, ni
+  identificadores de seguimiento. El desarrollador no recibe ninguna
+  información sobre tu uso de la aplicación.
+</div>
+
+<h2>4. Copias de seguridad</h2>
+
+<p>La aplicación permite exportar una copia de tu histórico y tus ajustes. Ese
+fichero <strong>lo generas y lo compartes tú</strong>, con quien decidas. No se
+envía a ningún sitio de forma automática.</p>
+
+<p>Esa copia contiene fechas, cuentakilómetros, porcentajes de batería y tus
+ajustes de configuración. <strong>No contiene coordenadas GPS, ni tu
+contraseña, ni el PIN, ni el certificado.</strong></p>
+
+<h2>5. Cuánto tiempo se conservan los datos</h2>
+
+<p>Todo permanece en tu dispositivo mientras la aplicación esté instalada. Si
+la desinstalas, se borra todo: el histórico, los ajustes, las credenciales y el
+certificado. No queda copia en ningún otro lugar porque no existe ningún otro
+lugar.</p>
+
+<h2>6. Menores</h2>
+
+<p>La aplicación está dirigida a personas propietarias de un vehículo, por lo
+que no se orienta a menores de edad ni recopila datos de ellos.</p>
+
+<h2>7. Tus derechos</h2>
+
+<p>Como todos los datos están en tu dispositivo y bajo tu control:</p>
+
+<ul>
+  <li><strong>Acceder a ellos</strong>: usa la función de exportar copia de
+      seguridad.</li>
+  <li><strong>Borrarlos</strong>: cierra sesión desde la aplicación o
+      desinstálala.</li>
+  <li><strong>Limitar lo que se comparte</strong>: deniega el permiso de
+      ubicación, o desactiva la tarjeta de ubicación y la tarifa regulada en
+      los ajustes.</li>
+</ul>
+
+<p>Para los datos que estén en poder de Leapmotor, debes dirigirte a Leapmotor:
+esta aplicación solo consulta su sistema, no lo administra.</p>
+
+<h2>8. Seguridad</h2>
+
+<p>Las comunicaciones con Leapmotor van cifradas con TLS mutuo y las peticiones
+firmadas criptográficamente, igual que en la aplicación oficial. Las
+credenciales se guardan en el almacenamiento cifrado de Android.</p>
+
+<p>Dicho esto, conviene que sepas que este es un proyecto personal sin
+auditorías de seguridad externas. El código está publicado para que cualquiera
+pueda revisarlo.</p>
+
+<h2>9. Cambios en esta política</h2>
+
+<p>Si la aplicación empieza a usar algún servicio nuevo, esta página se
+actualizará y la fecha del encabezado cambiará. Las modificaciones quedan
+registradas en el historial del repositorio.</p>
+
+<h2>10. Aviso legal</h2>
+
+<p>LMB10 es un proyecto independiente, experimental y sin ánimo de lucro, con
+fines de interoperabilidad. No está afiliado a Leapmotor. Se distribuye bajo
+licencia GPLv3 y se ofrece sin garantía de ningún tipo.</p>
+
+<footer>
+  <p>LMB10 — <a href="https://github.com/txurtxil/LPB10">github.com/txurtxil/LPB10</a></p>
+</footer>
+
+</body>
+</html>
