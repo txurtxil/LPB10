@@ -2858,6 +2858,55 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
   /// SONDA del agregado diario. El widget y el informe dan kilometros
   /// distintos para el mismo dia (115 vs 92, 62 vs 41) y ambos leen de aqui.
   /// Se vuelca el fichero crudo para ver si hay entradas duplicadas por dia.
+  /// Fuerza la reconstruccion completa de daily_agg desde trips.jsonl y
+  /// compara el antes con el despues.
+  ///
+  /// El codigo del bucle acumula kmAllRaw ANTES de los filtros, asi que kmAll
+  /// nunca puede ser menor que km. En los datos reales el 01/08 salia kmAll=32
+  /// con km=45, lo que solo se explica si ese dia se agrego con una version
+  /// anterior y la reconstruccion por marca de version no llego a dispararse.
+  Future<void> _probeRebuild() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'RECONSTRUIR: leyendo estado actual...';
+    });
+    final buf = StringBuffer();
+    try {
+      final antes = await DailyStats.load();
+      final mapAntes = <String, List<double>>{};
+      for (final d in antes) {
+        mapAntes[d.d] = [d.kmAll, d.km];
+      }
+      buf.writeln('ANTES: ' + antes.length.toString() + ' dias');
+
+      await DailyStats.rebuild();
+      final desp = await DailyStats.load();
+      buf.writeln('DESPUES: ' + desp.length.toString() + ' dias');
+      buf.writeln('');
+      buf.writeln('dia         kmAll->kmAll    km->km');
+      var cambios = 0;
+      for (final d in desp) {
+        final a = mapAntes[d.d];
+        final cambio = a == null || a[0] != d.kmAll || a[1] != d.km;
+        if (cambio) cambios++;
+        if (cambio || desp.indexOf(d) >= desp.length - 8) {
+          buf.writeln(d.d + '  ' +
+              (a == null ? '--' : a[0].toStringAsFixed(0)).padLeft(6) +
+              ' -> ' + d.kmAll.toStringAsFixed(0).padLeft(5) +
+              '   ' + (a == null ? '--' : a[1].toStringAsFixed(0)).padLeft(5) +
+              ' -> ' + d.km.toStringAsFixed(0).padLeft(5) +
+              (cambio ? '  *' : ''));
+        }
+      }
+      buf.writeln('');
+      buf.writeln('DIAS QUE CAMBIARON: ' + cambios.toString());
+    } catch (e) {
+      buf.writeln('EXCEPCION: ' + e.toString());
+    }
+    if (mounted) setState(() { _text = buf.toString(); _loading = false; });
+  }
+
   Future<void> _probeAgg() async {
     setState(() {
       _loading = true;
@@ -3091,6 +3140,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: agregado diario (km)'
                     : 'Probe: daily aggregate (km)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeRebuild,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Reconstruir agregado diario'
+                    : 'Rebuild daily aggregate'),
               ),
             ),
           ),
