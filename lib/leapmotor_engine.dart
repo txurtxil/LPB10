@@ -449,6 +449,13 @@ class LeapmotorApiClient {
 
   LeapmotorApiClient(this.staticClient);
 
+  /// Cliente de demostracion. NO crea cliente HTTP ni necesita certificado:
+  /// en una instalacion limpia createStaticClient() se queda colgado, que es
+  /// justo lo que le pasaria al revisor de Google Play.
+  LeapmotorApiClient.demo() : staticClient = IOClient() {
+    modoDemo = true;
+  }
+
   Map<String, String> _baseHeaders(String nonce, String timestamp, String sign) => {
         'acceptLanguage': kLanguage, 'channel': kChannel, 'deviceType': kDeviceType, 'source': kSource,
         'version': kAppVersion, 'nonce': nonce, 'deviceId': deviceId, 'timestamp': timestamp, 'sign': sign,

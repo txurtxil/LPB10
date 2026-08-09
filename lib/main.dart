@@ -759,8 +759,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_emailCtrl.text.trim() == _demoUser &&
         _passCtrl.text.trim() == _demoPass) {
-      final staticClient = await createStaticClient();
-      final client = LeapmotorApiClient(staticClient)..modoDemo = true;
+      // Sin createStaticClient: necesita el certificado y en una instalacion
+      // limpia deja la pantalla colgada.
+      final client = LeapmotorApiClient.demo();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => DashboardScreen(
