@@ -622,7 +622,63 @@ class LeapmotorApiClient {
   Vehicle _findVehicle(String vin) =>
       _vehicles.firstWhere((v) => v.vin == vin, orElse: () => throw LeapmotorApiException(0, 'Vehicle not found for VIN $vin'));
 
-  Future<VehicleStatus> getVehicleStatus(String vin) => withTokenRetry(() async {
+  /// Modo demostracion, para que la revision de Google Play pueda ver la
+  /// interfaz sin credenciales reales.
+  ///
+  /// Hace falta porque la app se bloquea DOS veces antes de mostrar nada: sin
+  /// certificado de cliente ni siquiera intenta el login, y ese certificado es
+  /// material de Leapmotor que no se puede facilitar a nadie.
+  ///
+  /// No persiste: al cerrar la app se pierde.
+  bool modoDemo = false;
+
+  static Map<String, dynamic> get datosDemo => {
+        'soc': 72,
+        'preciseSoc': 72.4,
+        'totalMileage': 12480,
+        'liveRemainingRange': 308,
+        'maxRange': 308,
+        'expectedMileage': 295,
+        'batteryVoltage': 396.5,
+        'batteryCurrent': 0.0,
+        'minBatteryTemp': 24,
+        'chargeState': 0,
+        'chargeCompleted': 0,
+        'acInputSlowCharge': 0,
+        'dcInputFastCharge': 0,
+        'driverDoorLockStatus': 1,
+        'lbcmDriverDoorStatus': 0,
+        'rbcmDriverDoorStatus': 0,
+        'lbcmLeftRearDoorStatus': 0,
+        'rbcmRightRearDoorStatus': 0,
+        'bbcmBackDoorStatus': 0,
+        'acSwitch': 0,
+        'acSetting': 22.0,
+        'interiorTemp': 25.0,
+        'speed': 0.0,
+        'gearStatus': 1,
+        'vehicleState': 0,
+        'leftFrontTirePressure': 240,
+        'rightFrontTirePressure': 241,
+        'leftRearTirePressure': 238,
+        'rightRearTirePressure': 239,
+        'leftFrontTirePressureState': 0,
+        'rightFrontTirePressureState': 0,
+        'leftRearTirePressureState': 0,
+        'rightRearTirePressureState': 0,
+        'sentryMode': 0,
+      };
+
+  Future<VehicleStatus> getVehicleStatus(String vin) async {
+    if (modoDemo) {
+      final m = Map<String, dynamic>.from(datosDemo);
+      m['signal'] = {'sts': DateTime.now().millisecondsSinceEpoch};
+      return VehicleStatus.fromRaw(m);
+    }
+    return _getVehicleStatusReal(vin);
+  }
+
+  Future<VehicleStatus> _getVehicleStatusReal(String vin) => withTokenRetry(() async {
         final vehicle = _findVehicle(vin);
         final headers = _signedHeaders(vin: vin)..addAll(_authHeaders());
         final response = await _accountClient!.post(

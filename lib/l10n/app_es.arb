@@ -1,7 +1,7 @@
 {
   "@@locale": "es",
   "appTitle": "LMB10",
-  "loginScreenTitle": "Login Leapmotor",
+  "loginScreenTitle": "Iniciar sesion",
   "emailLabel": "Email",
   "passwordLabel": "Contrasena",
   "pinLabel": "PIN del vehiculo",

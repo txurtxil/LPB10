@@ -12,7 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'LMB10';
 
   @override
-  String get loginScreenTitle => 'Leapmotor Login';
+  String get loginScreenTitle => 'Sign in';
 
   @override
   String get emailLabel => 'Email';

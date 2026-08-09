@@ -107,7 +107,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginScreenTitle.
   ///
   /// In es, this message translates to:
-  /// **'Login Leapmotor'**
+  /// **'Iniciar sesion'**
   String get loginScreenTitle;
 
   /// No description provided for @emailLabel.

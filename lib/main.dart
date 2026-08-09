@@ -747,9 +747,34 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberPin = false;
   String? _error;
 
+  /// Credenciales para la revision de Google Play. No son un secreto: se
+  /// declaran en la ficha de la Console. Deliberadamente poco obvias para que
+  /// nadie las teclee por casualidad y crea que ve datos de su coche.
+  static const _demoUser = 'revision@lmb10.app';
+  static const _demoPass = 'DemoLMB10-2026';
+
   Future<void> _doLogin() async {
     final esLoc = Localizations.localeOf(context).languageCode == 'es';
     setState(() { _loading = true; _error = null; });
+
+    if (_emailCtrl.text.trim() == _demoUser &&
+        _passCtrl.text.trim() == _demoPass) {
+      final staticClient = await createStaticClient();
+      final client = LeapmotorApiClient(staticClient)..modoDemo = true;
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => DashboardScreen(
+          client: client,
+          vehicle: Vehicle(
+              vin: 'DEMO0000000000000',
+              carType: 'b10',
+              nickName: esLoc ? 'Vehiculo de ejemplo' : 'Demo vehicle'),
+          pin: '0000',
+        ),
+      ));
+      return;
+    }
+
     try {
       if (!await hasClientCert()) {
         throw Exception(esLoc
@@ -1015,7 +1040,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final s = _status;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.vehicle.nickName ?? AppLocalizations.of(context)!.dashboardDefaultTitle),
+        backgroundColor: widget.client.modoDemo ? const Color(0xFF8A5A12) : null,
+        title: Text(widget.client.modoDemo
+            ? (Localizations.localeOf(context).languageCode == 'es'
+                ? 'MODO DEMO - datos de ejemplo'
+                : 'DEMO MODE - sample data')
+            : (widget.vehicle.nickName ??
+                AppLocalizations.of(context)!.dashboardDefaultTitle)),
         actions: [
           IconButton(
             icon: _refreshing

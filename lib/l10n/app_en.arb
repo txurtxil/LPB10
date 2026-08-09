@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "appTitle": "LMB10",
-  "loginScreenTitle": "Leapmotor Login",
+  "loginScreenTitle": "Sign in",
   "emailLabel": "Email",
   "passwordLabel": "Password",
   "pinLabel": "Vehicle PIN",
