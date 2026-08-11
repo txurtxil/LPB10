@@ -54,6 +54,7 @@ class Abrp {
     required bool cargando,
     required double? potenciaKw,
     required double? tempExtC,
+    double? velocidadKmh,
   }) async {
     try {
       if (!await activo()) {
@@ -86,6 +87,7 @@ class Abrp {
         tlm['power'] = cargando ? -potenciaKw.abs() : potenciaKw;
       }
       if (tempExtC != null) tlm['ext_temp'] = tempExtC;
+      if (velocidadKmh != null) tlm['speed'] = velocidadKmh;
 
       final uri = Uri.parse('https://api.iternio.com/1/tlm/send').replace(
         queryParameters: {

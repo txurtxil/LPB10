@@ -1519,6 +1519,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       cargando: s.isCharging,
       potenciaKw: s.batteryPowerKw,
       tempExtC: null,
+      velocidadKmh: s.speed,
     );
   } catch (_) {}
   await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
