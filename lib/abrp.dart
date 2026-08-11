@@ -15,6 +15,8 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'car_log_bridge.dart';
+
 const _abrpStore = FlutterSecureStorage();
 const _kApiKey = 'lm_abrp_apikey_v1';
 const _kToken = 'lm_abrp_token_v1';
@@ -54,11 +56,20 @@ class Abrp {
     required double? tempExtC,
   }) async {
     try {
-      if (!await activo()) return false;
+      if (!await activo()) {
+        await CarLogBridge.log('ABRP inactivo, no se envia');
+        return false;
+      }
       final k = await apiKey();
       final t = await token();
-      if (k.isEmpty || t.isEmpty) return false;
-      if (soc == null) return false;
+      if (k.isEmpty || t.isEmpty) {
+        await CarLogBridge.log('ABRP sin clave o token');
+        return false;
+      }
+      if (soc == null) {
+        await CarLogBridge.log('ABRP sin soc, no se envia');
+        return false;
+      }
 
       final tlm = <String, dynamic>{
         'utc': DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
@@ -84,8 +95,13 @@ class Abrp {
         },
       );
       final r = await http.get(uri).timeout(const Duration(seconds: 10));
+      var cuerpo = r.body;
+      if (cuerpo.length > 200) cuerpo = cuerpo.substring(0, 200);
+      await CarLogBridge.log('ABRP HTTP ' + r.statusCode.toString() +
+          '  soc=' + soc.toStringAsFixed(1) + '  ' + cuerpo);
       return r.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
+      await CarLogBridge.log('ABRP excepcion: ' + e.toString());
       return false;
     }
   }
