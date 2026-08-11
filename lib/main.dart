@@ -44,6 +44,7 @@ import 'charge_cost.dart';
 import 'car_log_bridge.dart';
 import 'vehicle_profile.dart';
 import 'maintenance.dart';
+import 'abrp.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1158,7 +1159,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text(_transientError!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
                     ),
 (_showMap && s.latitude != null && s.longitude != null)
-                      ? LocationCard(latitude: s.latitude!, longitude: s.longitude!)
+                      ? Column(children: [
+                          LocationCard(latitude: s.latitude!, longitude: s.longitude!),
+                          if (s.preciseSoc != null) _abrpButton(context, s),
+                        ])
                       : (_showMap ? const SizedBox(height: 60, child: Center(child: Text('Sin datos de ubicacion'))) : const SizedBox.shrink()),
                   if (_showMap) const SizedBox(height: 6),
                   Align(
@@ -1504,6 +1508,19 @@ Future<List<({int ts, int km, double soc})>> _readPermanentTripsMain() async {
 Future<void> _pushToHomeWidget(VehicleStatus s) async {
   final soc = (s.preciseSoc ?? s.soc?.toDouble())?.toStringAsFixed(1);
   await HomeWidget.saveWidgetData<String>('soc', soc ?? '--');
+  // Telemetria a ABRP. No lanza excepcion nunca, asi que no puede afectar al
+  // resto del refresco.
+  try {
+    await Abrp.enviarTelemetria(
+      soc: s.preciseSoc,
+      lat: s.latitude,
+      lon: s.longitude,
+      odometroKm: s.totalMileage,
+      cargando: s.isCharging,
+      potenciaKw: s.batteryPowerKw,
+      tempExtC: null,
+    );
+  } catch (_) {}
   await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
   // Odometro para el widget y el mantenimiento. No viajaba hasta ahora.
   await HomeWidget.saveWidgetData<String>(
@@ -2706,6 +2723,28 @@ class _AddressCache {
     } catch (_) {}
     return _lastAddress ?? 'Could not resolve address';
   }
+}
+
+Widget _abrpButton(BuildContext context, VehicleStatus s) {
+  final es = Localizations.localeOf(context).languageCode == 'es';
+  return Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          final url = Abrp.deepLink(
+            soc: s.preciseSoc!,
+            lat: s.latitude,
+            lon: s.longitude,
+          );
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        },
+        icon: const Icon(Icons.route_outlined, size: 18),
+        label: Text(es ? 'Planificar en ABRP' : 'Plan in ABRP'),
+      ),
+    ),
+  );
 }
 
 class LocationCard extends StatefulWidget {

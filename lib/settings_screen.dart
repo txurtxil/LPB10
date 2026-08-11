@@ -11,6 +11,7 @@ import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
 import 'maintenance_screen.dart';
+import 'abrp_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -94,6 +95,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const MaintenanceScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.route_outlined),
+                  title: const Text('ABRP'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Planificador de rutas con tu bateria real'
+                      : 'Route planner with your real battery'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AbrpScreen())),
                 ),
                 const Divider(),
                 ListTile(
