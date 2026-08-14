@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'drive_backup.dart';
-
-const _driveStore = FlutterSecureStorage();
-const _kAutomatico = 'lm_drive_auto_v1';
 
 /// Copia de seguridad a Google Drive. Incluye un boton de prueba inmediata
 /// para poder confirmar que el login y la subida funcionan de verdad, sin
@@ -30,7 +26,7 @@ class _DriveBackupScreenState extends State<DriveBackupScreen> {
   }
 
   Future<void> _cargar() async {
-    _automatico = (await _driveStore.read(key: _kAutomatico)) == '1';
+    _automatico = await DriveBackup.automaticoActivo();
     final cuenta = await DriveBackup.conectarSilencioso();
     if (mounted) {
       setState(() {
@@ -56,7 +52,7 @@ class _DriveBackupScreenState extends State<DriveBackupScreen> {
 
   Future<void> _desconectar() async {
     await DriveBackup.desconectar();
-    await _driveStore.write(key: _kAutomatico, value: '0');
+    await DriveBackup.setAutomatico(false);
     if (mounted) setState(() { _email = null; _automatico = false; _resultado = ''; });
   }
 
@@ -77,7 +73,7 @@ class _DriveBackupScreenState extends State<DriveBackupScreen> {
 
   Future<void> _cambiarAutomatico(bool v) async {
     setState(() => _automatico = v);
-    await _driveStore.write(key: _kAutomatico, value: v ? '1' : '0');
+    await DriveBackup.setAutomatico(v);
   }
 
   @override

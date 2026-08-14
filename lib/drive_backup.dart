@@ -16,6 +16,8 @@
 
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,6 +26,10 @@ import 'car_log_bridge.dart';
 
 class DriveBackup {
   static const _scopes = ['https://www.googleapis.com/auth/drive.file'];
+  static const _prefs = FlutterSecureStorage();
+  static const _kAutomatico = 'lm_drive_auto_v1';
+  static const _kLastAuto = 'lm_drive_last_auto_ms';
+
   static const _carpetaNombre = 'LMB10 backups';
   static const _maxCopias = 6;
 
@@ -31,6 +37,31 @@ class DriveBackup {
   static GoogleSignInAccount? _cuenta;
 
   static GoogleSignInAccount? get cuentaActual => _cuenta;
+
+  static Future<bool> automaticoActivo() async =>
+      (await _prefs.read(key: _kAutomatico)) == '1';
+
+  static Future<void> setAutomatico(bool v) =>
+      _prefs.write(key: _kAutomatico, value: v ? '1' : '0');
+
+  /// Sube una copia si el automatico esta activo, hay sesion y ha pasado al
+  /// menos un dia desde la ultima subida automatica. Nunca lanza excepcion:
+  /// colgado del refresco de fondo, un fallo aqui no puede tumbar nada mas.
+  static Future<void> autoBackupIfDue() async {
+    try {
+      if (!await automaticoActivo()) return;
+      final cuenta = _cuenta ?? await conectarSilencioso();
+      if (cuenta == null) return;
+      final lastRaw = await _prefs.read(key: _kLastAuto);
+      final last = int.tryParse(lastRaw ?? '') ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - last < 24 * 3600 * 1000) return;
+      final ok = await subirAhora();
+      if (ok) await _prefs.write(key: _kLastAuto, value: now.toString());
+    } catch (e) {
+      await CarLogBridge.log('Drive auto excepcion: ' + e.toString());
+    }
+  }
 
   static Future<void> _asegurarInit() async {
     if (_inicializado) return;

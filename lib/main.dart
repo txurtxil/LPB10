@@ -45,6 +45,7 @@ import 'car_log_bridge.dart';
 import 'vehicle_profile.dart';
 import 'maintenance.dart';
 import 'abrp.dart';
+import 'drive_backup.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1521,6 +1522,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       tempExtC: null,
       velocidadKmh: s.speed,
     );
+  } catch (_) {}
+  // Backup automatico a Drive, una vez al dia, solo si el usuario lo activo
+  // y ya conecto su cuenta. Nunca lanza excepcion.
+  try {
+    await DriveBackup.autoBackupIfDue();
   } catch (_) {}
   await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
   // Odometro para el widget y el mantenimiento. No viajaba hasta ahora.
