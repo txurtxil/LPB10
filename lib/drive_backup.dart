@@ -34,7 +34,10 @@ class DriveBackup {
 
   static Future<void> _asegurarInit() async {
     if (_inicializado) return;
-    await GoogleSignIn.instance.initialize();
+    await GoogleSignIn.instance.initialize(
+      serverClientId:
+          '457622951832-gp7co9k1j0rs7qku77cf0v4e7gpuagrt.apps.googleusercontent.com',
+    );
     _inicializado = true;
   }
 
