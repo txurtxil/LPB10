@@ -12,6 +12,7 @@ import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
+import 'drive_backup_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -179,6 +180,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(msg)));
                   },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.cloud_upload_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Copia en Google Drive'
+                      : 'Google Drive backup'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Automatiza tu copia a tu propio Drive'
+                      : 'Automate your backup to your own Drive'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const DriveBackupScreen())),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16),

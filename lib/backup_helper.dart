@@ -67,6 +67,13 @@ class BackupHelper {
     };
   }
 
+  /// Version del JSON como String, para subir a Drive sin pasar por disco
+  /// local primero. Reutiliza _collect(), no reinventa el formato.
+  static Future<String> contenidoParaSubir() async {
+    final data = await _collect();
+    return const JsonEncoder.withIndent('  ').convert(data);
+  }
+
   static Future<String> writeNow() async {
     final dir = await _backupDir();
     final data = await _collect();
