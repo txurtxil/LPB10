@@ -46,6 +46,7 @@ import 'vehicle_profile.dart';
 import 'maintenance.dart';
 import 'abrp.dart';
 import 'drive_backup.dart';
+import 'pvpc.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -249,6 +250,28 @@ String _motivoFallo(Object e) {
   return 'Error';
 }
 
+/// Solo LEE el estado del vehiculo, sin ejecutar ningun comando. Mismo
+/// patron de reconstruccion de sesion que carQuickAction, para que las
+/// pantallas que viven fuera del Dashboard (como Atajos) puedan saber si
+/// el coche esta cerrado sin depender de que alguien se lo pase.
+Future<VehicleStatus?> quickStatus() async {
+  final raw = await _storage.read(key: _sessionKey);
+  if (raw == null) return null;
+  final vin = await _storage.read(key: _vinKey) ?? '';
+  if (vin.isEmpty) return null;
+  try {
+    final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
+    final session = SessionData.fromMap(sessionMap);
+    final staticClient = await createStaticClient();
+    final c = LeapmotorApiClient(staticClient);
+    await c.restoreSession(session);
+    return await c.getVehicleStatus(vin);
+  } catch (e) {
+    await CarLogBridge.log('quickStatus FALLO: $e');
+    return null;
+  }
+}
+
 Future<bool> carQuickAction(String action) async {
   gQuickActionError = '';
   final raw = await _storage.read(key: _sessionKey);
@@ -283,6 +306,16 @@ Future<bool> carQuickAction(String action) async {
       case 'preheat_off':   await c.batteryPreheatOff(vin, pin); break;
       case 'wheel_heat':    await c.steeringWheelHeatOn(vin, pin); break;
       case 'charger_unlock': await c.unlockCharger(vin, pin); break;
+      case 'ac_off':         await c.acOff(vin, pin); break;
+      case 'sunshade_open':  await c.sunshadeOpen(vin, pin); break;
+      case 'sunshade_close': await c.sunshadeClose(vin, pin); break;
+      case 'windows_open':   await c.windowsOpen(vin, pin); break;
+      case 'windows_close':  await c.windowsClose(vin, pin); break;
+      case 'closeall':
+        await c.closeTrunk(vin, pin);
+        await Future.delayed(const Duration(milliseconds: 1200));
+        await c.lockVehicle(vin, pin);
+        break;
       case 'openall':
         // En serie y con pausa: dos comandos simultaneos el coche los encola mal.
         await c.openTrunk(vin, pin);
@@ -1557,6 +1590,19 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       tempExtC: null,
       velocidadKmh: s.speed,
     );
+  } catch (_) {}
+  // Datos para el widget de precios. Se muestran siempre, PVPC activado o no.
+  try {
+    final r = await Pvpc.resumenWidget();
+    if (r != null) {
+      await HomeWidget.saveWidgetData<String>('pvpc_ahora', (r['ahora'] as double).toStringAsFixed(4));
+      await HomeWidget.saveWidgetData<String>('pvpc_nivel', r['nivel'] as String);
+      await HomeWidget.saveWidgetData<String>('pvpc_hora_barata', (r['horaBarata'] as int).toString());
+      await HomeWidget.saveWidgetData<String>('pvpc_precio_barato', (r['precioBarato'] as double).toStringAsFixed(4));
+      await HomeWidget.saveWidgetData<String>('pvpc_barato_manana', (r['baratoEsManana'] as bool) ? '1' : '0');
+      await HomeWidget.saveWidgetData<String>('pvpc_hora_cara', (r['horaCara'] as int).toString());
+      await HomeWidget.saveWidgetData<String>('pvpc_precio_caro', (r['precioCaro'] as double).toStringAsFixed(4));
+    }
   } catch (_) {}
   // Backup automatico a Drive, una vez al dia, solo si el usuario lo activo
   // y ya conecto su cuenta. Nunca lanza excepcion.

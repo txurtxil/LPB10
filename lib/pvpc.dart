@@ -270,6 +270,74 @@ class Pvpc {
     return res;
   }
 
+  /// Resumen para el widget de precios: precio de ahora, mejor y peor hora
+  /// del dia, y si la mejor hora ya paso y hay que mirar a manana. Se
+  /// muestra siempre, tenga o no el usuario PVPC activado: son datos
+  /// publicos del mercado, utiles por si solos.
+  static Future<Map<String, dynamic>?> resumenWidget() async {
+    final ahora = DateTime.now();
+    final hoyDia = await dia(ahora);
+    if (hoyDia == null) return null;
+    final dto = await descuento();
+    double conDto(double v) => dto > 0 ? v * (1 - dto / 100.0) : v;
+
+    final horasHoy = hoyDia.horas.map(conDto).toList();
+    final precioAhora = horasHoy[ahora.hour];
+
+    // Horas de hoy que aun no han pasado, incluyendo la actual.
+    final restantes = List.generate(24, (i) => i)
+        .where((h) => h >= ahora.hour)
+        .toList();
+
+    int horaBarata;
+    double precioBarato;
+    var esManana = false;
+    if (restantes.length > 1) {
+      horaBarata = restantes
+          .reduce((a, b) => horasHoy[a] <= horasHoy[b] ? a : b);
+      precioBarato = horasHoy[horaBarata];
+    } else {
+      final mh = await mejoresHoras(1);
+      final mananaDia = await dia(ahora.add(const Duration(days: 1)));
+      if (mh != null && mh.isNotEmpty && mananaDia != null) {
+        horaBarata = mh.first;
+        precioBarato = conDto(mananaDia.horas[horaBarata]);
+        esManana = true;
+      } else {
+        horaBarata = ahora.hour;
+        precioBarato = precioAhora;
+      }
+    }
+
+    var horaCara = 0;
+    for (var h = 1; h < 24; h++) {
+      if (horasHoy[h] > horasHoy[horaCara]) horaCara = h;
+    }
+
+    // Nivel relativo al propio dia: los precios cambian mucho por temporada,
+    // asi que un umbral fijo en EUR no tendria sentido todo el año.
+    final minHoy = horasHoy.reduce((a, b) => a < b ? a : b);
+    final maxHoy = horasHoy.reduce((a, b) => a > b ? a : b);
+    final rango = maxHoy - minHoy;
+    String nivel;
+    if (rango < 0.02) {
+      nivel = 'normal';
+    } else {
+      final pos = (precioAhora - minHoy) / rango;
+      nivel = pos < 0.33 ? 'barato' : (pos > 0.66 ? 'caro' : 'normal');
+    }
+
+    return {
+      'ahora': precioAhora,
+      'nivel': nivel,
+      'horaBarata': horaBarata,
+      'precioBarato': precioBarato,
+      'baratoEsManana': esManana,
+      'horaCara': horaCara,
+      'precioCaro': horasHoy[horaCara],
+    };
+  }
+
   /// Las N horas mas baratas de manana, para saber cuando enchufar.
   static Future<List<int>?> mejoresHoras(int cuantas) async {
     final d = await dia(DateTime.now().add(const Duration(days: 1)));

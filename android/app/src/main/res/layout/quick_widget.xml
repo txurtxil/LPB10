@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:background="@drawable/qw_bg"
     android:padding="10dp">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -19,7 +18,7 @@
             android:layout_weight="1"
             android:maxLines="1"
             android:ellipsize="end"
-            android:text="LMB10"
+            android:text="LMB10 · Luz"
             android:textColor="#0D3B66"
             android:textStyle="bold"
             android:letterSpacing="0.04"
@@ -33,37 +32,36 @@
             android:textColor="#5B87AC"
             android:textSize="11sp" />
     </LinearLayout>
-
-    <ImageView
-        android:id="@+id/qw_bar_img"
-        android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:layout_marginTop="10dp"
-        android:scaleType="fitXY"
-        android:contentDescription="Bateria" />
-
     <TextView
-        android:id="@+id/qw_bar_txt"
+        android:id="@+id/qw_price_big"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:fontFamily="monospace"
-        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textSize="28sp"
         android:textColor="#0D3B66"
-        android:visibility="gone"
+        android:text="-- €/kWh" />
+    <TextView
+        android:id="@+id/qw_price_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:textStyle="bold"
+        android:textSize="13sp"
+        android:textColor="#144E7A"
         android:text="" />
-
     <TextView
         android:id="@+id/qw_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="12dp"
         android:maxLines="1"
         android:ellipsize="end"
         android:textColor="#144E7A"
         android:textSize="13sp"
-        android:text="-- km" />
-
+        android:text="" />
     <TextView
         android:id="@+id/qw_info2"
         android:layout_width="match_parent"
@@ -74,215 +72,18 @@
         android:textColor="#5B87AC"
         android:textSize="12sp"
         android:text="" />
-
-    <TextView
-        android:id="@+id/qw_info3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textColor="#5B87AC"
-        android:textSize="12sp"
-        android:visibility="gone"
-        android:text="" />
-
-    <TextView
-        android:id="@+id/qw_alert"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textColor="#B3341F"
-        android:textStyle="bold"
-        android:textSize="12sp"
-        android:visibility="gone"
-        android:text="" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical" />
-
-    <LinearLayout
-        android:id="@+id/qw_buttons"
+    <TextView
+        android:id="@+id/qw_alert"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="10dp"
-        android:baselineAligned="false">
-        <Button
-            android:id="@+id/qw_lock"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_lock"
-            android:drawablePadding="2dp"
-            android:text="Cerrar" />
-        <Button
-            android:id="@+id/qw_clima"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_clima"
-            android:drawablePadding="2dp"
-            android:text="Clima" />
-        <Button
-            android:id="@+id/qw_openall"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#8A5A12"
-            android:background="@drawable/qw_btn_warn"
-            android:drawableTop="@drawable/qw_ic_openall"
-            android:drawablePadding="2dp"
-            android:text="Abrir todo" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/qw_row2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp"
-        android:baselineAligned="false">
-        <Button
-            android:id="@+id/qw_unlock"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#8A5A12"
-            android:background="@drawable/qw_btn_warn"
-            android:drawableTop="@drawable/qw_ic_unlock"
-            android:drawablePadding="2dp"
-            android:text="Abrir" />
-        <Button
-            android:id="@+id/qw_trunk"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#8A5A12"
-            android:background="@drawable/qw_btn_warn"
-            android:drawableTop="@drawable/qw_ic_trunk"
-            android:drawablePadding="2dp"
-            android:text="Maletero" />
-        <Button
-            android:id="@+id/qw_trunk_close"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_trunk_close"
-            android:drawablePadding="2dp"
-            android:text="Cerrar mal." />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/qw_row3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp"
-        android:baselineAligned="false">
-        <Button
-            android:id="@+id/qw_defrost"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_defrost"
-            android:drawablePadding="2dp"
-            android:text="Desempanar" />
-        <Button
-            android:id="@+id/qw_find"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_find"
-            android:drawablePadding="2dp"
-            android:text="Localizar" />
-        <Button
-            android:id="@+id/qw_wheel"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:textSize="10sp"
-            android:textAllCaps="false"
-            android:textColor="#0D3B66"
-            android:background="@drawable/qw_btn"
-            android:drawableTop="@drawable/qw_ic_wheel"
-            android:drawablePadding="2dp"
-            android:text="Volante" />
-    </LinearLayout>
-
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textColor="#5B87AC"
+        android:textSize="11sp"
+        android:text="Datos publicos de Red Electrica. Toca la app para mas detalle." />
 </LinearLayout>

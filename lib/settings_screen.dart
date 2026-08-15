@@ -13,6 +13,7 @@ import 'vehicle_profile_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
+import 'shortcuts_screen.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -107,6 +108,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const AbrpScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.bolt_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Atajos'
+                      : 'Shortcuts'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Acciones rapidas seguras, dentro de la app'
+                      : 'Safe quick actions, inside the app'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ShortcutsScreen())),
                 ),
                 const Divider(),
                 ListTile(
