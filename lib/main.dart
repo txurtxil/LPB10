@@ -265,6 +265,7 @@ Future<VehicleStatus?> quickStatus() async {
     final staticClient = await createStaticClient();
     final c = LeapmotorApiClient(staticClient);
     await c.restoreSession(session);
+    await c.getVehicleList();
     return await c.getVehicleStatus(vin);
   } catch (e) {
     await CarLogBridge.log('quickStatus FALLO: $e');

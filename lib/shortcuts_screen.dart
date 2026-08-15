@@ -129,6 +129,23 @@ class _ShortcutsScreenState extends State<ShortcutsScreen> {
                 confirmar: true,
               ),
               es: es,
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: _cargando ? null : () async {
+                setState(() => _cargando = true);
+                final s2 = await quickStatus();
+                if (mounted) {
+                  setState(() {
+                    _locked = s2?.isLocked;
+                    _cargando = false;
+                  });
+                }
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text(es
+                  ? 'No se pudo leer el estado - reintentar'
+                  : 'Could not read status - retry'),
             ),
           const SizedBox(height: 16),
           Wrap(
