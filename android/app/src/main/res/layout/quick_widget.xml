@@ -72,6 +72,17 @@
         android:textColor="#5B87AC"
         android:textSize="12sp"
         android:text="" />
+    <TextView
+        android:id="@+id/qw_gasto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textStyle="bold"
+        android:textColor="#0D3B66"
+        android:textSize="12sp"
+        android:text="" />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

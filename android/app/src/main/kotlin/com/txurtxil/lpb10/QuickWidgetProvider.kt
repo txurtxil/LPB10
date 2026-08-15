@@ -93,6 +93,15 @@ class QuickWidgetProvider : AppWidgetProvider() {
             v.setViewVisibility(R.id.qw_info2, android.view.View.GONE)
         }
 
+        val gastoStr = p.getString("gasto_anual_total", null)
+        val gastoNum = gastoStr?.toDoubleOrNull() ?: 0.0
+        if (!compacto && !medio && gastoNum > 0) {
+            v.setViewVisibility(R.id.qw_gasto, android.view.View.VISIBLE)
+            v.setTextViewText(R.id.qw_gasto, String.format("Este ano: %.2f €", gastoNum))
+        } else {
+            v.setViewVisibility(R.id.qw_gasto, android.view.View.GONE)
+        }
+
         v.setViewVisibility(R.id.qw_alert, if (compacto) android.view.View.GONE else android.view.View.VISIBLE)
 
         try { mgr.updateAppWidget(widgetId, v) } catch (_: Exception) {}
