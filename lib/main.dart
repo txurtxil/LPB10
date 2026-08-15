@@ -62,6 +62,13 @@ String? _routineIdFromUri(Uri? uri) {
 const _sessionKey = 'lm_session_v1';
 const _pinKey = 'lm_pin_v1';
 const _vinKey = 'lm_vin_v1';
+const _kSoloLectura = 'lm_solo_lectura_v1';
+
+Future<bool> modoSoloLectura() async =>
+    (await _storage.read(key: _kSoloLectura)) == '1';
+
+Future<void> setModoSoloLectura(bool v) =>
+    _storage.write(key: _kSoloLectura, value: v ? '1' : '0');
 
 
 /// Logica compartida de refresco: restaura sesion, consulta estado, actualiza
@@ -275,6 +282,11 @@ Future<VehicleStatus?> quickStatus() async {
 
 Future<bool> carQuickAction(String action) async {
   gQuickActionError = '';
+  if (await modoSoloLectura()) {
+    gQuickActionError = 'Modo solo lectura activado';
+    await CarLogBridge.log('quickAction bloqueada (solo lectura): ' + action);
+    return false;
+  }
   final raw = await _storage.read(key: _sessionKey);
   if (raw == null) {
     gQuickActionError = 'Sin sesion';

@@ -14,6 +14,7 @@ import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'shortcuts_screen.dart';
+import 'main.dart' show modoSoloLectura, setModoSoloLectura;
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -122,6 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const ShortcutsScreen())),
                 ),
+                _SoloLecturaSwitch(),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.electric_car_outlined),
@@ -218,6 +220,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+
+class _SoloLecturaSwitch extends StatefulWidget {
+  @override
+  State<_SoloLecturaSwitch> createState() => _SoloLecturaSwitchState();
+}
+
+class _SoloLecturaSwitchState extends State<_SoloLecturaSwitch> {
+  bool _valor = false;
+  bool _cargado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    modoSoloLectura().then((v) {
+      if (mounted) setState(() { _valor = v; _cargado = true; });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return SwitchListTile(
+      value: _valor,
+      onChanged: !_cargado
+          ? null
+          : (v) async {
+              await setModoSoloLectura(v);
+              setState(() => _valor = v);
+            },
+      title: Text(es ? 'Modo solo lectura' : 'Read-only mode'),
+      subtitle: Text(
+        es
+            ? 'Bloquea todo comando remoto (abrir, cerrar, clima...). Solo '
+                'permite ver datos del coche. Afecta a Atajos, rutinas y '
+                'al widget por igual.'
+            : 'Blocks every remote command (open, close, climate...). '
+                'Only lets you view car data. Affects Shortcuts, routines '
+                'and the widget alike.',
+        style: const TextStyle(fontSize: 12),
+      ),
+      secondary: Icon(_valor ? Icons.visibility_outlined : Icons.lock_open_outlined),
     );
   }
 }
