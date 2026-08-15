@@ -1230,7 +1230,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           : RefreshIndicator(
               onRefresh: () => _loadStatus(),
               child: ListView(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.fromLTRB(
+                    12, 12, 12, 12 + MediaQuery.of(context).padding.bottom),
                 children: [
                   if (_transientError != null)
                     Container(
