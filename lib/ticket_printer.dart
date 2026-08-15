@@ -167,6 +167,7 @@ Future<String> buildEfficiencyTicket({
   } else {
     final cfgPrecio = await EnergyPrice.load();
     final precioCasa = cfgPrecio?.eurKwh;
+    final esPvpc = cfgPrecio?.esPvpc ?? false;
     var kwhCargado = 0.0, pagado = 0.0;
     var hayImporte = false;
     for (final c in cargas) {
@@ -176,10 +177,19 @@ Future<String> buildEfficiencyTicket({
       final m = costes[c.startTs];
       String imp = '';
       var estimado = false;
+      // Con PVPC activo y sin importe manual anotado, se usa el precio de la
+      // franja de ESA carga -- la misma logica que ya aplica preciosPorDia()
+      // para el resumen, para que las dos cifras del ticket coincidan.
+      var precioEfectivo = precioCasa;
+      if (esPvpc && (m == null || (m.eur == null && m.eurKwh == null))) {
+        precioEfectivo = await Pvpc.precioFranja(
+                DateTime.fromMillisecondsSinceEpoch(c.startTs), t) ??
+            precioCasa;
+      }
       final coste = costeCarga(
         kwhBateria: k,
         manual: m,
-        precioCasa: precioCasa,
+        precioCasa: precioEfectivo,
         marca: (e) => estimado = e,
       );
       if (coste != null) {
