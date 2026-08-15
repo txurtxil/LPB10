@@ -12,6 +12,7 @@ class MaintenanceScreen extends StatefulWidget {
 
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
   List<EstadoMant> _estado = [];
+  Map<String, RegistroMant> _registros = {};
   int _odo = 0;
   bool _cargando = true;
 
@@ -29,10 +30,12 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           0;
     } catch (_) {}
     final st = await Mantenimiento.estado(odo);
+    final reg = await Mantenimiento.cargar();
     if (!mounted) return;
     setState(() {
       _odo = odo;
       _estado = st;
+      _registros = reg;
       _cargando = false;
     });
   }
@@ -41,6 +44,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     final es = Localizations.localeOf(context).languageCode == 'es';
     final kmCtrl = TextEditingController(
         text: (previo?.km ?? _odo) > 0 ? (previo?.km ?? _odo).toString() : '');
+    final importeCtrl = TextEditingController(
+        text: previo?.importe != null
+            ? previo!.importe!.toStringAsFixed(2).replaceAll('.', ',')
+            : '');
     var fecha = previo != null && previo.fechaMs > 0
         ? DateTime.fromMillisecondsSinceEpoch(previo.fechaMs)
         : DateTime.now();
@@ -97,6 +104,19 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         '/' +
                         fecha.year.toString()),
                   ),
+                if (it.tieneCoste) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: importeCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: es ? 'Importe pagado' : 'Amount paid',
+                      suffixText: '\u20AC',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -120,6 +140,9 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       it.id,
       int.tryParse(kmCtrl.text.trim()) ?? 0,
       it.meses > 0 ? fecha.millisecondsSinceEpoch : 0,
+      importe: it.tieneCoste
+          ? double.tryParse(importeCtrl.text.trim().replaceAll(',', '.'))
+          : null,
     ));
     await _cargar();
   }
@@ -189,7 +212,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     child: ListTile(
                       title: Text(es ? e.item.nombre : e.item.nombreEn),
                       subtitle: Text(
-                        _intervalo(e.item, es) + '\n' + _restante(e, es),
+                        _intervalo(e.item, es) +
+                            '\n' +
+                            _restante(e, es) +
+                            (e.item.tieneCoste &&
+                                    _registros[e.item.id]?.importe != null
+                                ? '\n' +
+                                    (es ? 'Ultimo importe: ' : 'Last amount: ') +
+                                    _registros[e.item.id]!.importe!
+                                        .toStringAsFixed(2) +
+                                    ' \u20AC'
+                                : ''),
                         style: TextStyle(
                           fontSize: 12,
                           color: e.vencido

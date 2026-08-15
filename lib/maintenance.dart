@@ -25,9 +25,12 @@ class ItemMant {
   final int meses;
   final String nota;
   final String notaEn;
+  /// Si tiene sentido preguntar cuanto costo, para el resumen de gastos.
+  /// No aplica a cosas como las escobillas: nadie anota ese importe.
+  final bool tieneCoste;
 
   const ItemMant(this.id, this.nombre, this.nombreEn, this.km, this.meses,
-      this.nota, this.notaEn);
+      this.nota, this.notaEn, {this.tieneCoste = false});
 }
 
 /// Los siete elementos con plazo definido en el manual. El resto de la tabla
@@ -64,6 +67,20 @@ const kItemsMant = <ItemMant>[
       0, 12,
       'Se recomienda sustituirlas cada ano de uso.',
       'Recommended yearly.'),
+  ItemMant('seguro', 'Seguro del vehiculo', 'Vehicle insurance', 0, 12,
+      'El coche no informa de esto: anota la fecha de tu ultima renovacion '
+          'para no llegar tarde a la siguiente.',
+      'The car reports nothing about this: note your last renewal date so '
+          'you do not miss the next one.',
+      tieneCoste: true),
+  ItemMant('impuesto_circulacion', 'Impuesto de circulacion',
+      'Road tax', 0, 12,
+      'Se paga una vez al ano, normalmente entre marzo y abril segun el '
+          'ayuntamiento. Consulta la fecha exacta en tu recibo del ano '
+          'anterior.',
+      'Paid once a year, usually spring, dates vary by municipality. Check '
+          'your previous receipt for the exact date.',
+      tieneCoste: true),
 ];
 
 /// Ultima intervencion anotada por el usuario.
@@ -71,14 +88,20 @@ class RegistroMant {
   final String id;
   final int km;
   final int fechaMs;
-  const RegistroMant(this.id, this.km, this.fechaMs);
+  /// Cuanto costo esta renovacion, si el usuario lo anoto. Nulo en
+  /// registros de mantenimiento normal (frenos, filtros...) o si no se
+  /// quiso anotar el importe.
+  final double? importe;
+  const RegistroMant(this.id, this.km, this.fechaMs, {this.importe});
 
-  Map<String, dynamic> toMap() => {'id': id, 'km': km, 'fecha': fechaMs};
+  Map<String, dynamic> toMap() =>
+      {'id': id, 'km': km, 'fecha': fechaMs, 'importe': importe};
   static RegistroMant? fromMap(Map<String, dynamic> m) {
     final id = m['id'];
     if (id is! String) return null;
     return RegistroMant(id, (m['km'] as num?)?.toInt() ?? 0,
-        (m['fecha'] as num?)?.toInt() ?? 0);
+        (m['fecha'] as num?)?.toInt() ?? 0,
+        importe: (m['importe'] as num?)?.toDouble());
   }
 }
 
