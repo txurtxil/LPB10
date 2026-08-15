@@ -1617,6 +1617,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       await HomeWidget.saveWidgetData<String>('pvpc_precio_caro', (r['precioCaro'] as double).toStringAsFixed(4));
     }
   } catch (_) {}
+  // Gasto anual: cargas + seguro/impuesto anotados este ano.
+  try {
+    final ga = await gastoAnual();
+    await HomeWidget.saveWidgetData<String>('gasto_anual_total', ga.toStringAsFixed(2));
+  } catch (_) {}
   // Backup automatico a Drive, una vez al dia, solo si el usuario lo activo
   // y ya conecto su cuenta. Nunca lanza excepcion.
   try {

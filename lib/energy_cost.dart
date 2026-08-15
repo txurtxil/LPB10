@@ -19,6 +19,7 @@ import 'charge_cost.dart';
 import 'daily_stats.dart';
 import 'price_screen.dart';
 import 'pvpc.dart';
+import 'maintenance.dart';
 import 'widget_chart.dart' show gBatteryKwh;
 
 const _priceStorage = FlutterSecureStorage();
@@ -470,5 +471,35 @@ Future<({String d7, String mes, String ano})> buildCarTotals() async {
     );
   } catch (_) {
     return vacio;
+  }
+}
+
+
+/// Gasto total del vehiculo este año: cargas + lo que se haya anotado de
+/// seguro e impuesto de circulacion, siempre que la fecha anotada caiga
+/// dentro del año en curso. NO incluye el resto de mantenimiento (frenos,
+/// filtros, revision...) porque a esos no se les pide importe.
+Future<double> gastoAnual() async {
+  try {
+    final ahora = DateTime.now();
+    final anoInicio = DateTime(ahora.year, 1, 1);
+    final anoKey = ahora.year.toString() + '-';
+
+    final days = await DailyStats.load();
+    final precios = await preciosPorDia();
+    final tAno = totalizar(days.where((a) => a.d.startsWith(anoKey)), precios);
+    final cargas = tAno.hayEur ? tAno.eur : 0.0;
+
+    final reg = await Mantenimiento.cargar();
+    double montoDe(String id) {
+      final r = reg[id];
+      if (r == null || r.importe == null || r.fechaMs <= 0) return 0.0;
+      final f = DateTime.fromMillisecondsSinceEpoch(r.fechaMs);
+      return !f.isBefore(anoInicio) ? r.importe! : 0.0;
+    }
+
+    return cargas + montoDe('seguro') + montoDe('impuesto_circulacion');
+  } catch (_) {
+    return 0.0;
   }
 }
