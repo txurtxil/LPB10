@@ -3357,7 +3357,6 @@ class ControlsScreen extends StatefulWidget {
   final Vehicle vehicle;
   final String pin;
   const ControlsScreen({super.key, required this.client, required this.vehicle, required this.pin});
-
   @override
   State<ControlsScreen> createState() => _ControlsScreenState();
 }
@@ -3365,11 +3364,56 @@ class ControlsScreen extends StatefulWidget {
 class _ControlsScreenState extends State<ControlsScreen> {
   bool _busy = false;
   String? _lastMessage;
+  String? _armado;
+  Timer? _armTimer;
+  List<String> _registro = [];
+  static const _logStore = FlutterSecureStorage();
+  static const _kLog = 'lm_shortcuts_log_v1';
+
+  bool? _locked;
+  int _driverSeatHeat = 0;
+  int _passengerSeatHeat = 0;
+  int _driverSeatVent = 0;
+  int _passengerSeatVent = 0;
+  double? _chargeLimit;
+  bool _loadingChargeLimit = true;
+  double _speedLimit = 130;
+  /// Limite de velocidad TAL COMO LO TIENE EL COCHE.
+  double? _carSpeedLimit;
+  bool? _carSpeedActive;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentChargeLimit();
+    _cargarRegistro();
+  }
+
+  @override
+  void dispose() {
+    _armTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _cargarRegistro() async {
+    final raw = await _logStore.read(key: _kLog);
+    if (raw == null) return;
+    try {
+      final lista = List<String>.from(json.decode(raw));
+      if (mounted) setState(() => _registro = lista);
+    } catch (_) {}
+  }
+
+  Future<void> _anotar(String accion) async {
+    final ahora = DateTime.now();
+    final linea = ahora.hour.toString().padLeft(2, '0') +
+        ':' +
+        ahora.minute.toString().padLeft(2, '0') +
+        ' - ' +
+        accion;
+    _registro.insert(0, linea);
+    if (_registro.length > 20) _registro = _registro.sublist(0, 20);
+    await _logStore.write(key: _kLog, value: json.encode(_registro));
   }
 
   Future<void> _loadCurrentChargeLimit() async {
@@ -3380,6 +3424,7 @@ class _ControlsScreenState extends State<ControlsScreen> {
       setState(() {
         _chargeLimit = (status.chargeLimitPercent ?? 100).toDouble().clamp(50, 100);
         _loadingChargeLimit = false;
+        _locked = status.isLocked;
         // Mismo viaje, sin peticion extra.
         if (sl != null && sl > 0) {
           _carSpeedLimit = sl;
@@ -3392,32 +3437,34 @@ class _ControlsScreenState extends State<ControlsScreen> {
     }
   }
 
-  int _driverSeatHeat = 0;
-  int _passengerSeatHeat = 0;
-  int _driverSeatVent = 0;
-  int _passengerSeatVent = 0;
-  double? _chargeLimit;
-  bool _loadingChargeLimit = true;
-  double _speedLimit = 130;
+  /// Arma una accion sensible: primer toque avisa, segundo dentro de 8s
+  /// ejecuta de verdad. Mismo patron que el widget de escritorio.
+  void _armar(String id) {
+    setState(() => _armado = id);
+    _armTimer?.cancel();
+    _armTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _armado = null);
+    });
+  }
 
-  /// Limite de velocidad TAL COMO LO TIENE EL COCHE. El deslizador arrancaba
-  /// siempre en 130 sin leer nada, asi que mostraba un valor inventado: en un
-  /// coche con 110 configurados, la pantalla decia 130. Y speedLimitActive se
-  /// parseaba desde la senal 12054 sin usarse en ninguna parte.
-  double? _carSpeedLimit;
-  bool? _carSpeedActive;
-
-  Future<void> _run(String label, Future<void> Function() action) async {
+  Future<void> _run(String label, Future<void> Function() action, {String? confirmId}) async {
     if (await modoSoloLectura()) {
       setState(() => _lastMessage = '$label: Modo solo lectura activado');
       return;
     }
-    setState(() { _busy = true; _lastMessage = null; });
+    if (confirmId != null && _armado != confirmId) {
+      _armar(confirmId);
+      return;
+    }
+    _armTimer?.cancel();
+    setState(() { _busy = true; _lastMessage = null; _armado = null; });
     try {
       await action();
       setState(() => _lastMessage = '$label: OK');
+      await _anotar(label);
     } catch (e) {
       setState(() => _lastMessage = '$label: ${_friendlyError(e)}');
+      await _anotar(label + ' (fallo)');
     } finally {
       setState(() => _busy = false);
     }
@@ -3437,18 +3484,46 @@ class _ControlsScreenState extends State<ControlsScreen> {
     return 'Error - $e';
   }
 
+  Future<void> _toggleSoloLectura() async {
+    final activo = await modoSoloLectura();
+    await setModoSoloLectura(!activo);
+    if (!mounted) return;
+    setState(() {});
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+      !activo
+          ? (es ? 'Modo solo lectura activado' : 'Read-only mode on')
+          : (es ? 'Modo solo lectura desactivado' : 'Read-only mode off'),
+    )));
+  }
+
   @override
   Widget build(BuildContext context) {
     final vin = widget.vehicle.vin;
     final pin = widget.pin;
     final c = widget.client;
-
+    final es = Localizations.localeOf(context).languageCode == 'es';
     return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context)!.controlsScreenTitle)),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.controlsScreenTitle),
+        actions: [
+          FutureBuilder<bool>(
+            future: modoSoloLectura(),
+            builder: (ctx, snap) {
+              final activo = snap.data ?? false;
+              return IconButton(
+                icon: Icon(activo ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                tooltip: es ? 'Modo solo lectura' : 'Read-only mode',
+                onPressed: _toggleSoloLectura,
+              );
+            },
+          ),
+        ],
+      ),
       body: AbsorbPointer(
         absorbing: _busy,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
           children: [
             if (_busy) const LinearProgressIndicator(),
             if (_lastMessage != null)
@@ -3456,7 +3531,45 @@ class _ControlsScreenState extends State<ControlsScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(_lastMessage!, style: const TextStyle(color: Colors.amber)),
               ),
-            // Centinela arriba del todo, para ver de inmediato el resultado del comando.
+            if (_locked != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _armado == 'todo'
+                          ? Colors.amber
+                          : (_locked! ? const Color(0xFF8A5A12) : const Color(0xFF0D3B66)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () => _run(
+                      _locked! ? 'Abrir todo' : 'Cerrar todo',
+                      () async {
+                        if (_locked!) {
+                          await c.openTrunk(vin, pin);
+                          await Future.delayed(const Duration(milliseconds: 1200));
+                          await c.unlockVehicle(vin, pin);
+                        } else {
+                          await c.closeTrunk(vin, pin);
+                          await Future.delayed(const Duration(milliseconds: 1200));
+                          await c.lockVehicle(vin, pin);
+                        }
+                        final st = await c.getVehicleStatus(vin);
+                        if (mounted) setState(() => _locked = st.isLocked);
+                      },
+                      confirmId: 'todo',
+                    ),
+                    icon: Icon(_armado == 'todo' ? Icons.help_outline : (_locked! ? Icons.lock_open : Icons.lock)),
+                    label: Text(
+                      _armado == 'todo'
+                          ? (es ? 'Pulsa otra vez para confirmar' : 'Tap again to confirm')
+                          : (_locked! ? (es ? 'Abrir todo' : 'Open all') : (es ? 'Cerrar todo' : 'Close all')),
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                ),
+              ),
             _sectionTitle(AppLocalizations.of(context)!.sectionSentry),
             _actionGrid([
               _ActionBtn(AppLocalizations.of(context)!.actionSentryOn, Icons.security, () => _run(AppLocalizations.of(context)!.actionSentryOn, () => c.sentryModeOn(vin, pin))),
@@ -3465,8 +3578,8 @@ class _ControlsScreenState extends State<ControlsScreen> {
             _sectionTitle(AppLocalizations.of(context)!.sectionActions),
             _actionGrid([
               _ActionBtn(AppLocalizations.of(context)!.actionLock, Icons.lock, () => _run(AppLocalizations.of(context)!.actionLock, () async { await markManualLockAction(); await c.lockVehicle(vin, pin); })),
-              _ActionBtn(AppLocalizations.of(context)!.actionUnlock, Icons.lock_open, () => _run(AppLocalizations.of(context)!.actionUnlock, () async { await markManualLockAction(); await c.unlockVehicle(vin, pin); })),
-              _ActionBtn(AppLocalizations.of(context)!.actionTrunkOpen, Icons.inventory_2, () => _run(AppLocalizations.of(context)!.actionTrunkOpen, () => c.openTrunk(vin, pin))),
+              _ActionBtn(_armado == 'unlock' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionUnlock, Icons.lock_open, () => _run(AppLocalizations.of(context)!.actionUnlock, () async { await markManualLockAction(); await c.unlockVehicle(vin, pin); }, confirmId: 'unlock')),
+              _ActionBtn(_armado == 'trunk' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionTrunkOpen, Icons.inventory_2, () => _run(AppLocalizations.of(context)!.actionTrunkOpen, () => c.openTrunk(vin, pin), confirmId: 'trunk')),
               _ActionBtn(AppLocalizations.of(context)!.actionTrunkClose, Icons.inventory_2_outlined, () => _run(AppLocalizations.of(context)!.actionTrunkClose, () => c.closeTrunk(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionFindCar, Icons.location_searching, () => _run(AppLocalizations.of(context)!.actionFindCar, () => c.findVehicle(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionUnlockCharger, Icons.ev_station, () => _run(AppLocalizations.of(context)!.actionUnlockCharger, () => c.unlockCharger(vin, pin))),
@@ -3487,31 +3600,22 @@ class _ControlsScreenState extends State<ControlsScreen> {
             _actionGrid([
               _ActionBtn(AppLocalizations.of(context)!.actionSunshadeOpen, Icons.blinds, () => _run(AppLocalizations.of(context)!.actionSunshadeOpen, () => c.sunshadeOpen(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionSunshadeClose, Icons.blinds_closed, () => _run(AppLocalizations.of(context)!.actionSunshadeClose, () => c.sunshadeClose(vin, pin))),
-              _ActionBtn(AppLocalizations.of(context)!.actionWindowsOpen, Icons.window, () => _run(AppLocalizations.of(context)!.actionWindowsOpen, () => c.windowsOpen(vin, pin))),
+              _ActionBtn(_armado == 'windows' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionWindowsOpen, Icons.window, () => _run(AppLocalizations.of(context)!.actionWindowsOpen, () => c.windowsOpen(vin, pin), confirmId: 'windows')),
               _ActionBtn(AppLocalizations.of(context)!.actionWindowsClose, Icons.window_outlined, () => _run(AppLocalizations.of(context)!.actionWindowsClose, () => c.windowsClose(vin, pin))),
             ]),
-            
             _sectionTitle(AppLocalizations.of(context)!.sectionSpeedLimit),
             if (_carSpeedActive != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  (Localizations.localeOf(context).languageCode == 'es'
-                          ? (_carSpeedActive!
-                              ? 'Activo en el coche'
-                              : 'Inactivo en el coche')
-                          : (_carSpeedActive!
-                              ? 'Active in the car'
-                              : 'Inactive in the car')) +
-                      (_carSpeedLimit != null
-                          ? '  -  ' + _carSpeedLimit!.round().toString() + ' km/h'
-                          : ''),
+                  (es
+                          ? (_carSpeedActive! ? 'Activo en el coche' : 'Inactivo en el coche')
+                          : (_carSpeedActive! ? 'Active in the car' : 'Inactive in the car')) +
+                      (_carSpeedLimit != null ? '  -  ' + _carSpeedLimit!.round().toString() + ' km/h' : ''),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: _carSpeedActive!
-                        ? const Color(0xFFB35A00)
-                        : const Color(0xFF5B87AC),
+                    color: _carSpeedActive! ? const Color(0xFFB35A00) : const Color(0xFF5B87AC),
                   ),
                 ),
               ),
@@ -3526,7 +3630,7 @@ class _ControlsScreenState extends State<ControlsScreen> {
               onChangeEnd: (v) => _run('Limite de velocidad', () => c.setSpeedLimit(vin, pin, v.round())),
             ),
             Text(
-              Localizations.localeOf(context).languageCode == 'es'
+              es
                   ? 'La app puede fijar el valor, pero no activar ni desactivar el limitador: eso se hace desde la pantalla del coche.'
                   : 'The app can set the value, but cannot switch the limiter on or off: that is done from the car screen.',
               style: const TextStyle(fontSize: 11, color: Color(0xFF5B87AC)),
@@ -3578,6 +3682,39 @@ class _ControlsScreenState extends State<ControlsScreen> {
               setState(() => _passengerSeatVent = v);
               _run('Asiento copiloto vent.', () => c.seatVentilation(vin, pin, position: 2, level: v));
             }),
+            const Divider(height: 32),
+            Row(
+              children: [
+                const Icon(Icons.science_outlined, size: 18, color: Colors.orange),
+                const SizedBox(width: 6),
+                Text(es ? 'Experimental' : 'Experimental', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              es
+                  ? 'Hoy investigamos espejos calefactados y carga remota en '
+                      'otros proyectos de la comunidad. No estan aqui: no '
+                      'tenemos el codigo exacto que el B10 necesita, y '
+                      'prefiero no adivinarlo en un boton que manda algo '
+                      'real al coche. Se anadiran cuando esten verificados.'
+                  : 'We looked into heated mirrors and remote charging today, '
+                      'seen in other community projects. Not included yet: we '
+                      'do not have the exact code the B10 needs, and would '
+                      'rather not guess on a button that sends something real '
+                      'to the car. Added once verified.',
+              style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.35),
+            ),
+            const Divider(height: 32),
+            Text(es ? 'Registro' : 'Log', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (_registro.isEmpty)
+              Text(es ? 'Todavia no se ha usado nada.' : 'Nothing used yet.', style: const TextStyle(fontSize: 12, color: Colors.grey))
+            else
+              ..._registro.map((l) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(l, style: const TextStyle(fontSize: 12)),
+                  )),
             const SizedBox(height: 24),
           ],
         ),
