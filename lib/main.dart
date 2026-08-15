@@ -1621,7 +1621,10 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   try {
     final ga = await gastoAnual();
     await HomeWidget.saveWidgetData<String>('gasto_anual_total', ga.toStringAsFixed(2));
-  } catch (_) {}
+    await CarLogBridge.log('gasto_anual: ' + ga.toStringAsFixed(2));
+  } catch (e) {
+    await CarLogBridge.log('gasto_anual excepcion: ' + e.toString());
+  }
   // Backup automatico a Drive, una vez al dia, solo si el usuario lo activo
   // y ya conecto su cuenta. Nunca lanza excepcion.
   try {
