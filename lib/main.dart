@@ -3408,6 +3408,10 @@ class _ControlsScreenState extends State<ControlsScreen> {
   bool? _carSpeedActive;
 
   Future<void> _run(String label, Future<void> Function() action) async {
+    if (await modoSoloLectura()) {
+      setState(() => _lastMessage = '$label: Modo solo lectura activado');
+      return;
+    }
     setState(() { _busy = true; _lastMessage = null; });
     try {
       await action();
