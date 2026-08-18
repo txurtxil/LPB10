@@ -59,34 +59,10 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        list.addItem(
-            Row.Builder()
-                .setTitle("Rutinas")
-                .addText("Clima, cerrar y mas")
-                .setImage(icon(R.drawable.ic_car_routine))
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(RoutinesScreen(carContext)) }
-                .build()
-        )
-        list.addItem(
-            Row.Builder()
-                .setTitle("Acciones rapidas")
-                .addText("Cerrar, clima, centinela y mas")
-                .setImage(icon(R.drawable.ic_car_routine))
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(QuickActionsScreen(carContext)) }
-                .build()
-        )
-
-        list.addItem(
-            Row.Builder()
-                .setTitle("Consumo")
-                .addText("Gasto real del ciclo actual")
-                .setImage(icon(R.drawable.ic_car_routine))
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(ConsumoChartScreen(carContext)) }
-                .build()
-        )
+        // Solo lo que ayuda a conducir: Rutinas, Acciones rapidas y Consumo
+        // se quitaron del hub del coche por el criterio PF-1 de Google (deben
+        // aportar algo mientras se conduce, no solo funcionar bien). Siguen
+        // intactas en el movil, sin ningun cambio.
 
         list.addItem(
             Row.Builder()
