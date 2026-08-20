@@ -87,19 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.build_outlined),
-                  title: Text(Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Mantenimiento'
-                      : 'Maintenance'),
-                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Revisiones segun el manual del coche'
-                      : 'Servicing intervals from the manual'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const MaintenanceScreen())),
-                ),
-                const Divider(),
-                ListTile(
                   leading: const Icon(Icons.route_outlined),
                   title: const Text('ABRP'),
                   subtitle: Text(Localizations.localeOf(context).languageCode == 'es'

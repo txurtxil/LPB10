@@ -47,6 +47,7 @@ import 'maintenance.dart';
 import 'abrp.dart';
 import 'drive_backup.dart';
 import 'pvpc.dart';
+import 'maintenance_screen.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1269,6 +1270,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       );
                       _loadStatus();
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.build_outlined, size: 18),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es' ? 'Mantenimiento' : 'Maintenance'),
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const MaintenanceScreen()));
                     },
                   ),
                   const SizedBox(height: 8),

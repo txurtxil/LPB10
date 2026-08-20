@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 
 import 'maintenance.dart';
+import 'maintenance_ticket.dart';
 
 /// Mantenimiento periodico segun el manual del vehiculo.
 class MaintenanceScreen extends StatefulWidget {
@@ -168,7 +169,16 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     return Scaffold(
-      appBar: AppBar(title: Text(es ? 'Mantenimiento' : 'Maintenance')),
+      appBar: AppBar(
+        title: Text(es ? 'Mantenimiento' : 'Maintenance'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: es ? 'Compartir informe' : 'Share report',
+            onPressed: () => shareMaintenanceTicket(),
+          ),
+        ],
+      ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(
