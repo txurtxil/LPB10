@@ -5,10 +5,7 @@
 // o PDF compartido. Reutiliza Mantenimiento.estado()/cargar(), no reinventa
 // ningun calculo.
 
-import 'dart:io';
-
 import 'package:home_widget/home_widget.dart';
-import 'package:share_plus/share_plus.dart';
 
 import 'energy_cost.dart';
 import 'maintenance.dart';
@@ -131,14 +128,4 @@ Future<String> buildMaintenanceTicket({String? nickname}) async {
   b.writeln(_center('LMB10 - no oficial'));
 
   return b.toString();
-}
-
-/// Genera el fichero de texto y abre el dialogo de compartir del sistema,
-/// exactamente igual que hace ticket_printer.dart.
-Future<void> shareMaintenanceTicket({String? nickname}) async {
-  final texto = await buildMaintenanceTicket(nickname: nickname);
-  final dir = Directory.systemTemp;
-  final f = File('${dir.path}/mantenimiento_lmb10.txt');
-  await f.writeAsString(texto);
-  await Share.shareXFiles([XFile(f.path)], text: 'Mantenimiento LMB10');
 }
