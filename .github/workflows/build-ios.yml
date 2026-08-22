@@ -25,13 +25,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Usa el comando oficial para generar la estructura .ipa sin firmado
       - name: Build iOS IPA
         run: flutter build ipa --no-codesign
 
-      # Sube directamente el archivo .ipa generado por Flutter
+      # Encuentra el .ipa generado sin importar la subcarpeta exacta y lo sube
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: lmb10-ios-build
-          path: build/ios/ipa/*.ipa
+          path: build/ios/**/*.ipa
