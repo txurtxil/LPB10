@@ -25,12 +25,21 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS IPA
-        run: flutter build ipa --no-codesign
+      # Compila los bundles de iOS en modo release sin firma
+      - name: Build iOS App
+        run: flutter build ios --release --no-codesign
 
-      # Encuentra el .ipa generado sin importar la subcarpeta exacta y lo sube
+      # Construye el Payload empaquetando adecuadamente la estructura de iOS
+      - name: Create IPA Package
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r lmb10-unsigned.ipa Payload
+
+      # Sube el archivo .ipa generado
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: lmb10-ios-build
-          path: build/ios/**/*.ipa
+          path: build/ios/iphoneos/lmb10-unsigned.ipa
