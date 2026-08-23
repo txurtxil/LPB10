@@ -12,8 +12,17 @@ class SentryNotifier {
   static Future<void> _init() async {
     if (_inited) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     await _plugin.initialize(
-        settings: const InitializationSettings(android: androidInit));
+      settings: const InitializationSettings(
+        android: androidInit,
+        iOS: iosInit,
+      ),
+    );
     _inited = true;
   }
 

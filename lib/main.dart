@@ -364,7 +364,17 @@ const _unlockedReminderMinutes = 15;
 Future<FlutterLocalNotificationsPlugin> _initNotifications() async {
   final plugin = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  await plugin.initialize(settings: const InitializationSettings(android: androidInit));
+  const iosInit = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
+  await plugin.initialize(
+    settings: const InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    ),
+  );
   final androidImpl = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
   await androidImpl?.requestNotificationsPermission();
   return plugin;
