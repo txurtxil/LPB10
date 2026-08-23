@@ -2,6 +2,11 @@ name: Build iOS IPA (Coste 0)
 
 on:
   workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 jobs:
   build-ios:
@@ -37,9 +42,18 @@ jobs:
           cp -r Runner.app Payload/
           zip -r lmb10-unsigned.ipa Payload
 
-      # Sube el archivo .ipa generado
+      # Sube el .ipa como artifact (sirve para pruebas sueltas con workflow_dispatch)
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: lmb10-ios-build
           path: build/ios/iphoneos/lmb10-unsigned.ipa
+
+      # Si el disparo viene de una release publicada, sube el .ipa a esa misma release
+      - name: Upload IPA to Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp build/ios/iphoneos/lmb10-unsigned.ipa "lmb10-${{ github.event.release.tag_name }}-unsigned.ipa"
+          gh release upload "${{ github.event.release.tag_name }}" "lmb10-${{ github.event.release.tag_name }}-unsigned.ipa" --repo ${{ github.repository }}
