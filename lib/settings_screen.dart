@@ -10,6 +10,7 @@ import 'cert_import_screen.dart';
 import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
+import 'comparison_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
@@ -110,6 +111,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         builder: (_) => const VehicleProfileScreen()));
                     if (mounted) setState(() {});
                   },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.bar_chart_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Comparar con otro coche'
+                      : 'Compare with another car'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Tu consumo real frente a un Tesla Model 3 (o el que configures)'
+                      : 'Your real consumption vs a Tesla Model 3 (or whichever you set)'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ComparisonScreen())),
                 ),
                 const Divider(),
                 ListTile(
