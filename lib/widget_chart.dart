@@ -16,6 +16,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'daily_stats.dart';
 
 // Ya NO son const: las fija loadVehicleProfile() al arrancar segun el modelo
 // elegido por el usuario. Los valores de aqui son solo el punto de partida
@@ -92,8 +93,6 @@ Future<Map<String, String>> buildWidgetExtras(
   String cycleKm = '';
   try {
     // ---------- datos locales ----------
-    final chargeRaw = await _wcStorage.read(key: _kChargeKey);
-
     // Fuente de puntos: PRIMERO el archivo permanente (sin cap). Si esta vacio
     // (p. ej. recien instalado), se cae al store rapido capado a 200.
     var points = await _readPermanentTrips();
@@ -111,18 +110,18 @@ Future<Map<String, String>> buildWidgetExtras(
       }
     }
 
+    // lm_charge_history_v1 (deteccion en vivo) casi nunca se rellena: mismo
+    // motivo que ya obligo a cambiar de fuente en ticket_printer.dart. Se
+    // reconstruye desde el historico permanente, que si tiene datos.
     final sessions =
         <({int startTs, int? endTs, double startSoc, double? endSoc})>[];
-    if (chargeRaw != null) {
-      for (final e in (json.decode(chargeRaw) as List)) {
-        final m = Map<String, dynamic>.from(e as Map);
-        sessions.add((
-          startTs: m['startTs'] as int,
-          endTs: m['endTs'] as int?,
-          startSoc: (m['startSoc'] as num).toDouble(),
-          endSoc: (m['endSoc'] as num?)?.toDouble(),
-        ));
-      }
+    for (final r in await ChargeRebuild.fromTrips()) {
+      sessions.add((
+        startTs: r.startTs,
+        endTs: r.endTs,
+        startSoc: r.startSoc,
+        endSoc: r.endSoc,
+      ));
     }
 
     // Solo sesiones reales: abiertas o cerradas con ganancia >= 1%

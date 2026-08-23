@@ -1827,7 +1827,19 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
           final k = iso[2] + '/' + iso[1];
           kmDia[k] = ag.kmAll.toStringAsFixed(0);
           if (precioDia != null) {
-            eurDia[k] = (ag.soc / 100.0 * gBatteryKwh * precioDia.eurKwh)
+            var precioKwh = precioDia.eurKwh;
+            if (precioDia.esPvpc) {
+              try {
+                final fecha = DateTime.parse(ag.d);
+                final diaP = await Pvpc.dia(fecha);
+                if (diaP != null) {
+                  final dto = await Pvpc.descuento();
+                  final media = diaP.horas.reduce((a, b) => a + b) / 24.0;
+                  precioKwh = dto > 0 ? media * (1 - dto / 100.0) : media;
+                }
+              } catch (_) {}
+            }
+            eurDia[k] = (ag.soc / 100.0 * gBatteryKwh * precioKwh)
                 .toStringAsFixed(2);
           }
         }
