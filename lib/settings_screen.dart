@@ -11,6 +11,7 @@ import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
 import 'comparison_screen.dart';
+import 'trip_list_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
@@ -137,6 +138,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const PriceScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.route_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Ultimas rutas'
+                      : 'Recent trips'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Distancia, duracion y consumo de cada trayecto'
+                      : 'Distance, duration and consumption for each trip'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const TripListScreen())),
                 ),
                 const Divider(),
                 ListTile(
