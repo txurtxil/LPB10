@@ -3,38 +3,47 @@
 // Reconstruye rutas individuales a partir de trips.jsonl, con el mismo
 // patron de cache que ChargeRebuild.fromTrips() en daily_stats.dart.
 //
+// lat/lon son OPCIONALES en cada punto: las lecturas guardadas antes de
+// anadir captura de GPS no los tienen, y esas rutas simplemente saldran con
+// hasGps=false (sin boton de mapa), nunca con coordenadas inventadas.
+//
 // OJO, leccion del 25/08/2026: el odometro (totalMileage) es un ENTERO. Con
-// sondeo cada 90s en primer plano, es normal que varias lecturas seguidas
-// muestren el mismo km (todavia no se completo el siguiente km entero) y
-// luego una sola lectura suba +1. Cortar la ruta en la primera lectura sin
-// avance (kmDelta<=0) fragmentaba un trayecto real de varios minutos en
-// media docena de "rutas" de 1 km. La correccion: solo se corta si pasa
-// kTripMergeGapMs sin ningun avance, no en cuanto aparece UNA lectura sin
+// sondeo cada 90s en primer plano, varias lecturas seguidas pueden mostrar
+// el mismo km antes de que el contador suba +1. Solo se corta una ruta si
+// pasan kTripMergeGapMs SIN NINGUN avance, no en la primera lectura sin
 // avance.
 import 'dart:convert';
 import 'daily_stats.dart' show DailyStats;
 import 'widget_chart.dart' show gBatteryKwh;
 
-/// Tiempo sin avance de odometro que se considera parada real (fin de ruta).
-/// Por debajo de esto, un hueco sin avance se trata como redondeo del
-/// odometro entero o una parada breve (semaforo), y NO corta la ruta.
 const int kTripMergeGapMs = 20 * 60 * 1000;
-
-/// Cualquier hueco interno mayor que esto, aunque no llegue a cortar la
-/// ruta, hace que la duracion se marque como aproximada: pudo haber una
-/// parada corta ahi dentro que no vemos con el sondeo que hay.
 const int kTripApproxGapMs = 6 * 60 * 1000;
+const double kTripMinPct = 8.0;
+const double kTripMaxPct = 70.0;
 
-const double kTripMinPct = 8.0; // %/100km imposible por debajo
-const double kTripMaxPct = 70.0; // %/100km imposible por encima
+class _Pt {
+  final int ts;
+  final int km;
+  final double soc;
+  final double? lat;
+  final double? lon;
+  const _Pt(this.ts, this.km, this.soc, this.lat, this.lon);
+}
+
+class RouteWaypoint {
+  final double lat;
+  final double lon;
+  const RouteWaypoint(this.lat, this.lon);
+}
 
 class RouteTrip {
   final int startTs;
   final int endTs;
   final double km;
-  final double? kwh100; // null = fuera de rango plausible, no se inventa
-  final bool aproximada; // hubo un hueco interno > kTripApproxGapMs
+  final double? kwh100;
+  final bool aproximada;
   final int puntos;
+  final List<RouteWaypoint> waypoints;
 
   const RouteTrip({
     required this.startTs,
@@ -43,9 +52,14 @@ class RouteTrip {
     required this.kwh100,
     required this.aproximada,
     required this.puntos,
+    required this.waypoints,
   });
 
   Duration get duracion => Duration(milliseconds: endTs - startTs);
+
+  /// Se pide un minimo de 2 puntos GPS para que merezca la pena dibujar
+  /// algo: con 1 solo punto no hay linea, solo un marcador suelto.
+  bool get hasGps => waypoints.length >= 2;
 }
 
 class TripRebuild {
@@ -59,7 +73,7 @@ class TripRebuild {
     if (len == _cacheLen) return _cache;
 
     final seen = <String>{};
-    final pts = <List<num>>[]; // [ts, km, soc]
+    final pts = <_Pt>[];
     for (final line in await f.readAsLines()) {
       final t = line.trim();
       if (t.isEmpty) continue;
@@ -71,14 +85,16 @@ class TripRebuild {
         if (ts is! int || km is! int || soc is! num) continue;
         final k = '$ts:$km:$soc';
         if (!seen.add(k)) continue;
-        pts.add([ts, km, soc.toDouble()]);
+        final lat = (m['lat'] as num?)?.toDouble();
+        final lon = (m['lon'] as num?)?.toDouble();
+        pts.add(_Pt(ts, km, soc.toDouble(), lat, lon));
       } catch (_) {}
     }
-    pts.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
+    pts.sort((a, b) => a.ts.compareTo(b.ts));
 
     final runs = <RouteTrip>[];
     int? ini;
-    int? finProv; // ultimo indice con avance de km dentro del tramo activo
+    int? finProv;
     int maxGapInterno = 0;
 
     void cerrar() {
@@ -91,14 +107,12 @@ class TripRebuild {
     }
 
     for (var i = 1; i < pts.length; i++) {
-      final kmDelta = (pts[i][1] - pts[i - 1][1]).toDouble();
+      final kmDelta = (pts[i].km - pts[i - 1].km).toDouble();
       if (kmDelta > 0) {
         ini ??= i - 1;
         finProv = i;
       } else if (ini != null) {
-        // Sin avance en este paso. Solo corta si el hueco SIN AVANCE desde
-        // la ultima subida de km supera el margen de fusion.
-        final huecoSinAvance = (pts[i][0] - pts[finProv!][0]).toInt();
+        final huecoSinAvance = pts[i].ts - pts[finProv!].ts;
         if (huecoSinAvance > kTripMergeGapMs) {
           cerrar();
         } else if (huecoSinAvance > maxGapInterno) {
@@ -108,17 +122,17 @@ class TripRebuild {
     }
     cerrar();
 
-    runs.sort((a, b) => b.startTs.compareTo(a.startTs)); // recientes primero
+    runs.sort((a, b) => b.startTs.compareTo(a.startTs));
     _cache = runs;
     _cacheLen = len;
     return _cache;
   }
 
-  static RouteTrip _build(List<List<num>> pts, int ini, int fin, int maxGapInterno) {
-    final kmTotal = (pts[fin][1] - pts[ini][1]).toDouble();
+  static RouteTrip _build(List<_Pt> pts, int ini, int fin, int maxGapInterno) {
+    final kmTotal = (pts[fin].km - pts[ini].km).toDouble();
     var socDrop = 0.0;
     for (var i = ini + 1; i <= fin; i++) {
-      socDrop += (pts[i - 1][2] - pts[i][2]).toDouble();
+      socDrop += pts[i - 1].soc - pts[i].soc;
     }
     double? kwh100;
     if (kmTotal > 0 && socDrop > 0) {
@@ -127,13 +141,20 @@ class TripRebuild {
         kwh100 = socDrop * gBatteryKwh / kmTotal;
       }
     }
+    final waypoints = <RouteWaypoint>[];
+    for (var i = ini; i <= fin; i++) {
+      final la = pts[i].lat;
+      final lo = pts[i].lon;
+      if (la != null && lo != null) waypoints.add(RouteWaypoint(la, lo));
+    }
     return RouteTrip(
-      startTs: pts[ini][0].toInt(),
-      endTs: pts[fin][0].toInt(),
+      startTs: pts[ini].ts,
+      endTs: pts[fin].ts,
       km: kmTotal,
       kwh100: kwh100,
       aproximada: maxGapInterno > kTripApproxGapMs,
       puntos: fin - ini + 1,
+      waypoints: waypoints,
     );
   }
 }

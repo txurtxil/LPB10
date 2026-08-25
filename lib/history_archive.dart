@@ -25,12 +25,17 @@ class HistoryArchive {
     return d;
   }
 
-  static Future<void> appendTrip(int ts, int km, double soc) async {
+  static Future<void> appendTrip(int ts, int km, double soc, {double? lat, double? lon}) async {
     try {
       final d = await _dir();
       final f = File('${d.path}/trips.jsonl');
+      final m = <String, dynamic>{'ts': ts, 'km': km, 'soc': soc};
+      if (lat != null && lon != null) {
+        m['lat'] = lat;
+        m['lon'] = lon;
+      }
       await f.writeAsString(
-          '${json.encode({'ts': ts, 'km': km, 'soc': soc})}\n',
+          '${json.encode(m)}\n',
           mode: FileMode.append,
           flush: true);
     } catch (_) {}

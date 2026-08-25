@@ -5,6 +5,7 @@
 // "algo sencillo, solo distancia tiempo y promedio".
 import 'package:flutter/material.dart';
 import 'trip_rebuild.dart';
+import 'route_map_screen.dart';
 
 const _cBlue = Color(0xFF0D3B66);
 const _cGood = Color(0xFF2A9D8F);
@@ -94,14 +95,28 @@ class _TripListScreenState extends State<TripListScreen> {
                           color: r.kwh100 != null ? _cGood : Colors.grey,
                         ),
                       ),
-                      trailing: r.aproximada
-                          ? Tooltip(
+                      onTap: r.hasGps
+                          ? () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => RouteMapScreen(
+                                  waypoints: r.waypoints, aproximada: r.aproximada)))
+                          : null,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (r.aproximada)
+                            Tooltip(
                               message: es
                                   ? 'Hueco largo de muestreo dentro de la ruta: duracion aproximada'
                                   : 'Long sampling gap within the trip: duration is approximate',
                               child: const Icon(Icons.timelapse, size: 18, color: _cOver),
-                            )
-                          : null,
+                            ),
+                          if (r.hasGps)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: Icon(Icons.map_outlined, size: 18, color: _cBlue),
+                            ),
+                        ],
+                      ),
                     );
                   },
                 ),

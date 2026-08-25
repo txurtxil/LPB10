@@ -111,7 +111,8 @@ Future<void> refreshVehicleDataInBackground() async {
       await ChargeHistoryStore.endSession(soc);
     }
     if (status.totalMileage != null && !status.isCharging) {
-      await TripPointStore.addPoint(status.totalMileage!, soc);
+      await TripPointStore.addPoint(status.totalMileage!, soc,
+          lat: status.latitude, lon: status.longitude);
     }
   }
   await _storage.write(key: 'lm_bg_prev_charging_v1', value: status.isCharging ? '1' : '0');
@@ -1012,7 +1013,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (s.totalMileage != null && !s.isCharging) {
-      await TripPointStore.addPoint(s.totalMileage!, soc);
+      await TripPointStore.addPoint(s.totalMileage!, soc,
+          lat: s.latitude, lon: s.longitude);
     }
     _previousStatus = s;
   }
@@ -2078,11 +2080,24 @@ class TripPoint {
   final int ts;
   final int totalMileage;
   final double soc;
-  TripPoint({required this.ts, required this.totalMileage, required this.soc});
+  final double? lat;
+  final double? lon;
+  TripPoint({required this.ts, required this.totalMileage, required this.soc, this.lat, this.lon});
 
-  Map<String, dynamic> toMap() => {'ts': ts, 'km': totalMileage, 'soc': soc};
-  factory TripPoint.fromMap(Map<String, dynamic> m) =>
-      TripPoint(ts: m['ts'] as int, totalMileage: m['km'] as int, soc: (m['soc'] as num).toDouble());
+  Map<String, dynamic> toMap() {
+    final m = <String, dynamic>{'ts': ts, 'km': totalMileage, 'soc': soc};
+    if (lat != null && lon != null) {
+      m['lat'] = lat;
+      m['lon'] = lon;
+    }
+    return m;
+  }
+  factory TripPoint.fromMap(Map<String, dynamic> m) => TripPoint(
+      ts: m['ts'] as int,
+      totalMileage: m['km'] as int,
+      soc: (m['soc'] as num).toDouble(),
+      lat: (m['lat'] as num?)?.toDouble(),
+      lon: (m['lon'] as num?)?.toDouble());
 }
 
 class TripPointStore {
@@ -2099,11 +2114,11 @@ class TripPointStore {
     }
   }
 
-  static Future<void> addPoint(int totalMileage, double soc) async {
+  static Future<void> addPoint(int totalMileage, double soc, {double? lat, double? lon}) async {
     final points = await load();
     final nowTs = DateTime.now().millisecondsSinceEpoch;
-    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc));
-    await HistoryArchive.appendTrip(nowTs, totalMileage, soc);
+    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: lat, lon: lon));
+    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: lat, lon: lon);
     final trimmed = points.length > _maxPoints ? points.sublist(points.length - _maxPoints) : points;
     await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
   }
