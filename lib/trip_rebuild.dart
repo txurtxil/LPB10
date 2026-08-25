@@ -108,26 +108,33 @@ class TripRebuild {
 
     for (var i = 1; i < pts.length; i++) {
       final kmDelta = (pts[i].km - pts[i - 1].km).toDouble();
-      // El hueco de tiempo se mira SIEMPRE, haya o no avance de km.
-      // Antes solo se comprobaba cuando kmDelta<=0: un salto de horas o
-      // dias con el TCU dormido, si el odometro tambien avanzo entre medias
-      // (lo normal: son varios viajes reales, no uno), se fusionaba entero
-      // en una sola 'ruta' con duracion de dias. Reportado por testers:
-      // rutas de 46h y 89h de duracion.
       final huecoBruto = pts[i].ts - pts[i - 1].ts;
+      // Sin muestras intermedias: interrupcion real de sondeo (TCU
+      // dormido, app parada horas o dias). Se cierra y esos km se
+      // descartan: no sabemos cuando ocurrieron. Bug reportado: rutas
+      // de 46h y 89h.
       if (huecoBruto > kTripMergeGapMs) {
-        // Interrupcion real de muestreo. Se cierra lo que hubiera abierto
-        // Y se descartan los km de este salto: no hay forma fiable de saber
-        // en que momento del hueco ocurrieron, asi que no se atribuyen a
-        // ninguna ruta en vez de inventar una duracion.
         cerrar();
         continue;
+      }
+      // Con sondeo continuo de fondo cada 15 min, una parada larga son
+      // muchos huecos de 15 min seguidos y ninguno por si solo supera
+      // el margen. Lo que hay que mirar es el tiempo acumulado SIN
+      // avanzar km desde el ultimo punto real, no el hueco paso a paso.
+      // Bug reportado: rutas de 5h o mas con el coche aparcado de por
+      // medio.
+      if (ini != null) {
+        final huecoDesdeUltimoAvance = pts[i].ts - pts[finProv!].ts;
+        if (huecoDesdeUltimoAvance > kTripMergeGapMs) {
+          cerrar();
+        }
       }
       if (kmDelta > 0) {
         ini ??= i - 1;
         finProv = i;
-      } else if (ini != null && huecoBruto > maxGapInterno) {
-        maxGapInterno = huecoBruto;
+      } else if (ini != null) {
+        final hueco = pts[i].ts - pts[finProv!].ts;
+        if (hueco > maxGapInterno) maxGapInterno = hueco;
       }
     }
     cerrar();
