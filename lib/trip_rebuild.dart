@@ -1,22 +1,30 @@
 // trip_rebuild.dart
 //
 // Reconstruye rutas individuales a partir de trips.jsonl, con el mismo
-// patron que ChargeRebuild.fromTrips() en daily_stats.dart: cache por
-// longitud de fichero (no se reparsea si no ha crecido), lectura completa
-// solo cuando hace falta.
+// patron de cache que ChargeRebuild.fromTrips() en daily_stats.dart.
 //
-// Una "ruta" es una cadena de puntos consecutivos con kmDelta > 0. Se corta
-// en el primer punto con kmDelta <= 0 (coche parado o cargando). El
-// muestreo es cada 90s en primer plano y cada 15 min en segundo plano (limite
-// de Android), asi que una ruta con la app dormida puede tener solo el punto
-// de salida y el de llegada: la duracion en ese caso es un margen, no un
-// cronometro. Cualquier hueco interno > 20 min se marca como aproximado en
-// vez de presentarse como preciso.
+// OJO, leccion del 25/08/2026: el odometro (totalMileage) es un ENTERO. Con
+// sondeo cada 90s en primer plano, es normal que varias lecturas seguidas
+// muestren el mismo km (todavia no se completo el siguiente km entero) y
+// luego una sola lectura suba +1. Cortar la ruta en la primera lectura sin
+// avance (kmDelta<=0) fragmentaba un trayecto real de varios minutos en
+// media docena de "rutas" de 1 km. La correccion: solo se corta si pasa
+// kTripMergeGapMs sin ningun avance, no en cuanto aparece UNA lectura sin
+// avance.
 import 'dart:convert';
 import 'daily_stats.dart' show DailyStats;
 import 'widget_chart.dart' show gBatteryKwh;
 
-const int kTripLongGapMs = 20 * 60 * 1000;
+/// Tiempo sin avance de odometro que se considera parada real (fin de ruta).
+/// Por debajo de esto, un hueco sin avance se trata como redondeo del
+/// odometro entero o una parada breve (semaforo), y NO corta la ruta.
+const int kTripMergeGapMs = 20 * 60 * 1000;
+
+/// Cualquier hueco interno mayor que esto, aunque no llegue a cortar la
+/// ruta, hace que la duracion se marque como aproximada: pudo haber una
+/// parada corta ahi dentro que no vemos con el sondeo que hay.
+const int kTripApproxGapMs = 6 * 60 * 1000;
+
 const double kTripMinPct = 8.0; // %/100km imposible por debajo
 const double kTripMaxPct = 70.0; // %/100km imposible por encima
 
@@ -25,7 +33,7 @@ class RouteTrip {
   final int endTs;
   final double km;
   final double? kwh100; // null = fuera de rango plausible, no se inventa
-  final bool aproximada; // hubo un hueco interno > kTripLongGapMs
+  final bool aproximada; // hubo un hueco interno > kTripApproxGapMs
   final int puntos;
 
   const RouteTrip({
@@ -70,22 +78,35 @@ class TripRebuild {
 
     final runs = <RouteTrip>[];
     int? ini;
-    int maxGap = 0;
+    int? finProv; // ultimo indice con avance de km dentro del tramo activo
+    int maxGapInterno = 0;
+
+    void cerrar() {
+      if (ini != null && finProv != null) {
+        runs.add(_build(pts, ini!, finProv!, maxGapInterno));
+      }
+      ini = null;
+      finProv = null;
+      maxGapInterno = 0;
+    }
+
     for (var i = 1; i < pts.length; i++) {
       final kmDelta = (pts[i][1] - pts[i - 1][1]).toDouble();
-      final gap = (pts[i][0] - pts[i - 1][0]).toInt();
       if (kmDelta > 0) {
         ini ??= i - 1;
-        if (gap > maxGap) maxGap = gap;
+        finProv = i;
       } else if (ini != null) {
-        runs.add(_build(pts, ini, i - 1, maxGap));
-        ini = null;
-        maxGap = 0;
+        // Sin avance en este paso. Solo corta si el hueco SIN AVANCE desde
+        // la ultima subida de km supera el margen de fusion.
+        final huecoSinAvance = (pts[i][0] - pts[finProv!][0]).toInt();
+        if (huecoSinAvance > kTripMergeGapMs) {
+          cerrar();
+        } else if (huecoSinAvance > maxGapInterno) {
+          maxGapInterno = huecoSinAvance;
+        }
       }
     }
-    if (ini != null) {
-      runs.add(_build(pts, ini, pts.length - 1, maxGap));
-    }
+    cerrar();
 
     runs.sort((a, b) => b.startTs.compareTo(a.startTs)); // recientes primero
     _cache = runs;
@@ -93,7 +114,7 @@ class TripRebuild {
     return _cache;
   }
 
-  static RouteTrip _build(List<List<num>> pts, int ini, int fin, int maxGap) {
+  static RouteTrip _build(List<List<num>> pts, int ini, int fin, int maxGapInterno) {
     final kmTotal = (pts[fin][1] - pts[ini][1]).toDouble();
     var socDrop = 0.0;
     for (var i = ini + 1; i <= fin; i++) {
@@ -111,7 +132,7 @@ class TripRebuild {
       endTs: pts[fin][0].toInt(),
       km: kmTotal,
       kwh100: kwh100,
-      aproximada: maxGap > kTripLongGapMs,
+      aproximada: maxGapInterno > kTripApproxGapMs,
       puntos: fin - ini + 1,
     );
   }
