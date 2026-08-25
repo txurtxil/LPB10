@@ -1,7 +1,7 @@
 name: lmb10
 description: "Leapmotor B10 Client mTLS"
 publish_to: 'none'
-version: 3.60.106+249
+version: 3.60.107+250
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

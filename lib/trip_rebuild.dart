@@ -108,16 +108,26 @@ class TripRebuild {
 
     for (var i = 1; i < pts.length; i++) {
       final kmDelta = (pts[i].km - pts[i - 1].km).toDouble();
+      // El hueco de tiempo se mira SIEMPRE, haya o no avance de km.
+      // Antes solo se comprobaba cuando kmDelta<=0: un salto de horas o
+      // dias con el TCU dormido, si el odometro tambien avanzo entre medias
+      // (lo normal: son varios viajes reales, no uno), se fusionaba entero
+      // en una sola 'ruta' con duracion de dias. Reportado por testers:
+      // rutas de 46h y 89h de duracion.
+      final huecoBruto = pts[i].ts - pts[i - 1].ts;
+      if (huecoBruto > kTripMergeGapMs) {
+        // Interrupcion real de muestreo. Se cierra lo que hubiera abierto
+        // Y se descartan los km de este salto: no hay forma fiable de saber
+        // en que momento del hueco ocurrieron, asi que no se atribuyen a
+        // ninguna ruta en vez de inventar una duracion.
+        cerrar();
+        continue;
+      }
       if (kmDelta > 0) {
         ini ??= i - 1;
         finProv = i;
-      } else if (ini != null) {
-        final huecoSinAvance = pts[i].ts - pts[finProv!].ts;
-        if (huecoSinAvance > kTripMergeGapMs) {
-          cerrar();
-        } else if (huecoSinAvance > maxGapInterno) {
-          maxGapInterno = huecoSinAvance;
-        }
+      } else if (ini != null && huecoBruto > maxGapInterno) {
+        maxGapInterno = huecoBruto;
       }
     }
     cerrar();
