@@ -173,9 +173,9 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 
   EnergyPrice? _price;
   bool _loading = true;
-  double _kwhHoy = 0, _kwh7 = 0, _kwhMes = 0;
-  double _kmHoy = 0, _km7 = 0, _kmMes = 0;
-  double _eurHoy = 0, _eur7 = 0, _eurMes = 0;
+  double _kwhHoy = 0, _kwhAyer = 0, _kwh7 = 0, _kwhMes = 0;
+  double _kmHoy = 0, _kmAyer = 0, _km7 = 0, _kmMes = 0;
+  double _eurHoy = 0, _eurAyer = 0, _eur7 = 0, _eurMes = 0;
   bool _hayEur = false;
 
   @override
@@ -195,11 +195,13 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
     final days = await DailyStats.load();
     final ahora = DateTime.now();
     final hoyKey = DailyStats.dayKey(ahora);
+    final ayerKey = DailyStats.dayKey(ahora.subtract(const Duration(days: 1)));
     final mesKey = DailyStats.monthKey(ahora);
 
     final precios = await preciosPorDia();
     final last7 = days.length > 7 ? days.sublist(days.length - 7) : days;
     final tHoy = totalizar(days.where((a) => a.d == hoyKey), precios);
+    final tAyer = totalizar(days.where((a) => a.d == ayerKey), precios);
     final tMes = totalizar(days.where((a) => a.d.startsWith(mesKey)), precios);
     final t7 = totalizar(last7, precios);
 
@@ -209,13 +211,16 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
       _kwhHoy = tHoy.kwh;
       _kmHoy = tHoy.km;
       _eurHoy = tHoy.eur;
+      _kwhAyer = tAyer.kwh;
+      _kmAyer = tAyer.km;
+      _eurAyer = tAyer.eur;
       _kwh7 = t7.kwh;
       _km7 = t7.km;
       _eur7 = t7.eur;
       _kwhMes = tMes.kwh;
       _kmMes = tMes.km;
       _eurMes = tMes.eur;
-      _hayEur = tHoy.hayEur || t7.hayEur || tMes.hayEur;
+      _hayEur = tHoy.hayEur || tAyer.hayEur || t7.hayEur || tMes.hayEur;
       _loading = false;
     });
   }
@@ -310,6 +315,7 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
                 ),
               ),
             _fila(es ? 'Hoy' : 'Today', _kwhHoy, _kmHoy, _eurHoy),
+            _fila(es ? 'Ayer' : 'Yesterday', _kwhAyer, _kmAyer, _eurAyer),
             _fila(es ? 'Ultimos 7 dias' : 'Last 7 days', _kwh7, _km7, _eur7),
             _fila(es ? 'Este mes' : 'This month', _kwhMes, _kmMes, _eurMes),
             const SizedBox(height: 8),
