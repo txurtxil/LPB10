@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'leapmotor_engine.dart';
+import 'weather.dart';
 import 'about_screen.dart';
 import 'guard_mode_screen.dart';
 import 'sentry/sentry_screen.dart';
@@ -962,6 +963,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   VehicleStatus? _status;
+  double? _extTemp;
   String? _transientError;
   bool _refreshing = false;
   int _unreadMsgs = 0;
@@ -979,6 +981,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     loadShowMapSetting().then((v) { if (mounted) setState(() => _showMap = v); });
     _loadStatus();
     _refreshUnread();
+    Weather.outdoorTemp().then((t) { if (mounted) setState(() => _extTemp = t); });
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 90), (_) => _loadStatus());
     _tickTimer = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
   }
@@ -1411,6 +1414,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _TileData(s.acSwitch == true ? Icons.ac_unit : Icons.ac_unit_outlined, s.acSwitch == true ? t.onLabel : t.offLabel, t.tileClimate),
       _TileData(s.bbcmBackDoorStatus == true ? Icons.inventory_2 : Icons.inventory_2_outlined, s.bbcmBackDoorStatus == true ? t.openLabel : t.closedLabel, t.tileTrunk),
       _TileData(Icons.security, s.sentryMode == 1 ? t.activeShortLabel : t.inactiveLabel, t.tileSentry),
+      _TileData(Icons.thermostat_outlined,
+          s.minBatteryTemp != null ? '${s.minBatteryTemp} C' : '--', t.tileBatteryTemp),
+      _TileData(Icons.thermostat,
+          s.interiorTemp != null ? '${s.interiorTemp!.toStringAsFixed(0)} C' : '--', t.tileInteriorTemp),
+      _TileData(Icons.wb_sunny_outlined,
+          _extTemp != null ? '${_extTemp!.toStringAsFixed(0)} C' : '--', t.tileOutdoorTemp),
     ];
     return GridView.count(
       crossAxisCount: 3,

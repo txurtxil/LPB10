@@ -624,4 +624,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get hotspotDescription =>
       'No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo.';
+
+  @override
+  String get tileBatteryTemp => 'Temp. bateria';
+
+  @override
+  String get tileInteriorTemp => 'Temp. interior';
+
+  @override
+  String get tileOutdoorTemp => 'Temp. exterior (estimada)';
 }

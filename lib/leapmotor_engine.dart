@@ -280,6 +280,8 @@ class VehicleStatus {
   final int? totalMileage;
   final double? speed;
   final bool? chargeCompleted;
+  final int? minBatteryTemp;
+  final double? interiorTemp;
   final int? leftFrontTireKpa;
   final int? rightFrontTireKpa;
   final int? leftRearTireKpa;
@@ -290,7 +292,7 @@ class VehicleStatus {
     this.soc, this.preciseSoc, this.chargeState, this.acInputSlowCharge, this.dcInputFastCharge,
     this.batteryThermalRequest, this.liveRemainingRange, this.latitude, this.longitude, this.acSwitch,
     this.driverDoorLockStatus, this.bbcmBackDoorStatus, this.sentryMode, this.totalMileage,
-    this.speed, this.chargeCompleted,
+    this.speed, this.chargeCompleted, this.minBatteryTemp, this.interiorTemp,
     this.leftFrontTireKpa, this.rightFrontTireKpa, this.leftRearTireKpa, this.rightRearTireKpa,
     required this.raw,
   });
@@ -359,6 +361,7 @@ class VehicleStatus {
       driverDoorLockStatus: _asBool(m['driverDoorLockStatus']), bbcmBackDoorStatus: _asBool(m['bbcmBackDoorStatus']),
       sentryMode: _asInt(m['sentryMode']), totalMileage: _asInt(m['totalMileage']),
       speed: _asDouble(m['speed']), chargeCompleted: _asBool(m['chargeCompleted']),
+      minBatteryTemp: _asInt(m['minBatteryTemp']), interiorTemp: _asDouble(m['interiorTemp']),
       leftFrontTireKpa: _asInt(m['leftFrontTirePressure']), rightFrontTireKpa: _asInt(m['rightFrontTirePressure']),
       leftRearTireKpa: _asInt(m['leftRearTirePressure']), rightRearTireKpa: _asInt(m['rightRearTirePressure']),
       raw: m,

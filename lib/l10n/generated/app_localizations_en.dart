@@ -620,4 +620,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get hotspotDescription =>
       'Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it.';
+
+  @override
+  String get tileBatteryTemp => 'Battery temp.';
+
+  @override
+  String get tileInteriorTemp => 'Interior temp.';
+
+  @override
+  String get tileOutdoorTemp => 'Outdoor temp. (estimated)';
 }

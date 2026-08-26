@@ -1213,6 +1213,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'No confirmado que hace este comando: podria ser el hotspot WiFi de pasajeros, o algo relacionado con mantener el coche conectado a tu red domestica (o ninguna de las dos). Prueba una variante y verifica con snapshot/diff, o comprobando si tu router ve al coche conectado despues de bloquearlo.'**
   String get hotspotDescription;
+
+  /// No description provided for @tileBatteryTemp.
+  ///
+  /// In es, this message translates to:
+  /// **'Temp. bateria'**
+  String get tileBatteryTemp;
+
+  /// No description provided for @tileInteriorTemp.
+  ///
+  /// In es, this message translates to:
+  /// **'Temp. interior'**
+  String get tileInteriorTemp;
+
+  /// No description provided for @tileOutdoorTemp.
+  ///
+  /// In es, this message translates to:
+  /// **'Temp. exterior (estimada)'**
+  String get tileOutdoorTemp;
 }
 
 class _AppLocalizationsDelegate

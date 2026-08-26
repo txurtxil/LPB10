@@ -318,5 +318,8 @@
   },
   "couldNotResolveAddress": "Could not resolve address",
   "hotspotStepTitle": "Experimental: WiFi/hotspot (cmd 140)",
-  "hotspotDescription": "Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it."
+  "hotspotDescription": "Not confirmed what this command does: it could be the passenger WiFi hotspot, something related to keeping the car connected to your home network, or neither. Try a variant and verify with snapshot/diff, or by checking whether your router sees the car connected after locking it.",
+  "tileBatteryTemp": "Battery temp.",
+  "tileInteriorTemp": "Interior temp.",
+  "tileOutdoorTemp": "Outdoor temp. (estimated)"
 }
