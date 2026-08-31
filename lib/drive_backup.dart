@@ -50,12 +50,15 @@ class DriveBackup {
   static Future<void> autoBackupIfDue() async {
     try {
       if (!await automaticoActivo()) return;
-      final cuenta = _cuenta ?? await conectarSilencioso();
-      if (cuenta == null) return;
+      // Comprobar primero si toca backup, ANTES de intentar conectar con
+      // Google: evita el prompt de cuenta en cada apertura de la app cuando
+      // el backup de hoy ya se hizo.
       final lastRaw = await _prefs.read(key: _kLastAuto);
       final last = int.tryParse(lastRaw ?? '') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
       if (now - last < 24 * 3600 * 1000) return;
+      final cuenta = _cuenta ?? await conectarSilencioso();
+      if (cuenta == null) return;
       final ok = await subirAhora();
       if (ok) await _prefs.write(key: _kLastAuto, value: now.toString());
     } catch (e) {
