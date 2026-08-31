@@ -2123,13 +2123,24 @@ class TripPointStore {
     }
   }
 
+  static double? _cleanCoord(double? v) =>
+      (v == null || v.isNaN || v.isInfinite) ? null : v;
+
   static Future<void> addPoint(int totalMileage, double soc, {double? lat, double? lon}) async {
+    final cLat = _cleanCoord(lat);
+    final cLon = _cleanCoord(lon);
     final points = await load();
     final nowTs = DateTime.now().millisecondsSinceEpoch;
-    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: lat, lon: lon));
-    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: lat, lon: lon);
+    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: cLat, lon: cLon));
+    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: cLat, lon: cLon);
     final trimmed = points.length > _maxPoints ? points.sublist(points.length - _maxPoints) : points;
-    await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
+    try {
+      await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
+    } catch (_) {
+      // Defensa adicional: si algun dato corrupto se cuela pese al saneado
+      // de arriba, no debe tumbar refreshVehicleDataInBackground() entero
+      // (que se lleva por delante notificaciones y backup si esto lanza).
+    }
   }
 
   /// Consumo medio en % de bateria por cada 100 km, calculado solo entre

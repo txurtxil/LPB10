@@ -168,8 +168,16 @@ Future<bool> exportHistoryAndShare() async {
     }
     await fC.writeAsString(cBuf.toString());
 
+    final rawFiles = <XFile>[XFile(fJson.path), XFile(fT.path), XFile(fC.path)];
+    // Adjunta trips.jsonl/charges.jsonl SIN fusionar con el store volatil,
+    // para poder diagnosticar divergencias entre lo persistido de verdad
+    // y lo que hay en memoria (bug de rutas ausentes, agosto 2026).
+    final rawTrips = File('\${dir.path}/trips.jsonl');
+    final rawCharges = File('\${dir.path}/charges.jsonl');
+    if (await rawTrips.exists()) rawFiles.add(XFile(rawTrips.path));
+    if (await rawCharges.exists()) rawFiles.add(XFile(rawCharges.path));
     await Share.shareXFiles(
-      [XFile(fJson.path), XFile(fT.path), XFile(fC.path)],
+      rawFiles,
       text: 'Backup LMB10 $stamp',
     );
     return true;
