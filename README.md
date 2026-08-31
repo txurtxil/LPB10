@@ -8,8 +8,75 @@ DISCLAIMER: Unofficial, independent project. Not affiliated with, endorsed by, o
 
 AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, ni asociado con Leapmotor. Usa la API en la nube de Leapmotor mediante ingenieria inversa documentada por la comunidad (ver seccion Creditos). Usalo bajo tu propia responsabilidad: Leapmotor puede cambiar la API en cualquier momento. Se recomienda una cuenta secundaria (no la principal) para evitar conflictos de sesion con la app oficial.
 
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar%20el%20proyecto-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/txurtxil)
-[![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+[
+
+![Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar%20el%20proyecto-FF5E5B?logo=ko-fi&logoColor=white)
+
+](https://ko-fi.com/txurtxil)
+[
+
+![License](https://img.shields.io/badge/license-GPLv3-blue)
+
+](LICENSE)
+
+---
+
+## 🚗 Become a beta tester / Conviértete en betatester
+
+**If you're reading this because someone sent you a link, this is the only section you need.**
+**Si lees esto porque alguien te ha mandado un enlace, esta es la única sección que necesitas.**
+
+You'll need:
+- An Android phone with a Google account.
+- A Leapmotor vehicle — the B10 is fully confirmed; other models are welcome to try (see "Which models" below).
+- Your own client certificate for Leapmotor's servers — the app does not include one (see "Certificates" below).
+
+Necesitas:
+- Un móvil Android con una cuenta de Google.
+- Un vehículo Leapmotor — el B10 está totalmente confirmado; otros modelos son bienvenidos a probar (ver "Con qué modelos" más abajo).
+- Tu propio certificado de cliente para los servidores de Leapmotor — la app no incluye uno (ver "Certificados" más abajo).
+
+**Steps / Pasos:**
+
+1. Join the testers group (one click, no approval needed): **[groups.google.com/g/lmb10-testers](https://groups.google.com/g/lmb10-testers)**
+   Únete al grupo de testers (un clic, sin aprobación): **[groups.google.com/g/lmb10-testers](https://groups.google.com/g/lmb10-testers)**
+
+2. Open this link with the same Google account and tap "Become a tester" / "Convertirte en tester": **[play.google.com/apps/testing/com.txurtxil.lpb10](https://play.google.com/apps/testing/com.txurtxil.lpb10)**
+   Abre este enlace con la misma cuenta de Google y pulsa "Convertirte en tester": **[play.google.com/apps/testing/com.txurtxil.lpb10](https://play.google.com/apps/testing/com.txurtxil.lpb10)**
+
+3. Install LMB10 from Google Play. It can take a few minutes to become available after step 2.
+   Instala LMB10 desde Google Play. Puede tardar unos minutos en aparecer disponible tras el paso 2.
+
+4. Open the app → **Settings → Import certificate** / **Ajustes → Importar certificado**, and follow the steps there (see "Certificates" below).
+
+Questions, bugs, feedback: post them in the group from step 1 — it doubles as the feedback channel.
+Dudas, fallos, comentarios: publícalos en el grupo del paso 1 — también sirve de canal de contacto.
+
+> ⚠️ **Android Auto is temporarily unavailable** in the current release, while a Google Play policy review is resolved. It will come back once that's sorted — see "Known limitations" and "What's new" below.
+>
+> **Android Auto está temporalmente desactivado** en la versión actual, mientras se resuelve una revisión de políticas de Google Play. Volverá en cuanto se solucione — ver "Limitaciones conocidas" y "Novedades" más abajo.
+
+Free, no ads, no account required beyond your own Google/Leapmotor ones. If it's useful to you, [buying me a coffee](https://ko-fi.com/txurtxil) is welcome and entirely optional (see "Support the project" below) — never required to be a tester.
+
+Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te resulta útil, [invitarme a un café](https://ko-fi.com/txurtxil) se agradece y es totalmente opcional (ver "Apoyar el proyecto" más abajo) — nunca hace falta para ser tester.
+
+---
+
+## What's new / Novedades
+
+**v3.60.112**
+- More robust route recording: invalid GPS readings (NaN, typical of sensors with no signal) can no longer interrupt saving a trip.
+- "Export history" now also attaches the raw `trips.jsonl` and `charges.jsonl` files, to help diagnose reports of missing routes.
+
+- Registro de rutas más robusto: las lecturas de GPS inválidas (NaN, típicas de sensores sin cobertura) ya no pueden interrumpir el guardado de un trayecto.
+- "Exportar histórico" adjunta ahora también los ficheros en crudo `trips.jsonl` y `charges.jsonl`, para ayudar a diagnosticar rutas ausentes.
+
+**v3.60.111**
+- Android Auto integration removed (temporarily) to comply with a Google Play in-car app quality review. See "Known limitations".
+- Testing moved from Internal Testing to Closed Testing — see "Become a tester" above for the current sign-up flow.
+
+- Integración con Android Auto retirada (temporalmente) para cumplir una revisión de calidad de apps en el coche de Google Play. Ver "Limitaciones conocidas".
+- Las pruebas pasan de Prueba Interna a Prueba Cerrada — ver "Conviértete en betatester" arriba para el alta actual.
 
 ---
 
@@ -28,7 +95,7 @@ AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, 
   </tr>
 </table>
 
-**Android Auto** — bateria con arco de carga, consumo, acciones rapidas y buscador de cargadores.
+**Android Auto** (temporarily unavailable, see "Known limitations" / temporalmente no disponible, ver "Limitaciones conocidas") — battery with charge arc, consumption, quick actions and charger finder.
 
 <img src="web/screenshots/01androidAuto.jpg" alt="Android Auto" width="640">
 
@@ -89,17 +156,17 @@ There are two distribution channels, and **they are not interchangeable**.
 
 Hay dos vias de distribucion, y **no son intercambiables**.
 
-### Google Play (internal testing) / Google Play (prueba interna)
+### Google Play (closed testing) / Google Play (prueba cerrada)
 
-The only channel that works with Android Auto: template apps only appear on the car's head unit when installed from Google Play. Distribution is by invitation — you must supply the Google account of your phone, be added to the tester list, and then follow the invitation link. Without that final click, Play will report the app as unavailable.
+The official distribution channel — see "Become a tester" above for how to sign up. It's also the only channel Android Auto can use once that feature is re-enabled (see "Known limitations" for its current status).
 
-Es la unica via que funciona con Android Auto: las apps de plantilla solo aparecen en la pantalla del coche si se instalan desde Google Play. La distribucion es por invitacion — hay que facilitar la cuenta de Google del movil, ser anadido a la lista de testers, y despues pulsar el enlace de invitacion. Sin ese ultimo clic, Play dira que la app no esta disponible.
+El canal de distribucion oficial — ver "Conviertete en betatester" mas arriba para darte de alta. Es tambien el unico canal compatible con Android Auto en cuanto esa funcion se reactive (ver "Limitaciones conocidas" para su estado actual).
 
 ### GitHub Releases (APK)
 
-Direct APK download. Installs anywhere, but **will not appear in Android Auto**.
+Direct APK download. Installs anywhere, but **will not appear in Android Auto** even when that feature is active, since template apps only show up on the car's head unit when installed from Google Play.
 
-Descarga directa del APK. Se instala en cualquier sitio, pero **no aparecera en Android Auto**.
+Descarga directa del APK. Se instala en cualquier sitio, pero **no aparecera en Android Auto** ni siquiera cuando esa funcion este activa, ya que las apps de plantilla solo aparecen en la pantalla del coche si se instalan desde Google Play.
 
 ### Switching channels destroys your data / Cambiar de via borra tus datos
 
@@ -214,6 +281,10 @@ Flujo completo de verificacion de PIN (operatePassword cifrado AES-128-CBC, veri
 
 ### Android Auto
 
+*(Currently unavailable in the published release — see "Known limitations" and "What's new". The description below reflects the feature as it exists in the codebase.)*
+
+*(No disponible actualmente en la version publicada — ver "Limitaciones conocidas" y "Novedades". La descripcion de abajo refleja la funcion tal como existe en el codigo.)*
+
 A car-screen interface built on androidx.car.app templates, available when the app is installed from Google Play:
 
 - Hub screen with Battery, Tires, Routines, Quick actions, Consumption and Chargers.
@@ -302,19 +373,20 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 
 ### Other / Otros
 - Messages screen: shows the official app's message inbox, reachable from an envelope icon with an unread badge in the toolbar.
-- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges) via the Android share sheet, and import them back to restore the data on a new install. Import is idempotent — re-importing the same backup adds nothing. A permanent, uncapped local archive keeps the full history beyond the in-app cards.
+- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges), plus the raw permanent log files, via the Android share sheet, and import them back to restore the data on a new install. Import is idempotent — re-importing the same backup adds nothing. A permanent, uncapped local archive keeps the full history beyond the in-app cards.
 - Settings screen: location card visibility, electricity price, certificate import.
 - Bilingual: Spanish and English, following the OS language (flutter_localizations + intl).
 - Custom "LM" app icon — does not reproduce Leapmotor's real logo.
 
 - Pantalla de mensajes: muestra la bandeja de mensajes de la app oficial, accesible desde un icono de sobre con globo de no leidos en la barra de herramientas.
-- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas) por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. La importacion es idempotente: reimportar el mismo backup no anade nada. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app.
+- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas), mas los ficheros permanentes en crudo, por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. La importacion es idempotente: reimportar el mismo backup no anade nada. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app.
 - Pantalla de ajustes: visibilidad de la tarjeta de ubicacion, precio de la electricidad, importacion del certificado.
 - Bilingue: espanol e ingles, siguiendo el idioma del sistema (flutter_localizations + intl).
 - Icono de app propio ("LM") — no reproduce el logotipo real de Leapmotor.
 
 ## Known limitations / Limitaciones conocidas
 
+- **Android Auto is temporarily removed** from the published release while a Google Play policy compliance review is resolved (see "What's new"). The Android Auto documentation elsewhere in this README describes the feature as it exists in the codebase, and it will return once re-approved.
 - Sentry mode (cmd 220) is accepted and confirmed by the server, but testing showed no observable change in the vehicle's reported state (not even in unmapped raw signals). Everything points to it not being actually implemented on this vehicle's firmware/hardware, even though the command exists in the protocol. Sentry Mode therefore relies mainly on its app-side watchdog layer.
 - Parked camera recording is disabled in the current UK/EU firmware; the on-board dashcam only records while driving (3-minute blocks to a USB stick in the "REC" port).
 - The TCU enters deep sleep about 13 minutes after locking, so cloud-based watching pauses until the car wakes back up (e.g. a door opening wakes it and the next poll catches the change) — it's not equivalent to a real-time server push. This is also why overnight charging cannot be watched live and has to be reconstructed afterwards.
@@ -327,6 +399,7 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 - Guard Mode leaves a window ajar during part of its sequence, reducing the car's physical security while it lasts — occasional, conscious use only.
 - The full charge/preconditioning schedule format (time windows, weekday encoding) is inferred by symmetry with the reference source code, not 100% confirmed from a live capture — verify by feeling whether the car actually behaves as scheduled.
 
+- **Android Auto esta retirado temporalmente** de la version publicada mientras se resuelve una revision de cumplimiento de politicas de Google Play (ver "Novedades"). La documentacion de Android Auto del resto de este README describe la funcion tal como existe en el codigo, y volvera en cuanto se reapruebe.
 - El modo centinela (cmd 220) es aceptado y confirmado por el servidor, pero las pruebas no mostraron ningun cambio observable en el estado reportado del vehiculo (ni en senales crudas sin mapear). Todo apunta a que no esta realmente implementado en el firmware/hardware de este vehiculo, aunque el comando exista en el protocolo. Por eso el Modo Centinela se apoya sobre todo en su capa de vigilancia en la app.
 - La grabacion con camaras estando aparcado esta desactivada en el firmware UK/UE actual; el dashcam de a bordo solo graba en marcha (bloques de 3 minutos a un USB en el puerto "REC").
 - El TCU entra en sueno profundo unos 13 minutos tras bloquear, asi que la vigilancia basada en la nube se pausa hasta que el coche despierta (p. ej. abrir una puerta lo despierta y el siguiente sondeo detecta el cambio) — no equivale a un push en tiempo real del servidor. Es tambien la razon por la que la carga nocturna no se puede vigilar en vivo y hay que reconstruirla despues.
@@ -383,6 +456,9 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     lib/cert_store.dart              Encrypted storage for the user-supplied client certificate
     lib/cert_import_screen.dart      Certificate import flow
     lib/history_archive.dart         Permanent local history archive + backup export/import
+    lib/trip_rebuild.dart            Route segmentation from the permanent trip log
+    lib/route_map_screen.dart        GPS route map for a single trip
+    lib/trip_list_screen.dart        "Recent trips" screen
     lib/ticket_printer.dart          Receipt layout for thermal printers
     lib/car_log_bridge.dart          File-based diagnostic log, shared with the Kotlin side
     lib/car_log_screen.dart          On-device viewer for that log
@@ -396,7 +472,7 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     lib/settings_screen.dart         App settings
     lib/l10n/                        Translation source files (.arb); generated code is not edited by hand
     android/.../BatteryWidgetProvider.kt   Native home-screen widget provider
-    android/.../LMB10CarAppService.kt      Android Auto entry point and session
+    android/.../LMB10CarAppService.kt      Android Auto entry point and session (currently unregistered in the manifest, see Known limitations)
     android/.../CarMainScreen.kt           Android Auto hub
     android/.../ConsumoScreen.kt           Android Auto consumption screen
     android/.../ChargersScreen.kt          Nearby chargers
@@ -444,13 +520,13 @@ Additional requirements / Requisitos adicionales:
 - Signing configuration in android/key.properties (not in this repository).
 - To install the desktop widget: long-press an empty space on your home screen, tap Widgets, find LMB10, and drag the widget in. You may need to remove and re-add it after some updates.
 - For reliable background refresh: exclude the app from battery optimization in your phone's settings (path varies by manufacturer).
-- Android Auto screens can only be tested on a real head unit through a Google Play install, or locally with the Desktop Head Unit (DHU).
+- Android Auto screens can only be tested on a real head unit through a Google Play install, or locally with the Desktop Head Unit (DHU) — and only while the manifest declares the Android Auto entry point (see Known limitations).
 
 - Core library desugaring habilitado en android/app/build.gradle.kts (lo necesita flutter_local_notifications).
 - Configuracion de firma en android/key.properties (no incluida en este repositorio).
 - Para instalar el widget de escritorio: mantener pulsado un espacio vacio del escritorio, tocar Widgets, buscar LMB10, y arrastrarlo. Puede que haga falta quitarlo y volver a anadirlo tras alguna actualizacion.
 - Para un refresco de fondo fiable: excluye la app de la optimizacion de bateria en los ajustes de tu telefono (la ruta varia segun el fabricante).
-- Las pantallas de Android Auto solo se pueden probar en un head unit real instalando desde Google Play, o en local con el Desktop Head Unit (DHU).
+- Las pantallas de Android Auto solo se pueden probar en un head unit real instalando desde Google Play, o en local con el Desktop Head Unit (DHU) — y solo mientras el manifest declare el punto de entrada de Android Auto (ver Limitaciones conocidas).
 
 ## Support the project / Apoyar el proyecto
 
@@ -458,7 +534,11 @@ LMB10 is free, open source, and has no ads or trackers. If it's useful to you an
 
 LMB10 es gratis, de codigo abierto, y no tiene publicidad ni rastreadores. Si te resulta util y te apetece invitarme a un cafe, se agradece mucho, y es completamente opcional.
 
-[![Invitame a un cafe en Ko-fi](https://img.shields.io/badge/Ko--fi-Invitame%20a%20un%20caf%C3%A9-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/txurtxil)
+[
+
+![Invitame a un cafe en Ko-fi](https://img.shields.io/badge/Ko--fi-Invitame%20a%20un%20caf%C3%A9-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)
+
+](https://ko-fi.com/txurtxil)
 
 ### ☕ [ko-fi.com/txurtxil](https://ko-fi.com/txurtxil)
 
