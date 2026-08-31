@@ -64,6 +64,13 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.114**
+- "Recent trips" now has a direct shortcut on the dashboard, right below "Vehicle controls" (it used to be Settings-only).
+- The Google account prompt for the optional Drive backup no longer appears on every app launch — only on the day the automatic backup is actually due.
+
+- "Últimas rutas" tiene ahora un acceso directo en el panel principal, justo debajo de "Controles del vehículo" (antes solo estaba en Ajustes).
+- El aviso de cuenta de Google para la copia opcional a Drive ya no aparece en cada apertura de la app — solo el día que realmente toca la copia automática.
+
 **v3.60.113**
 - Fixed: "Export history" only shared one of the several generated files, a limitation of the old sharing API. Migrated to the current share_plus API, which properly supports sharing multiple files at once.
 
@@ -75,13 +82,6 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 - Registro de rutas más robusto: las lecturas de GPS inválidas (NaN, típicas de sensores sin cobertura) ya no pueden interrumpir el guardado de un trayecto.
 - "Exportar histórico" adjunta ahora también los ficheros en crudo `trips.jsonl` y `charges.jsonl`, para ayudar a diagnosticar rutas ausentes.
-
-**v3.60.111**
-- Android Auto integration removed (temporarily) to comply with a Google Play in-car app quality review. See "Known limitations".
-- Testing moved from Internal Testing to Closed Testing — see "Become a tester" above for the current sign-up flow.
-
-- Integración con Android Auto retirada (temporalmente) para cumplir una revisión de calidad de apps en el coche de Google Play. Ver "Limitaciones conocidas".
-- Las pruebas pasan de Prueba Interna a Prueba Cerrada — ver "Conviértete en betatester" arriba para el alta actual.
 
 ---
 
