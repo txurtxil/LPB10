@@ -176,9 +176,8 @@ Future<bool> exportHistoryAndShare() async {
     final rawCharges = File('\${dir.path}/charges.jsonl');
     if (await rawTrips.exists()) rawFiles.add(XFile(rawTrips.path));
     if (await rawCharges.exists()) rawFiles.add(XFile(rawCharges.path));
-    await Share.shareXFiles(
-      rawFiles,
-      text: 'Backup LMB10 $stamp',
+    await SharePlus.instance.share(
+      ShareParams(files: rawFiles, text: 'Backup LMB10 $stamp'),
     );
     return true;
   } catch (_) {
