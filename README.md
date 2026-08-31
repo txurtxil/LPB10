@@ -64,6 +64,11 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.113**
+- Fixed: "Export history" only shared one of the several generated files, a limitation of the old sharing API. Migrated to the current share_plus API, which properly supports sharing multiple files at once.
+
+- Corregido: "Exportar histórico" solo compartía uno de los varios ficheros generados, una limitación de la API de compartir usada hasta ahora. Migrado a la API actual de share_plus, que sí admite compartir varios ficheros a la vez.
+
 **v3.60.112**
 - More robust route recording: invalid GPS readings (NaN, typical of sensors with no signal) can no longer interrupt saving a trip.
 - "Export history" now also attaches the raw `trips.jsonl` and `charges.jsonl` files, to help diagnose reports of missing routes.
@@ -237,7 +242,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 
 ### Dashboard
 - Live status with automatic refresh every 90 seconds: battery (precise SOC), range, lock, charge state and cable, battery thermal management, climate, trunk and sentry status.
-- "Vehicle controls" button pinned at the top, above the battery card, for one-tap access to all remote actions.
+- "Vehicle controls" button pinned at the top, above the battery card, for one-tap access to all remote actions. A "Recent trips" shortcut sits right below it.
 - Compact location card: reverse-geocoded address (cached to respect OpenStreetMap/Nominatim's usage policy), distance from your current position to the car, and a tap-to-expand full-screen interactive map. Can be hidden entirely from Settings for a text-only dashboard.
 - Battery card with a bar-chart history (locally recorded, fills in over time).
 - Charging history card: charge sessions are **rebuilt from the stored trip history** by detecting SOC increases between consecutive samples. Leapmotor's API does not expose this history, and live detection is unreliable because the TCU sleeps overnight — so the history is reconstructed rather than polled. Duration and power are deliberately not shown: two samples can be 20 hours apart for a 4-hour charge.
@@ -249,7 +254,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 - Debug screen with snapshot/diff: save a full raw status snapshot, run a command, and compare exactly which fields (including unmapped raw signals) actually changed — the tool used to verify which remote commands genuinely do something on the vehicle.
 
 - Estado en vivo con refresco automatico cada 90 segundos: bateria (SOC preciso), autonomia, cerradura, estado y cable de carga, gestion termica de la bateria, clima, maletero y centinela.
-- Boton "Controles del vehiculo" fijado arriba, encima de la tarjeta de bateria, para acceder a todas las acciones remotas con un toque.
+- Boton "Controles del vehiculo" fijado arriba, encima de la tarjeta de bateria, para acceder a todas las acciones remotas con un toque. Justo debajo, un acceso directo a "Ultimas rutas".
 - Tarjeta de ubicacion compacta: direccion por geocodificacion inversa (cacheada para respetar la politica de uso de OpenStreetMap/Nominatim), distancia desde tu posicion actual hasta el coche, y mapa interactivo a pantalla completa al tocarla. Se puede ocultar del todo desde Ajustes para un dashboard solo de texto.
 - Tarjeta de bateria con historial en barras (grabado localmente, se va rellenando con el uso).
 - Tarjeta de historial de cargas: las sesiones se **reconstruyen a partir del historico de viajes guardado**, detectando subidas de SOC entre muestras consecutivas. La API de Leapmotor no expone este historico, y la deteccion en vivo no es fiable porque el TCU duerme de madrugada — por eso se reconstruye en vez de sondear. La duracion y la potencia no se muestran a proposito: entre dos muestras pueden pasar 20 horas para una carga de 4.
@@ -373,13 +378,13 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 
 ### Other / Otros
 - Messages screen: shows the official app's message inbox, reachable from an envelope icon with an unread badge in the toolbar.
-- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges), plus the raw permanent log files, via the Android share sheet, and import them back to restore the data on a new install. Import is idempotent — re-importing the same backup adds nothing. A permanent, uncapped local archive keeps the full history beyond the in-app cards.
+- History backup: export your trip points and charging sessions as a JSON backup plus CSV files (trips and charges), plus the raw permanent log files, via the Android share sheet, and import them back to restore the data on a new install. Import is idempotent — re-importing the same backup adds nothing. A permanent, uncapped local archive keeps the full history beyond the in-app cards. Optional automatic daily copy to your own Google Drive.
 - Settings screen: location card visibility, electricity price, certificate import.
 - Bilingual: Spanish and English, following the OS language (flutter_localizations + intl).
 - Custom "LM" app icon — does not reproduce Leapmotor's real logo.
 
 - Pantalla de mensajes: muestra la bandeja de mensajes de la app oficial, accesible desde un icono de sobre con globo de no leidos en la barra de herramientas.
-- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas), mas los ficheros permanentes en crudo, por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. La importacion es idempotente: reimportar el mismo backup no anade nada. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app.
+- Copia de seguridad del historico: exporta tus puntos de viaje y sesiones de carga como backup JSON mas ficheros CSV (viajes y cargas), mas los ficheros permanentes en crudo, por la hoja de compartir de Android, e importalos de vuelta para restaurar los datos en una instalacion nueva. La importacion es idempotente: reimportar el mismo backup no anade nada. Un archivo local permanente y sin limite conserva el historico completo mas alla de las tarjetas de la app. Copia diaria automatica opcional a tu propio Google Drive.
 - Pantalla de ajustes: visibilidad de la tarjeta de ubicacion, precio de la electricidad, importacion del certificado.
 - Bilingue: espanol e ingles, siguiendo el idioma del sistema (flutter_localizations + intl).
 - Icono de app propio ("LM") — no reproduce el logotipo real de Leapmotor.
@@ -439,8 +444,9 @@ El certificado PKCS#12 de cuenta es otra cosa distinta: se extrae automaticament
 - flutter_local_notifications for alerts (requires core library desugaring in Gradle)
 - flutter_localizations + intl for bilingual support (es/en)
 - share_plus + path_provider for history export; file_selector for backup import
+- google_sign_in for the optional Google Drive backup
 
-Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las pantallas de Android Auto; http y dart:io SecurityContext para mTLS; crypto y pointycastle para el protocolo de firma/cifrado; androidx.car.app para las plantillas de Android Auto; flutter_map + latlong2 para el mapa; geolocator para la distancia; Overpass/OpenStreetMap para el mapa de cargadores y Nominatim para la geocodificacion inversa; flutter_secure_storage para sesion, PIN, certificado e historial; home_widget y workmanager para el widget y el refresco de fondo; flutter_local_notifications para alertas; flutter_localizations + intl para el bilingue; share_plus + path_provider para la exportacion del historico; file_selector para importar el backup.
+Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las pantallas de Android Auto; http y dart:io SecurityContext para mTLS; crypto y pointycastle para el protocolo de firma/cifrado; androidx.car.app para las plantillas de Android Auto; flutter_map + latlong2 para el mapa; geolocator para la distancia; Overpass/OpenStreetMap para el mapa de cargadores y Nominatim para la geocodificacion inversa; flutter_secure_storage para sesion, PIN, certificado e historial; home_widget y workmanager para el widget y el refresco de fondo; flutter_local_notifications para alertas; flutter_localizations + intl para el bilingue; share_plus + path_provider para la exportacion del historico; file_selector para importar el backup; google_sign_in para la copia opcional a Google Drive.
 
 ## Project structure / Estructura del proyecto
 
@@ -458,7 +464,9 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     lib/history_archive.dart         Permanent local history archive + backup export/import
     lib/trip_rebuild.dart            Route segmentation from the permanent trip log
     lib/route_map_screen.dart        GPS route map for a single trip
-    lib/trip_list_screen.dart        "Recent trips" screen
+    lib/trip_list_screen.dart        "Recent trips" screen (also linked from the dashboard)
+    lib/drive_backup.dart            Optional automatic backup to the user's own Google Drive
+    lib/drive_backup_screen.dart     Google Drive backup settings screen
     lib/ticket_printer.dart          Receipt layout for thermal printers
     lib/car_log_bridge.dart          File-based diagnostic log, shared with the Kotlin side
     lib/car_log_screen.dart          On-device viewer for that log
