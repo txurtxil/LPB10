@@ -64,6 +64,16 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.117**
+- Performance: the electricity price calculation was being redone from scratch, for the entire charging history, 4 times on every refresh cycle. Now computed once and shared, reducing work on every poll and the diagnostic log's volume.
+
+- Rendimiento: el cálculo de precio de la electricidad se rehacía desde cero, para todo el histórico de cargas, 4 veces en cada ciclo de actualización. Ahora se calcula una sola vez y se comparte, reduciendo el trabajo en cada sondeo y el volumen del log de diagnóstico.
+
+**v3.60.116**
+- Diagnostics: the two points where saving a trip could silently fail are now logged to "Car log (Android Auto)", visible on-device without needing to export anything.
+
+- Diagnóstico: los dos puntos donde el guardado de una ruta podía fallar en silencio ahora quedan registrados en "Log del coche (Android Auto)", visible en el propio dispositivo sin necesidad de exportar nada.
+
 **v3.60.115**
 - Fixed tire position mapping in "Vehicle health": front-left, rear-left and rear-right pressures were swapped between themselves (front-right was already correct). Fixed the underlying signal mapping.
 
@@ -75,11 +85,6 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 - "Últimas rutas" tiene ahora un acceso directo en el panel principal, justo debajo de "Controles del vehículo" (antes solo estaba en Ajustes).
 - El aviso de cuenta de Google para la copia opcional a Drive ya no aparece en cada apertura de la app — solo el día que realmente toca la copia automática.
-
-**v3.60.113**
-- Fixed: "Export history" only shared one of the several generated files, a limitation of the old sharing API. Migrated to the current share_plus API, which properly supports sharing multiple files at once.
-
-- Corregido: "Exportar histórico" solo compartía uno de los varios ficheros generados, una limitación de la API de compartir usada hasta ahora. Migrado a la API actual de share_plus, que sí admite compartir varios ficheros a la vez.
 
 ---
 
