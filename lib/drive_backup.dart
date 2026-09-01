@@ -93,8 +93,16 @@ class DriveBackup {
       final cuenta =
           await GoogleSignIn.instance.attemptLightweightAuthentication();
       _cuenta = cuenta;
+      if (cuenta == null) {
+        // Sin excepcion pero tampoco cuenta: no habia sesion previa que
+        // reconectar en silencio. Distinto de una excepcion real (ver el
+        // catch de abajo), que apuntaria a un fallo de la libreria/plataforma
+        // en vez de "simplemente no habia con que conectar".
+        await CarLogBridge.log('Drive conectarSilencioso: sin cuenta (null), sin excepcion');
+      }
       return cuenta;
-    } catch (_) {
+    } catch (e) {
+      await CarLogBridge.log('Drive conectarSilencioso excepcion: ' + e.toString());
       return null;
     }
   }
