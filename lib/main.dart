@@ -2147,10 +2147,13 @@ class TripPointStore {
     final trimmed = points.length > _maxPoints ? points.sublist(points.length - _maxPoints) : points;
     try {
       await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
-    } catch (_) {
+    } catch (e) {
       // Defensa adicional: si algun dato corrupto se cuela pese al saneado
       // de arriba, no debe tumbar refreshVehicleDataInBackground() entero
       // (que se lleva por delante notificaciones y backup si esto lanza).
+      await CarLogBridge.log('addPoint lm_trip_points_v1 FALLO ts=' +
+          nowTs.toString() + ' km=' + totalMileage.toString() +
+          ' error: ' + e.toString());
     }
   }
 

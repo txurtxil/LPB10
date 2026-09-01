@@ -4,6 +4,7 @@
 // backup JSON + CSVs (separador ';', decimales con coma para Excel ES).
 
 import 'dart:convert';
+import 'car_log_bridge.dart';
 import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -38,7 +39,10 @@ class HistoryArchive {
           '${json.encode(m)}\n',
           mode: FileMode.append,
           flush: true);
-    } catch (_) {}
+    } catch (e) {
+      await CarLogBridge.log('appendTrip FALLO ts=' + ts.toString() +
+          ' km=' + km.toString() + ' error: ' + e.toString());
+    }
   }
 
   static Future<void> appendCharge(
