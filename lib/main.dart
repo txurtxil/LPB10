@@ -151,7 +151,12 @@ void backgroundCallbackDispatcher() {
         (k, v) => _storage.write(key: k, value: v),
       );
       return true;
-    } catch (_) {
+    } catch (e) {
+      // Diagnostico de huecos de sondeo: si esto se registra, WorkManager
+      // SI se ejecuto pero fallo (red, API, etc). Si en cambio hay un hueco
+      // de horas sin NINGUNA linea (ni esta ni las de refresco normal), el
+      // hueco es de WorkManager no llegando a ejecutarse en absoluto.
+      await CarLogBridge.log('backgroundCallbackDispatcher FALLO: ' + e.toString());
       return false;
     }
   });
