@@ -64,6 +64,11 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.115**
+- Fixed tire position mapping in "Vehicle health": front-left, rear-left and rear-right pressures were swapped between themselves (front-right was already correct). Fixed the underlying signal mapping.
+
+- Corregida la asignación de neumáticos en "Salud del vehículo": las presiones de delantera izquierda, trasera izquierda y trasera derecha aparecían intercambiadas entre sí (delantera derecha ya era correcta). Corregido el mapeo de señales.
+
 **v3.60.114**
 - "Recent trips" now has a direct shortcut on the dashboard, right below "Vehicle controls" (it used to be Settings-only).
 - The Google account prompt for the optional Drive backup no longer appears on every app launch — only on the day the automatic backup is actually due.
@@ -75,13 +80,6 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 - Fixed: "Export history" only shared one of the several generated files, a limitation of the old sharing API. Migrated to the current share_plus API, which properly supports sharing multiple files at once.
 
 - Corregido: "Exportar histórico" solo compartía uno de los varios ficheros generados, una limitación de la API de compartir usada hasta ahora. Migrado a la API actual de share_plus, que sí admite compartir varios ficheros a la vez.
-
-**v3.60.112**
-- More robust route recording: invalid GPS readings (NaN, typical of sensors with no signal) can no longer interrupt saving a trip.
-- "Export history" now also attaches the raw `trips.jsonl` and `charges.jsonl` files, to help diagnose reports of missing routes.
-
-- Registro de rutas más robusto: las lecturas de GPS inválidas (NaN, típicas de sensores sin cobertura) ya no pueden interrumpir el guardado de un trayecto.
-- "Exportar histórico" adjunta ahora también los ficheros en crudo `trips.jsonl` y `charges.jsonl`, para ayudar a diagnosticar rutas ausentes.
 
 ---
 
@@ -126,11 +124,6 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
     <td width="33%"><img src="web/screenshots/01ajustes.jpg" alt="Ajustes"></td>
     <td width="33%"><img src="web/screenshots/02ajustes.jpg" alt="Ajustes"></td>
     <td width="33%"><img src="web/screenshots/03ajustes.jpg" alt="Ajustes"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Ajustes · Settings</sub></td>
-    <td align="center"><sub>Ajustes · Settings</sub></td>
-    <td align="center"><sub>Ajustes · Settings</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="web/screenshots/01ticket.jpg" alt="Ticket para impresora termica"></td>
