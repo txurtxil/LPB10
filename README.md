@@ -64,6 +64,16 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.119**
+- Diagnostics: if the silent Google reconnection for automatic Drive backup fails, it's now logged to "Car log (Android Auto)" — distinguishing "no previous session to reconnect" from a real library/platform exception.
+
+- Diagnóstico: si la reconexión silenciosa a Google para el backup automático a Drive falla, ahora queda registrado en "Log del coche (Android Auto)" — distinguiendo "sin sesión previa que reconectar" de una excepción real de la librería/plataforma.
+
+**v3.60.118**
+- Diagnostics: if the background refresh fails for any reason (network, API, etc.), it's now logged too — distinguishing "the system never ran the poll" from "it ran but something failed", which used to look identical: total silence in the log.
+
+- Diagnóstico: si el refresco en segundo plano falla por cualquier motivo (red, API, etc.), también queda registrado. Permite distinguir "el sistema no ejecutó el sondeo" de "se ejecutó pero algo falló", que hasta ahora se veían igual: como silencio total en el log.
+
 **v3.60.117**
 - Performance: the electricity price calculation was being redone from scratch, for the entire charging history, 4 times on every refresh cycle. Now computed once and shared, reducing work on every poll and the diagnostic log's volume.
 
