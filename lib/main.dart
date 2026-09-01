@@ -1661,9 +1661,13 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       await HomeWidget.saveWidgetData<String>('pvpc_precio_caro', (r['precioCaro'] as double).toStringAsFixed(4));
     }
   } catch (_) {}
+  // Precio de cada dia calculado UNA sola vez para las 4 funciones
+  // siguientes (antes cada una recalculaba desde cero el historico
+  // completo de cargas: 4x trabajo redundante en cada refresco).
+  final _preciosCache = await preciosPorDia();
   // Gasto anual: cargas + seguro/impuesto anotados este ano.
   try {
-    final ga = await gastoAnual();
+    final ga = await gastoAnual(precios: _preciosCache);
     await HomeWidget.saveWidgetData<String>('gasto_anual_total', ga.toStringAsFixed(2));
     await CarLogBridge.log('gasto_anual: ' + ga.toStringAsFixed(2));
   } catch (e) {
@@ -1871,7 +1875,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
           dayParts[i] =
               dayParts[i] + ':' + (eurDia[k] ?? '') + ':' + (kmDia[k] ?? '');
         }
-        final tot = await buildCarTotals();
+        final tot = await buildCarTotals(precios: _preciosCache);
         await HomeWidget.saveWidgetData<String>('tot_7d', tot.d7);
         await HomeWidget.saveWidgetData<String>('tot_mes', tot.mes);
         await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
@@ -1880,7 +1884,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         // tres claves simplemente no se escribian. Asi es imposible saber por
         // que el selector del coche no tenia datos.
         try {
-          final ser = await buildCarSeries();
+          final ser = await buildCarSeries(precios: _preciosCache);
           await HomeWidget.saveWidgetData<String>('hist_dias', ser.dias);
           await HomeWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
           await HomeWidget.saveWidgetData<String>('hist_meses', ser.meses);
@@ -1952,7 +1956,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
     // (TextView monoespaciado con wrap_content, asi que crecer no rompe nada)
     // y se guarda aparte para la pantalla de Consumo del coche.
     try {
-      final coste = await buildCostLines();
+      final coste = await buildCostLines(precios: _preciosCache);
       if (coste.widget.isNotEmpty) {
         final ct = extras['chartText'] ?? '';
         extras['chartText'] =

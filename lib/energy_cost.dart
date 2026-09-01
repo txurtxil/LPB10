@@ -342,12 +342,12 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 /// Devuelve cadenas vacias si el usuario no ha puesto precio o si aun no hay
 /// agregado. En ese caso no se pinta nada: mejor que filas con guiones
 /// ocupando sitio en un widget donde el espacio es oro.
-Future<({String widget, String car})> buildCostLines() async {
+Future<({String widget, String car})> buildCostLines({Map<String, double>? precios}) async {
   const vacio = (widget: '', car: '');
   try {
     final days = await DailyStats.load();
     if (days.isEmpty) return vacio;
-    final precios = await preciosPorDia();
+    precios ??= await preciosPorDia();
     if (precios.isEmpty) return vacio;
 
     final ahora = DateTime.now();
@@ -405,12 +405,12 @@ Future<({String widget, String car})> buildCostLines() async {
 /// calculan sumando los dias de cada grupo: aplicar totalizar() sobre un
 /// agregado ya reducido no encontraria su precio, porque los precios van por
 /// dia y la clave de una semana no es la de ningun dia.
-Future<({String dias, String semanas, String meses})> buildCarSeries() async {
+Future<({String dias, String semanas, String meses})> buildCarSeries({Map<String, double>? precios}) async {
   const vacio = (dias: '', semanas: '', meses: '');
   try {
     final days = await DailyStats.load();
     if (days.isEmpty) return vacio;
-    final precios = await preciosPorDia();
+    final Map<String, double> preciosSeguro = precios ?? await preciosPorDia();
 
     String serie(String Function(DateTime) clave, int max) {
       final grupos = <String, List<DayAgg>>{};
@@ -424,7 +424,7 @@ Future<({String dias, String semanas, String meses})> buildCarSeries() async {
       final out = <String>[];
       for (final k in recorte) {
         final g = grupos[k]!;
-        final t = totalizar(g, precios);
+        final t = totalizar(g, preciosSeguro);
         if (t.km <= 0) continue;
         final socTot = g.fold<double>(0, (s, a) => s + a.soc);
         final kmTot = g.fold<double>(0, (s, a) => s + a.km);
@@ -448,18 +448,18 @@ Future<({String dias, String semanas, String meses})> buildCarSeries() async {
   }
 }
 
-Future<({String d7, String mes, String ano})> buildCarTotals() async {
+Future<({String d7, String mes, String ano})> buildCarTotals({Map<String, double>? precios}) async {
   const vacio = (d7: '', mes: '', ano: '');
   try {
     final days = await DailyStats.load();
     if (days.isEmpty) return vacio;
-    final precios = await preciosPorDia();
+    final Map<String, double> preciosSeguro = precios ?? await preciosPorDia();
     final ahora = DateTime.now();
     final mesKey = DailyStats.monthKey(ahora);
     final anoKey = ahora.year.toString() + '-';
 
     String linea(Iterable<DayAgg> ds) {
-      final t = totalizar(ds, precios);
+      final t = totalizar(ds, preciosSeguro);
       if (t.km <= 0) return '';
       final eur = t.hayEur ? t.eur.toStringAsFixed(2) : '';
       return t.km.toStringAsFixed(0) +
@@ -485,14 +485,14 @@ Future<({String d7, String mes, String ano})> buildCarTotals() async {
 /// seguro e impuesto de circulacion, siempre que la fecha anotada caiga
 /// dentro del año en curso. NO incluye el resto de mantenimiento (frenos,
 /// filtros, revision...) porque a esos no se les pide importe.
-Future<double> gastoAnual() async {
+Future<double> gastoAnual({Map<String, double>? precios}) async {
   try {
     final ahora = DateTime.now();
     final anoInicio = DateTime(ahora.year, 1, 1);
     final anoKey = ahora.year.toString() + '-';
 
     final days = await DailyStats.load();
-    final precios = await preciosPorDia();
+    precios ??= await preciosPorDia();
     final tAno = totalizar(days.where((a) => a.d.startsWith(anoKey)), precios);
     final cargas = tAno.hayEur ? tAno.eur : 0.0;
 
