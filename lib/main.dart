@@ -1643,7 +1643,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   // resto del refresco.
   try {
     await Abrp.enviarTelemetria(
-      soc: s.preciseSoc,
+      // Mismo fallback que usa el resto del dashboard: algunos modelos
+      // (confirmado en un T03) no reportan preciseSoc (senal 100003),
+      // solo soc entero (senal 1204). Sin este fallback, ABRP se queda
+      // siempre sin dato aunque el resto de la app funcione bien.
+      soc: s.preciseSoc ?? s.soc?.toDouble(),
       lat: s.latitude,
       lon: s.longitude,
       odometroKm: s.totalMileage,
