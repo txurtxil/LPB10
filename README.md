@@ -64,6 +64,16 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.121**
+- Live range shown as "-- km" on some models (confirmed on a T03): the vehicle doesn't report the live range signal. A different range signal the car does report, and which is internally consistent, is now used as a fallback — though it's not 100% confirmed to be exactly the same concept across every model.
+
+- Autonomía en vivo mostrada como "-- km" en algunos modelos (confirmado en un T03): el vehículo no reporta la señal de autonomía en vivo. Se usa como reserva otra señal de autonomía que el coche sí reporta y es internamente coherente, aunque no está confirmado al 100% que sea exactamente el mismo concepto en todos los modelos.
+
+**v3.60.120**
+- Fixed ABRP telemetry on vehicles without a precise SOC signal. Some models (confirmed on a T03) only report the integer battery percentage, not the precise one. The rest of the app already had a fallback for this, but the ABRP integration didn't — it always sent no battery data, even though the rest of the app worked fine.
+
+- Corregida la telemetría a ABRP en vehículos sin SOC de precisión. Algunos modelos (confirmado en un T03) solo reportan el porcentaje de batería entero, no el de precisión. El resto de la app ya tenía en cuenta esto con un valor de reserva, pero el envío a ABRP no — se quedaba siempre sin dato de batería, aunque el resto de la app funcionara con normalidad.
+
 **v3.60.119**
 - Diagnostics: if the silent Google reconnection for automatic Drive backup fails, it's now logged to "Car log (Android Auto)" — distinguishing "no previous session to reconnect" from a real library/platform exception.
 
@@ -78,23 +88,6 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 - Performance: the electricity price calculation was being redone from scratch, for the entire charging history, 4 times on every refresh cycle. Now computed once and shared, reducing work on every poll and the diagnostic log's volume.
 
 - Rendimiento: el cálculo de precio de la electricidad se rehacía desde cero, para todo el histórico de cargas, 4 veces en cada ciclo de actualización. Ahora se calcula una sola vez y se comparte, reduciendo el trabajo en cada sondeo y el volumen del log de diagnóstico.
-
-**v3.60.116**
-- Diagnostics: the two points where saving a trip could silently fail are now logged to "Car log (Android Auto)", visible on-device without needing to export anything.
-
-- Diagnóstico: los dos puntos donde el guardado de una ruta podía fallar en silencio ahora quedan registrados en "Log del coche (Android Auto)", visible en el propio dispositivo sin necesidad de exportar nada.
-
-**v3.60.115**
-- Fixed tire position mapping in "Vehicle health": front-left, rear-left and rear-right pressures were swapped between themselves (front-right was already correct). Fixed the underlying signal mapping.
-
-- Corregida la asignación de neumáticos en "Salud del vehículo": las presiones de delantera izquierda, trasera izquierda y trasera derecha aparecían intercambiadas entre sí (delantera derecha ya era correcta). Corregido el mapeo de señales.
-
-**v3.60.114**
-- "Recent trips" now has a direct shortcut on the dashboard, right below "Vehicle controls" (it used to be Settings-only).
-- The Google account prompt for the optional Drive backup no longer appears on every app launch — only on the day the automatic backup is actually due.
-
-- "Últimas rutas" tiene ahora un acceso directo en el panel principal, justo debajo de "Controles del vehículo" (antes solo estaba en Ajustes).
-- El aviso de cuenta de Google para la copia opcional a Drive ya no aparece en cada apertura de la app — solo el día que realmente toca la copia automática.
 
 ---
 
@@ -209,7 +202,7 @@ La importacion es idempotente, asi que el paso 4 se puede repetir sin duplicar n
 
 The protocol layer talks to Leapmotor's shared international backend (appgateway.leapmotor-international.de), not to model-specific endpoints. The vehicle list, login, signing, and remote-control flow are generic across Leapmotor's line-up; the only per-model detail handled explicitly is the vehicle status path (B10 and B11 share the C10 status endpoint, per the community reference client).
 
-Development and testing has been done on a B10. Owners of other models (C10, C16, T03, B05, etc.) are welcome to try it and report back — some remote actions may not apply to every model or trim.
+Development and testing has been done on a B10, with growing real-world confirmation on other models too — a T03 has confirmed working battery, tire pressure, and (via fallback) live range and ABRP telemetry. Owners of other models (C10, C16, B05, etc.) are welcome to try it and report back — some remote actions or status fields may not apply to every model or trim, since different vehicles report a different subset of signals.
 
 Since every kWh and euro figure derives from battery capacity, the app has a **vehicle profile** (Settings → Vehicle profile) where you pick your model, or type capacity and range by hand:
 
@@ -229,7 +222,7 @@ Two traps worth knowing: **the same model name can ship two different batteries*
 
 La capa de protocolo habla con el backend internacional compartido de Leapmotor (appgateway.leapmotor-international.de), no con endpoints exclusivos de un modelo. El listado de vehiculos, el login, la firma de peticiones y el flujo de comandos remotos son genericos en toda la gama; el unico detalle especifico por modelo que se gestiona explicitamente es la ruta de estado del vehiculo (B10 y B11 comparten el endpoint de estado del C10, segun el cliente de referencia de la comunidad).
 
-El desarrollo y las pruebas se han hecho sobre un B10. Si tienes otro modelo (C10, C16, T03, B05, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas no apliquen a todos los modelos o acabados.
+El desarrollo y las pruebas se han hecho sobre un B10, con confirmacion real creciente en otros modelos tambien — un T03 tiene confirmado el funcionamiento de bateria, presion de neumaticos, y (mediante reserva) autonomia en vivo y telemetria a ABRP. Si tienes otro modelo (C10, C16, B05, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas o campos de estado no apliquen a todos los modelos o acabados, ya que cada vehiculo reporta un subconjunto distinto de senales.
 
 Como todos los kWh y euros salen de la capacidad de la bateria, la app tiene un **perfil de vehiculo** (Ajustes → Perfil del vehiculo) donde eliges tu modelo, o metes capacidad y autonomia a mano. Ver la tabla de arriba.
 
@@ -259,7 +252,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 - Tire pressure card (in bar), read from the vehicle's status signals.
 - Toolbar: an envelope icon with an unread-message badge, and a settings menu grouping Settings, Export history, Import backup, Guard Mode (experimental) and the Debug screen.
 - Non-blocking network error handling: transient failures (tunnels, dead zones) keep the last known state visible and retry quietly instead of blanking the screen.
-- Debug screen with snapshot/diff: save a full raw status snapshot, run a command, and compare exactly which fields (including unmapped raw signals) actually changed — the tool used to verify which remote commands genuinely do something on the vehicle.
+- Debug screen with snapshot/diff: save a full raw status snapshot, run a command, and compare exactly which fields (including unmapped raw signals) actually changed — the tool used to verify which remote commands genuinely do something on the vehicle, and the tool that surfaced the cross-model signal differences described above.
 
 - Estado en vivo con refresco automatico cada 90 segundos: bateria (SOC preciso), autonomia, cerradura, estado y cable de carga, gestion termica de la bateria, clima, maletero y centinela.
 - Boton "Controles del vehiculo" fijado arriba, encima de la tarjeta de bateria, para acceder a todas las acciones remotas con un toque. Justo debajo, un acceso directo a "Ultimas rutas".
@@ -271,7 +264,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 - Tarjeta de presion de neumaticos (en bar), leida de las senales de estado del vehiculo.
 - Barra de herramientas: un icono de sobre con globo de mensajes sin leer, y un menu de ajustes que agrupa Ajustes, Exportar historico, Importar backup, Modo Vigilancia (experimental) y la pantalla de Debug.
 - Manejo de errores de red no bloqueante: los fallos transitorios (tuneles, zonas sin cobertura) mantienen visible el ultimo estado conocido y reintentan en silencio en vez de dejar la pantalla en blanco.
-- Pantalla de debug con snapshot/diff: guarda un estado crudo completo, ejecuta un comando, y compara exactamente que campos (incluidas senales sin mapear) cambiaron de verdad — la herramienta usada para verificar que comandos remotos hacen algo real en el vehiculo.
+- Pantalla de debug con snapshot/diff: guarda un estado crudo completo, ejecuta un comando, y compara exactamente que campos (incluidas senales sin mapear) cambiaron de verdad — la herramienta usada para verificar que comandos remotos hacen algo real en el vehiculo, y la misma que ha permitido detectar las diferencias de senal entre modelos descritas arriba.
 
 ### Remote controls / Controles remotos
 Full PIN-verification flow (AES-128-CBC encrypted operatePassword, server-side verification, and result polling), matching the real protocol:
@@ -291,6 +284,13 @@ Flujo completo de verificacion de PIN (operatePassword cifrado AES-128-CBC, veri
 - Persiana y ventanillas.
 - Limite de velocidad configurable.
 - Interruptor de modo centinela (ver Limitaciones conocidas mas abajo).
+
+### ABRP integration / Integración con ABRP
+- Optional telemetry push to A Better Routeplanner (ABRP), for trip planning using your car's real-time data.
+- Uses the same battery-percentage fallback as the rest of the app, so it also works on models that don't report the precise SOC signal.
+
+- Envío opcional de telemetría a A Better Routeplanner (ABRP), para planificar rutas con los datos en tiempo real de tu coche.
+- Usa el mismo valor de reserva de porcentaje de batería que el resto de la app, así que también funciona en modelos que no reportan la señal de precisión.
 
 ### Android Auto
 
@@ -400,10 +400,11 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 ## Known limitations / Limitaciones conocidas
 
 - **Android Auto is temporarily removed** from the published release while a Google Play policy compliance review is resolved (see "What's new"). The Android Auto documentation elsewhere in this README describes the feature as it exists in the codebase, and it will return once re-approved.
+- Different Leapmotor models report different subsets of status signals. The app applies fallbacks where a safe equivalent signal is known (e.g. live range, precise battery percentage), but some fields may still show as empty or "--" on models that report neither the primary nor the fallback signal. The Debug screen's raw snapshot is the way to investigate this on any given vehicle.
 - Sentry mode (cmd 220) is accepted and confirmed by the server, but testing showed no observable change in the vehicle's reported state (not even in unmapped raw signals). Everything points to it not being actually implemented on this vehicle's firmware/hardware, even though the command exists in the protocol. Sentry Mode therefore relies mainly on its app-side watchdog layer.
 - Parked camera recording is disabled in the current UK/EU firmware; the on-board dashcam only records while driving (3-minute blocks to a USB stick in the "REC" port).
 - The TCU enters deep sleep about 13 minutes after locking, so cloud-based watching pauses until the car wakes back up (e.g. a door opening wakes it and the next poll catches the change) — it's not equivalent to a real-time server push. This is also why overnight charging cannot be watched live and has to be reconstructed afterwards.
-- Energy figures assume a fixed 67.1 kWh battery — see the model section above.
+- Energy figures assume the battery capacity from the selected vehicle profile — see the model section above.
 - Reading messages in this app does not mark them as read on Leapmotor's server (no such endpoint is documented), so the unread badge is tracked locally and resets when you open the inbox.
 - The "camping mode" (ON3, cmd 410) and dashcam-recorder toggle (cmd 290) commands are unconfirmed experiments — test with the debug tool before relying on them.
 - Live 360-camera streaming is not possible: car templates have no video surface, the 360 view is generated by the car's own hardware and never reaches the cloud, and showing video to the driver would breach distraction rules.
@@ -413,10 +414,11 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 - The full charge/preconditioning schedule format (time windows, weekday encoding) is inferred by symmetry with the reference source code, not 100% confirmed from a live capture — verify by feeling whether the car actually behaves as scheduled.
 
 - **Android Auto esta retirado temporalmente** de la version publicada mientras se resuelve una revision de cumplimiento de politicas de Google Play (ver "Novedades"). La documentacion de Android Auto del resto de este README describe la funcion tal como existe en el codigo, y volvera en cuanto se reapruebe.
+- Distintos modelos de Leapmotor reportan distintos subconjuntos de senales de estado. La app aplica valores de reserva donde se conoce una senal equivalente segura (p. ej. autonomia en vivo, porcentaje preciso de bateria), pero algunos campos pueden seguir saliendo vacios o "--" en modelos que no reportan ni la senal principal ni la de reserva. La pantalla de Debug con el estado crudo es la forma de investigar esto en cualquier vehiculo concreto.
 - El modo centinela (cmd 220) es aceptado y confirmado por el servidor, pero las pruebas no mostraron ningun cambio observable en el estado reportado del vehiculo (ni en senales crudas sin mapear). Todo apunta a que no esta realmente implementado en el firmware/hardware de este vehiculo, aunque el comando exista en el protocolo. Por eso el Modo Centinela se apoya sobre todo en su capa de vigilancia en la app.
 - La grabacion con camaras estando aparcado esta desactivada en el firmware UK/UE actual; el dashcam de a bordo solo graba en marcha (bloques de 3 minutos a un USB en el puerto "REC").
 - El TCU entra en sueno profundo unos 13 minutos tras bloquear, asi que la vigilancia basada en la nube se pausa hasta que el coche despierta (p. ej. abrir una puerta lo despierta y el siguiente sondeo detecta el cambio) — no equivale a un push en tiempo real del servidor. Es tambien la razon por la que la carga nocturna no se puede vigilar en vivo y hay que reconstruirla despues.
-- Las cifras de energia asumen una bateria fija de 67,1 kWh — ver la seccion de modelos mas arriba.
+- Las cifras de energia asumen la capacidad de bateria del perfil de vehiculo seleccionado — ver la seccion de modelos mas arriba.
 - Leer los mensajes en esta app no los marca como leidos en el servidor de Leapmotor (no hay endpoint documentado para ello), asi que el globo de no leidos se lleva localmente y se pone a cero al abrir la bandeja.
 - Los comandos de "modo acampada" (ON3, cmd 410) y de interruptor de grabadora dashcam (cmd 290) son experimentos sin confirmar — pruebalos con la herramienta de debug antes de confiar en ellos.
 - Ver las camaras 360 en directo no es posible: las plantillas del coche no admiten superficie de video, la vista 360 la genera el hardware del propio coche y nunca pasa por la nube, y mostrar video al conductor incumpliria las normas de distraccion.
@@ -460,6 +462,7 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
 
     lib/leapmotor_engine.dart        API client: login, HMAC signing, PKCS#12, remote commands, status parsing
     lib/main.dart                    Dashboard, cards, settings, notifications, background refresh
+    lib/abrp.dart                    Optional telemetry push to A Better Routeplanner
     lib/widget_chart.dart            Home-screen widget renderer and consumption/charge calculations
     lib/daily_stats.dart             Incremental daily aggregation engine + charge history rebuild
     lib/energy_cost.dart             Electricity price model and per-day cost totals
