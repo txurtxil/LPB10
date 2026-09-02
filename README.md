@@ -28,12 +28,12 @@ AVISO: Proyecto no oficial e independiente. No esta afiliado a, respaldado por, 
 
 You'll need:
 - An Android phone with a Google account.
-- A Leapmotor vehicle — the B10 is fully confirmed; other models are welcome to try (see "Which models" below).
+- A Leapmotor vehicle — the B10 is fully confirmed; other models are welcome to try (see "Model compatibility" below).
 - Your own client certificate for Leapmotor's servers — the app does not include one (see "Certificates" below).
 
 Necesitas:
 - Un móvil Android con una cuenta de Google.
-- Un vehículo Leapmotor — el B10 está totalmente confirmado; otros modelos son bienvenidos a probar (ver "Con qué modelos" más abajo).
+- Un vehículo Leapmotor — el B10 está totalmente confirmado; otros modelos son bienvenidos a probar (ver "Compatibilidad por modelo" más abajo).
 - Tu propio certificado de cliente para los servidores de Leapmotor — la app no incluye uno (ver "Certificados" más abajo).
 
 **Steps / Pasos:**
@@ -202,7 +202,7 @@ La importacion es idempotente, asi que el paso 4 se puede repetir sin duplicar n
 
 The protocol layer talks to Leapmotor's shared international backend (appgateway.leapmotor-international.de), not to model-specific endpoints. The vehicle list, login, signing, and remote-control flow are generic across Leapmotor's line-up; the only per-model detail handled explicitly is the vehicle status path (B10 and B11 share the C10 status endpoint, per the community reference client).
 
-Development and testing has been done on a B10, with growing real-world confirmation on other models too — a T03 has confirmed working battery, tire pressure, and (via fallback) live range and ABRP telemetry. Owners of other models (C10, C16, B05, etc.) are welcome to try it and report back — some remote actions or status fields may not apply to every model or trim, since different vehicles report a different subset of signals.
+Development has been done on a B10, which is why it's the most complete. Different models report a different subset of status signals to the cloud, so some fields may be missing or need a fallback signal on models other than the B10 — see the compatibility table right below for exactly what's confirmed on each model so far.
 
 Since every kWh and euro figure derives from battery capacity, the app has a **vehicle profile** (Settings → Vehicle profile) where you pick your model, or type capacity and range by hand:
 
@@ -222,13 +222,53 @@ Two traps worth knowing: **the same model name can ship two different batteries*
 
 La capa de protocolo habla con el backend internacional compartido de Leapmotor (appgateway.leapmotor-international.de), no con endpoints exclusivos de un modelo. El listado de vehiculos, el login, la firma de peticiones y el flujo de comandos remotos son genericos en toda la gama; el unico detalle especifico por modelo que se gestiona explicitamente es la ruta de estado del vehiculo (B10 y B11 comparten el endpoint de estado del C10, segun el cliente de referencia de la comunidad).
 
-El desarrollo y las pruebas se han hecho sobre un B10, con confirmacion real creciente en otros modelos tambien — un T03 tiene confirmado el funcionamiento de bateria, presion de neumaticos, y (mediante reserva) autonomia en vivo y telemetria a ABRP. Si tienes otro modelo (C10, C16, B05, etc.) eres bienvenido a probarlo y contarnos que tal — es posible que algunas acciones remotas o campos de estado no apliquen a todos los modelos o acabados, ya que cada vehiculo reporta un subconjunto distinto de senales.
+El desarrollo se ha hecho sobre un B10, por lo que es el modelo mas completo. Distintos modelos reportan un subconjunto distinto de senales de estado a la nube, asi que algunos campos pueden faltar o necesitar una senal de reserva en modelos distintos al B10 — ver la tabla de compatibilidad justo debajo para lo que esta confirmado en cada modelo hasta ahora.
 
 Como todos los kWh y euros salen de la capacidad de la bateria, la app tiene un **perfil de vehiculo** (Ajustes → Perfil del vehiculo) donde eliges tu modelo, o metes capacidad y autonomia a mano. Ver la tabla de arriba.
 
 Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos baterias distintas** (B05 Pro y ProMax), y **una misma bateria puede venir con autonomias muy distintas** (el C10 ProMax da 510 km en traccion trasera y 437 en total). Por eso capacidad y autonomia son campos separados. Si tu coche declara una autonomia a plena carga muy distinta a la del perfil elegido, la app te avisa: normalmente significa que se ha escogido la variante equivocada.
 
 **Los hibridos de autonomia extendida (C10 REEV) no estan soportados.** Su bateria se recarga con el generador de gasolina en marcha, y la app leeria eso como una sesion de carga, falseando tanto el calculo de consumo como el historial.
+
+## Model compatibility / Compatibilidad por modelo
+
+This table tracks what's actually been confirmed working on real vehicles, not what's theoretically expected. It grows as more testers report back with different models — if you have a C10 or B05 and can confirm (or deny) any of these rows, please post in the testers group.
+
+Esta tabla recoge lo que se ha confirmado de verdad en vehiculos reales, no lo que se espera en teoria. Crece segun mas testers reportan con distintos modelos — si tienes un C10 o un B05 y puedes confirmar (o desmentir) alguna de estas filas, publicalo en el grupo de testers.
+
+| Feature / Función | B10 | T03 | C10 | B05 |
+|---|:---:|:---:|:---:|:---:|
+| Battery % / % de batería | ✅ | ✅ | ❔ | ❔ |
+| Precise battery % / % de batería preciso | ✅ | ⚠️ fallback | ❔ | ❔ |
+| Live range / Autonomía en vivo | ✅ | ⚠️ fallback | ❔ | ❔ |
+| Tire pressure / Presión de neumáticos | ✅ | ✅ | ❔ | ❔ |
+| Lock status / Estado de cerradura | ✅ | ✅ | ❔ | ❔ |
+| Charging state & cable / Estado y cable de carga | ✅ | ✅ | ❔ | ❔ |
+| Battery thermal management / Gestión térmica | ✅ | ✅ | ❔ | ❔ |
+| Climate status / Estado del clima | ✅ | ✅ | ❔ | ❔ |
+| Trunk status / Estado del maletero | ✅ | ✅ | ❔ | ❔ |
+| Sentry status (app-side) / Centinela (lado app) | ✅ | ✅ | ❔ | ❔ |
+| Battery / interior temperature / Temp. batería e interior | ✅ | ❌ not reported | ❔ | ❔ |
+| GPS location / Ubicación GPS | ✅ | ✅ | ❔ | ❔ |
+| Odometer / Odómetro | ✅ | ✅ | ❔ | ❔ |
+| Remote controls (lock, climate, etc.) / Controles remotos | ✅ | ❔ untested | ❔ | ❔ |
+| ABRP telemetry / Telemetría a ABRP | ✅ | ✅ | ❔ | ❔ |
+| Android Auto | ⏸️ see Known limitations | ❔ | ❔ | ❔ |
+
+**Legend / Leyenda:**
+- ✅ Confirmed working, reported by a real user or tested by the developer / Confirmado funcionando, reportado por un usuario real o probado por el desarrollador
+- ⚠️ fallback — Works, but the primary signal is missing on this model; a substitute signal is used instead (see "Known limitations") / Funciona, pero falta la señal principal en este modelo; se usa una señal sustituta (ver "Limitaciones conocidas")
+- ❌ not reported — Confirmed the vehicle does not send this signal at all; shown as empty/"--" with no known substitute yet / Confirmado que el vehículo no envía esta señal; se muestra vacío/"--" sin sustituto conocido aún
+- ❔ No reports yet — Nobody has confirmed this on this model in this project yet / Nadie lo ha confirmado en este modelo en este proyecto todavía
+- ⏸️ Temporarily disabled app-wide, unrelated to model / Desactivado temporalmente para toda la app, no relacionado con el modelo
+
+B10: SurferRule's own daily-driver, so it's the reference vehicle — everything above has been tested directly, extensively, over months.
+T03: confirmed via a tester's Tbox Plus setup and the app's own Debug snapshot tool (Settings menu → "View full status (debug)"), which is how the fallback gaps above were found and fixed.
+C10 / B05: no real-world reports yet in this project. The vehicle-list and login flow are known to work across Leapmotor's range (they're not model-specific), but the status-signal details in this table are unconfirmed for these two.
+
+B10: coche de uso diario de SurferRule, por lo que es el vehiculo de referencia — todo lo de arriba se ha probado directamente, a fondo, durante meses.
+T03: confirmado a traves de la configuracion Tbox Plus de un tester y la propia herramienta de Debug de la app (menu de Ajustes → "Ver estado completo (debug)"), que es como se encontraron y corrigieron los huecos de reserva de arriba.
+C10 / B05: sin reportes reales todavia en este proyecto. El listado de vehiculos y el flujo de login se sabe que funcionan en toda la gama de Leapmotor (no son especificos de un modelo), pero los detalles de senales de estado de esta tabla estan sin confirmar para estos dos.
 
 ## Features / Caracteristicas
 
@@ -252,7 +292,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 - Tire pressure card (in bar), read from the vehicle's status signals.
 - Toolbar: an envelope icon with an unread-message badge, and a settings menu grouping Settings, Export history, Import backup, Guard Mode (experimental) and the Debug screen.
 - Non-blocking network error handling: transient failures (tunnels, dead zones) keep the last known state visible and retry quietly instead of blanking the screen.
-- Debug screen with snapshot/diff: save a full raw status snapshot, run a command, and compare exactly which fields (including unmapped raw signals) actually changed — the tool used to verify which remote commands genuinely do something on the vehicle, and the tool that surfaced the cross-model signal differences described above.
+- Debug screen with snapshot/diff: save a full raw status snapshot, run a command, and compare exactly which fields (including unmapped raw signals) actually changed — the tool used to verify which remote commands genuinely do something on the vehicle, and the same tool used to find the cross-model signal gaps in the compatibility table above.
 
 - Estado en vivo con refresco automatico cada 90 segundos: bateria (SOC preciso), autonomia, cerradura, estado y cable de carga, gestion termica de la bateria, clima, maletero y centinela.
 - Boton "Controles del vehiculo" fijado arriba, encima de la tarjeta de bateria, para acceder a todas las acciones remotas con un toque. Justo debajo, un acceso directo a "Ultimas rutas".
@@ -264,7 +304,7 @@ Dos trampas que conviene conocer: **un mismo nombre de modelo puede llevar dos b
 - Tarjeta de presion de neumaticos (en bar), leida de las senales de estado del vehiculo.
 - Barra de herramientas: un icono de sobre con globo de mensajes sin leer, y un menu de ajustes que agrupa Ajustes, Exportar historico, Importar backup, Modo Vigilancia (experimental) y la pantalla de Debug.
 - Manejo de errores de red no bloqueante: los fallos transitorios (tuneles, zonas sin cobertura) mantienen visible el ultimo estado conocido y reintentan en silencio en vez de dejar la pantalla en blanco.
-- Pantalla de debug con snapshot/diff: guarda un estado crudo completo, ejecuta un comando, y compara exactamente que campos (incluidas senales sin mapear) cambiaron de verdad — la herramienta usada para verificar que comandos remotos hacen algo real en el vehiculo, y la misma que ha permitido detectar las diferencias de senal entre modelos descritas arriba.
+- Pantalla de debug con snapshot/diff: guarda un estado crudo completo, ejecuta un comando, y compara exactamente que campos (incluidas senales sin mapear) cambiaron de verdad — la herramienta usada para verificar que comandos remotos hacen algo real en el vehiculo, y la misma herramienta usada para encontrar los huecos de senal entre modelos de la tabla de compatibilidad de arriba.
 
 ### Remote controls / Controles remotos
 Full PIN-verification flow (AES-128-CBC encrypted operatePassword, server-side verification, and result polling), matching the real protocol:
@@ -400,7 +440,7 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 ## Known limitations / Limitaciones conocidas
 
 - **Android Auto is temporarily removed** from the published release while a Google Play policy compliance review is resolved (see "What's new"). The Android Auto documentation elsewhere in this README describes the feature as it exists in the codebase, and it will return once re-approved.
-- Different Leapmotor models report different subsets of status signals. The app applies fallbacks where a safe equivalent signal is known (e.g. live range, precise battery percentage), but some fields may still show as empty or "--" on models that report neither the primary nor the fallback signal. The Debug screen's raw snapshot is the way to investigate this on any given vehicle.
+- Different Leapmotor models report different subsets of status signals — see "Model compatibility" above for exactly what's confirmed on each model. The app applies fallbacks where a safe equivalent signal is known (live range, precise battery percentage), but some fields may still show as empty or "--" on models that report neither the primary nor the fallback signal (confirmed on a T03 for battery and interior temperature). The Debug screen's raw snapshot is the way to investigate this on any given vehicle.
 - Sentry mode (cmd 220) is accepted and confirmed by the server, but testing showed no observable change in the vehicle's reported state (not even in unmapped raw signals). Everything points to it not being actually implemented on this vehicle's firmware/hardware, even though the command exists in the protocol. Sentry Mode therefore relies mainly on its app-side watchdog layer.
 - Parked camera recording is disabled in the current UK/EU firmware; the on-board dashcam only records while driving (3-minute blocks to a USB stick in the "REC" port).
 - The TCU enters deep sleep about 13 minutes after locking, so cloud-based watching pauses until the car wakes back up (e.g. a door opening wakes it and the next poll catches the change) — it's not equivalent to a real-time server push. This is also why overnight charging cannot be watched live and has to be reconstructed afterwards.
@@ -414,7 +454,7 @@ Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listado
 - The full charge/preconditioning schedule format (time windows, weekday encoding) is inferred by symmetry with the reference source code, not 100% confirmed from a live capture — verify by feeling whether the car actually behaves as scheduled.
 
 - **Android Auto esta retirado temporalmente** de la version publicada mientras se resuelve una revision de cumplimiento de politicas de Google Play (ver "Novedades"). La documentacion de Android Auto del resto de este README describe la funcion tal como existe en el codigo, y volvera en cuanto se reapruebe.
-- Distintos modelos de Leapmotor reportan distintos subconjuntos de senales de estado. La app aplica valores de reserva donde se conoce una senal equivalente segura (p. ej. autonomia en vivo, porcentaje preciso de bateria), pero algunos campos pueden seguir saliendo vacios o "--" en modelos que no reportan ni la senal principal ni la de reserva. La pantalla de Debug con el estado crudo es la forma de investigar esto en cualquier vehiculo concreto.
+- Distintos modelos de Leapmotor reportan distintos subconjuntos de senales de estado — ver "Compatibilidad por modelo" arriba para lo que esta confirmado en cada modelo. La app aplica valores de reserva donde se conoce una senal equivalente segura (autonomia en vivo, porcentaje preciso de bateria), pero algunos campos pueden seguir saliendo vacios o "--" en modelos que no reportan ni la senal principal ni la de reserva (confirmado en un T03 para temperatura de bateria e interior). La pantalla de Debug con el estado crudo es la forma de investigar esto en cualquier vehiculo concreto.
 - El modo centinela (cmd 220) es aceptado y confirmado por el servidor, pero las pruebas no mostraron ningun cambio observable en el estado reportado del vehiculo (ni en senales crudas sin mapear). Todo apunta a que no esta realmente implementado en el firmware/hardware de este vehiculo, aunque el comando exista en el protocolo. Por eso el Modo Centinela se apoya sobre todo en su capa de vigilancia en la app.
 - La grabacion con camaras estando aparcado esta desactivada en el firmware UK/UE actual; el dashcam de a bordo solo graba en marcha (bloques de 3 minutos a un USB en el puerto "REC").
 - El TCU entra en sueno profundo unos 13 minutos tras bloquear, asi que la vigilancia basada en la nube se pausa hasta que el coche despierta (p. ej. abrir una puerta lo despierta y el siguiente sondeo detecta el cambio) — no equivale a un push en tiempo real del servidor. Es tambien la razon por la que la carga nocturna no se puede vigilar en vivo y hay que reconstruirla despues.
