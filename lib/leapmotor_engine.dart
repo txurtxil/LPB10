@@ -356,7 +356,15 @@ class VehicleStatus {
     return VehicleStatus(
       soc: _asInt(m['soc']), preciseSoc: _asDouble(m['preciseSoc']), chargeState: _asInt(m['chargeState']),
       acInputSlowCharge: _asBool(m['acInputSlowCharge']), dcInputFastCharge: _asBool(m['dcInputFastCharge']),
-      batteryThermalRequest: _asInt(m['batteryThermalRequest']), liveRemainingRange: _asInt(m['liveRemainingRange']),
+      batteryThermalRequest: _asInt(m['batteryThermalRequest']),
+      // Fallback a expectedMileage (senal 3260): confirmado en un T03 que
+      // liveRemainingRange (senal 2188) no llega, dejando la autonomia
+      // siempre vacia. expectedMileage SI llega y es coherente (concuerda
+      // con su propio campo expectedMileageMile del mismo snapshot), pero
+      // no esta confirmado al 100% que sea el mismo concepto exacto que
+      // "autonomia en vivo" en todos los modelos -- se usa solo como ultimo
+      // recurso, cuando la senal principal no esta disponible.
+      liveRemainingRange: _asInt(m['liveRemainingRange']) ?? _asInt(m['expectedMileage']),
       latitude: _asDouble(m['latitude']), longitude: _asDouble(m['longitude']), acSwitch: _asBool(m['acSwitch']),
       driverDoorLockStatus: _asBool(m['driverDoorLockStatus']), bbcmBackDoorStatus: _asBool(m['bbcmBackDoorStatus']),
       sentryMode: _asInt(m['sentryMode']), totalMileage: _asInt(m['totalMileage']),
