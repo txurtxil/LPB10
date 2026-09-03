@@ -18,6 +18,14 @@ import 'widget_chart.dart' show gBatteryKwh;
 
 const int kTripMergeGapMs = 20 * 60 * 1000;
 const int kTripApproxGapMs = 6 * 60 * 1000;
+// Tope para RECONSTRUIR una ruta a partir de un unico salto de odometro,
+// cuando el movil no sondeo ni una vez durante el trayecto (Android detiene
+// la app en segundo plano). Validado el 03/09/2026 con simulacion Python
+// sobre 12.907 puntos reales: con 6h se recuperan 109 rutas y el 84% de los
+// km del historico, sin alterar ninguna de las 137 que ya salian. Subir a
+// 8h o 12h solo anade 1 ruta; a 24h empieza a mezclar trayecto con recarga
+// nocturna y el consumo sale absurdo.
+const int kTripReconstruibleGapMs = 6 * 60 * 60 * 1000;
 const double kTripMinPct = 8.0;
 const double kTripMaxPct = 70.0;
 
@@ -45,6 +53,12 @@ class RouteTrip {
   final int puntos;
   final List<RouteWaypoint> waypoints;
 
+  /// Ruta deducida de UN salto de odometro, sin ninguna muestra intermedia.
+  /// La distancia y el consumo son exactos (salen del odometro y del SOC del
+  /// coche), pero no hay recorrido que dibujar ni duracion real: solo se sabe
+  /// que el viaje ocurrio en algun momento entre startTs y endTs.
+  final bool reconstruida;
+
   const RouteTrip({
     required this.startTs,
     required this.endTs,
@@ -53,13 +67,26 @@ class RouteTrip {
     required this.aproximada,
     required this.puntos,
     required this.waypoints,
+    this.reconstruida = false,
   });
 
   Duration get duracion => Duration(milliseconds: endTs - startTs);
 
   /// Se pide un minimo de 2 puntos GPS para que merezca la pena dibujar
   /// algo: con 1 solo punto no hay linea, solo un marcador suelto.
-  bool get hasGps => waypoints.length >= 2;
+  ///
+  /// Una ruta reconstruida NUNCA dibuja mapa aunque tenga los dos extremos:
+  /// unir salida y llegada con una recta seria inventarse el recorrido.
+  bool get hasGps => !reconstruida && waypoints.length >= 2;
+
+  /// Codigo del motivo por el que esta ruta no tiene mapa, o null si si lo
+  /// tiene. La traduccion se hace en la pantalla, aqui no hay contexto.
+  String? get motivoSinMapa {
+    if (hasGps) return null;
+    if (reconstruida) return 'reconstruida';
+    if (waypoints.isEmpty) return 'sin_gps';
+    return 'un_punto';
+  }
 }
 
 class TripRebuild {
@@ -115,6 +142,14 @@ class TripRebuild {
       // de 46h y 89h.
       if (huecoBruto > kTripMergeGapMs) {
         cerrar();
+        // El odometro SI avanzo durante el hueco: hubo un viaje real que el
+        // sondeo no llego a ver. Hasta el 03/09/2026 se descartaba entero
+        // (este continue se saltaba el kmDelta > 0 de mas abajo) y la ruta
+        // desaparecia sin dejar rastro; medido sobre el historico real, asi
+        // se perdia el 59% de los km. Ahora se emite como ruta reconstruida.
+        if (kmDelta > 0 && huecoBruto <= kTripReconstruibleGapMs) {
+          runs.add(_build(pts, i - 1, i, huecoBruto, reconstruida: true));
+        }
         continue;
       }
       // Con sondeo continuo de fondo cada 15 min, una parada larga son
@@ -145,7 +180,8 @@ class TripRebuild {
     return _cache;
   }
 
-  static RouteTrip _build(List<_Pt> pts, int ini, int fin, int maxGapInterno) {
+  static RouteTrip _build(List<_Pt> pts, int ini, int fin, int maxGapInterno,
+      {bool reconstruida = false}) {
     final kmTotal = (pts[fin].km - pts[ini].km).toDouble();
     var socDrop = 0.0;
     for (var i = ini + 1; i <= fin; i++) {
@@ -172,6 +208,7 @@ class TripRebuild {
       aproximada: maxGapInterno > kTripApproxGapMs,
       puntos: fin - ini + 1,
       waypoints: waypoints,
+      reconstruida: reconstruida,
     );
   }
 }

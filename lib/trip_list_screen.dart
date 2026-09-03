@@ -17,6 +17,32 @@ String _fechaHora(int ts) {
   return '${two(d.day)}/${two(d.month)} ${two(d.hour)}:${two(d.minute)}';
 }
 
+/// Texto que explica por que una ruta no tiene mapa. Se ensena al tocarla,
+/// no como tooltip: un tooltip pide mantener pulsado y nadie lo descubre.
+String _motivoTexto(String? codigo, bool es) {
+  switch (codigo) {
+    case 'reconstruida':
+      return es
+          ? 'Sin mapa: el movil no sondeo durante el trayecto, asi que no hay '
+              'puntos del recorrido. La distancia y el consumo si son exactos: '
+              'salen del odometro y del SOC del propio coche.'
+          : 'No map: the phone never polled during this trip, so there are no '
+              'path points. Distance and consumption are still exact, taken '
+              'from the car odometer and SOC.';
+    case 'sin_gps':
+      return es
+          ? 'Sin mapa: tu coche no reporta posicion GPS a la nube, o la ruta se '
+              'grabo antes de que la app capturara GPS.'
+          : 'No map: your car does not report GPS position to the cloud, or the '
+              'trip was recorded before the app captured GPS.';
+    case 'un_punto':
+      return es
+          ? 'Sin mapa: solo se capturo un punto GPS, no hay recorrido que dibujar.'
+          : 'No map: only one GPS point was captured, no path to draw.';
+  }
+  return es ? 'Sin mapa para esta ruta.' : 'No map for this trip.';
+}
+
 String _duracion(Duration d) {
   final min = d.inMinutes;
   if (min < 60) return '$min min';
@@ -83,12 +109,21 @@ class _TripListScreenState extends State<TripListScreen> {
                     final consumo = r.kwh100 != null
                         ? '${r.kwh100!.toStringAsFixed(1)} kWh/100km'
                         : (es ? 'consumo no fiable' : 'unreliable consumption');
+                    // En una ruta reconstruida solo se sabe que el viaje
+                    // ocurrio dentro de la ventana startTs..endTs, que puede
+                    // ser muchisimo mayor que el trayecto real (16 km dentro
+                    // de un hueco de 107 min, caso real del 03/09/2026).
+                    // Mostrar esa duracion enganaria, asi que se dice que no
+                    // se sabe.
+                    final dur = r.reconstruida
+                        ? (es ? 'duracion desconocida' : 'unknown duration')
+                        : '${r.aproximada ? "\u2248 " : ""}${_duracion(r.duracion)}';
                     return ListTile(
                       leading: const Icon(Icons.route_outlined, color: _cBlue),
                       title: Text(_fechaHora(r.startTs),
                           style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                       subtitle: Text(
-                        '${r.km.toStringAsFixed(0)} km  \u00b7  ${r.aproximada ? "\u2248 " : ""}${_duracion(r.duracion)}  \u00b7  $consumo',
+                        '${r.km.toStringAsFixed(0)} km  \u00b7  $dur  \u00b7  $consumo',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12.5,
@@ -99,7 +134,12 @@ class _TripListScreenState extends State<TripListScreen> {
                           ? () => Navigator.of(context).push(MaterialPageRoute(
                               builder: (_) => RouteMapScreen(
                                   waypoints: r.waypoints, aproximada: r.aproximada)))
-                          : null,
+                          : () => ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(_motivoTexto(r.motivoSinMapa, es)),
+                                  duration: const Duration(seconds: 6),
+                                ),
+                              ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -114,6 +154,12 @@ class _TripListScreenState extends State<TripListScreen> {
                             const Padding(
                               padding: EdgeInsets.only(left: 6),
                               child: Icon(Icons.map_outlined, size: 18, color: _cBlue),
+                            ),
+                          if (!r.hasGps)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: Icon(Icons.location_off_outlined,
+                                  size: 18, color: Colors.grey),
                             ),
                         ],
                       ),
