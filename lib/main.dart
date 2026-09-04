@@ -1439,9 +1439,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
                 ),
                 children: [
+                  // CARTO empezo a exigir clave de API en sus mosaicos raster
+                  // el 26-28/08/2026 y sin ella pinta una marca de agua "API
+                  // KEY REQUIRED" encima del mapa (confirmado por testers el
+                  // 04/09/2026). OpenStreetMap directo no necesita clave.
                   TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                    subdomains: const ['a', 'b', 'c', 'd'],
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.txurtxil.lpb10',
                   ),
                   MarkerLayer(markers: [
@@ -2862,9 +2865,10 @@ class _FullMapScreenState extends State<FullMapScreen> {
           FlutterMap(
             options: MapOptions(initialCenter: point, initialZoom: 15.0),
             children: [
+              // Mismo motivo que el mapa compacto de ubicacion: CARTO exige
+              // clave desde el 26-28/08/2026 (ver comentario mas arriba).
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.txurtxil.lpb10',
               ),
               MarkerLayer(markers: [

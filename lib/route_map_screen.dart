@@ -60,9 +60,11 @@ class RouteMapScreen extends StatelessWidget {
                 ),
               ),
               children: [
+                // CARTO empezo a exigir clave de API en sus mosaicos raster
+                // el 26-28/08/2026 (marca de agua "API KEY REQUIRED"
+                // confirmada por testers el 04/09/2026). Cambiado a OSM.
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.txurtxil.lpb10',
                 ),
                 PolylineLayer(polylines: [
