@@ -1,0 +1,118 @@
+package com.txurtxil.lpb10
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import java.io.File
+import java.util.Locale
+
+/** Foreground service minimo: solo existe para poder mantener vivo el
+ *  sondeo cada 90s mientras se conduce (Android mata el sondeo normal de
+ *  15 min o lo retrasa mucho en cuanto la app pasa a segundo plano).
+ *
+ *  No hace ningun trabajo el mismo: escribe un fichero-flag que Dart
+ *  comprueba (driving.flag, junto a carlog.txt) y dispara la primera
+ *  tarea de WorkManager; el propio Dart se reencadena solo mientras el
+ *  flag siga presente (ver backgroundCallbackDispatcher en main.dart).
+ */
+class CarDriveService : Service() {
+    companion object {
+        private const val CHANNEL_ID = "lmb10_drive"
+        private const val NOTIF_ID = 4200
+        private const val ACTION_STOP = "com.txurtxil.lpb10.DRIVE_STOP"
+
+        fun start(ctx: Context) {
+            val i = Intent(ctx, CarDriveService::class.java)
+            ctx.startForegroundService(i)
+        }
+
+        fun stop(ctx: Context) {
+            ctx.startService(Intent(ctx, CarDriveService::class.java).setAction(ACTION_STOP))
+        }
+
+        private fun flagFile(ctx: Context): File {
+            val docs = File(ctx.filesDir.parentFile, "app_flutter/lmb10_history")
+            docs.mkdirs()
+            return File(docs, "driving.flag")
+        }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            pararDeVerdad()
+            return START_NOT_STICKY
+        }
+        arrancarDeVerdad()
+        return START_NOT_STICKY
+    }
+
+    private fun arrancarDeVerdad() {
+        try {
+            flagFile(this).writeText("1")
+        } catch (e: Exception) {
+            CarLog.log(this, "DRIVE", "no se pudo escribir driving.flag: " + e.toString())
+        }
+        crearCanalSiHaceFalta()
+        startForeground(NOTIF_ID, construirNotificacion())
+        // El primer disparo de la cadena de sondeo NO se hace desde aqui.
+        // Intentar reencadenar el Worker interno del plugin "workmanager"
+        // desde Kotlin puro no compilaba (ese Worker es una clase privada
+        // del plugin, no accesible desde este modulo) y anadir una segunda
+        // via de disparo distinta a la que usa el resto de la app habria
+        // sido mas fragil que sencillo. En su lugar: el propio Dart, la
+        // proxima vez que backgroundCallbackDispatcher se ejecute por
+        // cualquier via (incluida la periodica normal de 15 min, o el
+        // primer arranque de la app), comprueba el flag y si esta activo
+        // arranca la cadena de 90s el mismo. El margen realista hasta que
+        // eso ocurra es de segundos si la app esta abierta cuando se
+        // conecta el coche, y como mucho el resto del ciclo de 15 min si
+        // no lo esta -- peor que un disparo instantaneo, pero sin el
+        // riesgo de una integracion nativa con el Worker interno del plugin.
+        CarLog.log(this, "DRIVE", "servicio arrancado, flag escrito")
+    }
+
+    private fun pararDeVerdad() {
+        try {
+            val f = flagFile(this)
+            if (f.exists()) f.delete()
+        } catch (e: Exception) {
+            CarLog.log(this, "DRIVE", "no se pudo borrar driving.flag: " + e.toString())
+        }
+        CarLog.log(this, "DRIVE", "servicio parado")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    private fun crearCanalSiHaceFalta() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val es = Locale.getDefault().language == "es"
+            val nm = getSystemService(NotificationManager::class.java)
+            val ch = NotificationChannel(
+                CHANNEL_ID,
+                if (es) "Registro de trayecto" else "Trip recording",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            nm.createNotificationChannel(ch)
+        }
+    }
+
+    private fun construirNotificacion(): Notification {
+        val es = Locale.getDefault().language == "es"
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("LMB10")
+            .setContentText(if (es) "Registrando tu trayecto" else "Recording your trip")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+}

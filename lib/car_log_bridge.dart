@@ -21,3 +21,19 @@ class CarLogBridge {
     } catch (_) {}
   }
 }
+
+/// Fichero-flag que CarDriveService (Kotlin) crea al arrancar el modo
+/// conduccion y borra al pararlo. Mismo patron de carpeta que CarLogBridge:
+/// hay que resolver la misma ruta en los dos lenguajes, asi que se comprueba
+/// aqui junto al resto de puentes fichero, no en un sitio distinto.
+class DriveFlagBridge {
+  static Future<bool> isSet() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final f = File('${dir.path}/lmb10_history/driving.flag');
+      return await f.exists();
+    } catch (_) {
+      return false;
+    }
+  }
+}

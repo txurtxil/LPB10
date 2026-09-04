@@ -141,15 +141,62 @@ Future<void> refreshVehicleDataInBackground() async {
 }
 
 @pragma('vm:entry-point')
+const String kDrivePollTaskName = 'lmDrivePollTask';
+const String kDrivePollUniqueName = 'lm_drive_poll';
+const Duration kDrivePollInterval = Duration(seconds: 90);
+
+/// true si CarDriveService (Kotlin) sigue vivo, es decir, si sigue habiendo
+/// al menos un dispositivo Bluetooth conectado. Mismo fichero que escribe/
+/// borra el servicio nativo; mismo patron de carpeta que CarLogBridge.
+Future<bool> _drivingFlagActivo() => DriveFlagBridge.isSet();
+
 void backgroundCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    // Log de una sola vez: no se ha verificado en produccion si "task" aqui
+    // es el nombre unico o el nombre de tarea del plugin. Se borra en cuanto
+    // se confirme con un trayecto real.
+    await CarLogBridge.log('DISPATCH task="' + task + '"');
+
+    if (task == kDrivePollTaskName) {
+      // Rama de conduccion: sondeo ligero cada 90s, SIN el backup diario
+      // (eso solo tiene sentido en el ciclo normal de 15 min, no en cada
+      // tramo de conduccion).
+      try {
+        await refreshVehicleDataInBackground();
+      } catch (e) {
+        await CarLogBridge.log('DRIVE-POLL FALLO: ' + e.toString());
+      }
+      // Reencadenar solo si CarDriveService sigue activo. Si ya se paro
+      // (coche desconectado), la cadena muere aqui sin que nadie del lado
+      // nativo tenga que cancelar nada explicitamente.
+      if (await _drivingFlagActivo()) {
+        await Workmanager().registerOneOffTask(
+          kDrivePollUniqueName,
+          kDrivePollTaskName,
+          initialDelay: kDrivePollInterval,
+          existingWorkPolicy: ExistingWorkPolicy.replace,
+        );
+      } else {
+        await CarLogBridge.log('DRIVE-POLL fin de cadena (flag ya no activo)');
+      }
+      return true;
+    }
+
+    // Rama normal: el ciclo periodico de siempre, sin cambios de comportamiento.
     try {
       await refreshVehicleDataInBackground();
-      // Copia de seguridad automatica diaria (best-effort).
-      await BackupHelper.autoBackupIfDue(
-        (k) => _storage.read(key: k),
-        (k, v) => _storage.write(key: k, value: v),
-      );
+      try {
+        await BackupHelper.autoBackupIfDue(
+          (k) => _storage.read(key: k),
+          (k, v) => _storage.write(key: k, value: v),
+        );
+      } catch (e) {
+        // Aislado en su propio try: el NPE conocido de autoBackupIfDue
+        // (Context.checkPermission sobre null, visto 12 veces en el log
+        // del 01-04/09/2026) no debe poder tirar todo el ciclo por la
+        // borda cuando el refresco de arriba ya se completo bien.
+        await CarLogBridge.log('autoBackupIfDue FALLO: ' + e.toString());
+      }
       return true;
     } catch (e) {
       // Diagnostico de huecos de sondeo: si esto se registra, WorkManager

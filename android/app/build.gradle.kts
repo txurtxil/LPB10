@@ -72,4 +72,10 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.car.app:app:1.7.0")
+    // El plugin "workmanager" ya trae androidx.work de forma transitiva,
+    // pero como dependencia "implementation" suya, que Gradle NO expone al
+    // codigo de este modulo. CarDriveService.kt necesita importar WorkManager
+    // directamente para encadenar el sondeo cada 90s durante la conduccion,
+    // asi que hace falta declararla aqui tambien.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

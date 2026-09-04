@@ -14,11 +14,14 @@
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- Paso 1 de la deteccion de conduccion: solo para poder leer que
-         dispositivo Bluetooth se conecta. En Android 12+ es permiso de
-         ejecucion; sin concederlo el broadcast deberia llegar igual pero
-         sin nombre/MAC, y el log lo dira. -->
+    <!-- Deteccion de conduccion via Bluetooth. Confirmado el 04/09/2026 con
+         datos reales: sin este permiso concedido en ejecucion, Android 12+
+         no entrega el broadcast en absoluto (no es solo que falte el
+         nombre/MAC, como se penso al principio: no llega nada). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- Foreground service que mantiene el sondeo activo mientras conduces. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <application
         android:label="LMB10"
         android:name="${applicationName}"
@@ -74,14 +77,20 @@
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="true" />
-        <!-- Observador de conexiones Bluetooth. NO arranca nada, solo anota
-             en carlog.txt. Sirve para comprobar si estos broadcasts llegan
-             con la app dormida y cual es la MAC real del coche. -->
+        <!-- Arranca/para CarDriveService segun se conecte o desconecte
+             cualquier dispositivo Bluetooth. Confirmado el 04/09/2026 que el
+             coche expone DOS conexiones (TCU + audio); se dispara con la
+             primera de las dos y se para solo cuando ambas se han ido. -->
         <receiver android:name=".CarBtReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
             </intent-filter>
         </receiver>
+        <!-- dataSync: mantiene vivo el sondeo (red + escritura en disco) de
+             la posicion y estado del coche mientras se conduce. No es GPS
+             puro tipo navegador, por eso no lleva el tipo "location". -->
+        <service android:name=".CarDriveService" android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

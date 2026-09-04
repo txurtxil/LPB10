@@ -5,47 +5,58 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/** PASO 1 de la deteccion de conduccion por Bluetooth: SOLO observa y anota.
+/** Arranca/para CarDriveService segun haya o no algun dispositivo Bluetooth
+ *  conectado. Ampliacion del observador del paso 1 (ver backup con fecha):
+ *  ese paso confirmo el 04/09/2026, con datos reales, que:
+ *   - El broadcast SI llega con la app dormida, siempre que el permiso
+ *     "Dispositivos cercanos" este concedido (si no, Android no lo entrega).
+ *   - El coche expone DOS conexiones Bluetooth simultaneas (TCU + audio),
+ *     no una. Por eso aqui se lleva la cuenta de CUANTAS hay conectadas en
+ *     vez de mirar una unica MAC fija: se arranca con la primera y se para
+ *     solo cuando la ultima se ha ido.
  *
- *  No arranca ningun servicio ni altera el comportamiento de la app. Existe
- *  para responder con datos, y no por suposicion, a dos preguntas:
- *
- *    1. Si ACL_CONNECTED llega de verdad a un receptor del manifest con la
- *       app dormida en segundo plano. Se cree que estos broadcasts estan
- *       exentos de las restricciones de Android 8+, pero no se da por hecho.
- *    2. Cual es la MAC con la que el movil empareja con el coche. La API del
- *       vehiculo reporta una (bluetoothAddr), pero puede ser la del TCU y no
- *       la del equipo de audio con el que empareja el telefono.
- *
- *  Todo va envuelto en try/catch: en Android 12+ leer nombre y MAC exige el
- *  permiso BLUETOOTH_CONNECT, que es de ejecucion. Si salta SecurityException
- *  tambien es informacion util, asi que se registra en vez de tragarsela.
+ *  Limitacion conocida y asumida por ahora: esto reacciona a CUALQUIER
+ *  Bluetooth (unos cascos tambien lo disparan), no solo al coche. Filtrar
+ *  por el dispositivo correcto es el siguiente paso (que el usuario lo
+ *  elija en Ajustes), pendiente de hacer.
  */
 class CarBtReceiver : BroadcastReceiver() {
+    companion object {
+        private const val PREFS = "lmb10_bt"
+        private const val KEY_CONECTADOS = "connected_macs"
+    }
+
     override fun onReceive(ctx: Context, intent: Intent) {
         try {
-            val accion = when (intent.action) {
-                BluetoothDevice.ACTION_ACL_CONNECTED -> "CONECTADO"
-                BluetoothDevice.ACTION_ACL_DISCONNECTED -> "DESCONECTADO"
+            val conectando = when (intent.action) {
+                BluetoothDevice.ACTION_ACL_CONNECTED -> true
+                BluetoothDevice.ACTION_ACL_DISCONNECTED -> false
                 else -> return
             }
             @Suppress("DEPRECATION")
             val dev = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-            val mac = try {
-                dev?.address ?: "nulo"
-            } catch (e: SecurityException) {
-                "sin permiso BLUETOOTH_CONNECT"
+            val mac = try { dev?.address } catch (e: SecurityException) { null } ?: "desconocido"
+            val nombre = try { dev?.name } catch (e: SecurityException) { null } ?: "?"
+
+            val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val actuales = HashSet(prefs.getStringSet(KEY_CONECTADOS, emptySet()) ?: emptySet())
+            val habiaAntes = actuales.isNotEmpty()
+            if (conectando) actuales.add(mac) else actuales.remove(mac)
+            prefs.edit().putStringSet(KEY_CONECTADOS, actuales).apply()
+            val hayAhora = actuales.isNotEmpty()
+
+            CarLog.log(ctx, "BT", (if (conectando) "CONECTADO" else "DESCONECTADO") +
+                " mac=$mac nombre=$nombre  (conectados tras esto: ${actuales.size})")
+
+            if (!habiaAntes && hayAhora) {
+                CarLog.log(ctx, "BT", "arrancando CarDriveService")
+                CarDriveService.start(ctx)
+            } else if (habiaAntes && !hayAhora) {
+                CarLog.log(ctx, "BT", "parando CarDriveService")
+                CarDriveService.stop(ctx)
             }
-            val nombre = try {
-                dev?.name ?: "nulo"
-            } catch (e: SecurityException) {
-                "sin permiso BLUETOOTH_CONNECT"
-            }
-            CarLog.log(ctx, "BT", "$accion mac=$mac nombre=$nombre")
         } catch (e: Exception) {
-            try {
-                CarLog.log(ctx, "BT", "excepcion en onReceive: " + e.toString())
-            } catch (_: Exception) {}
+            try { CarLog.log(ctx, "BT", "excepcion en onReceive: " + e.toString()) } catch (_: Exception) {}
         }
     }
 }
