@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import java.io.File
 import java.util.Locale
 
@@ -62,7 +64,14 @@ class CarDriveService : Service() {
             CarLog.log(this, "DRIVE", "no se pudo escribir driving.flag: " + e.toString())
         }
         crearCanalSiHaceFalta()
-        startForeground(NOTIF_ID, construirNotificacion())
+        // ServiceCompat.startForeground gestiona sola la diferencia entre
+        // versiones de Android: en API < 29 ignora el tipo (no existe alli),
+        // y en API >= 34 lo exige para que coincida con el manifest o el
+        // sistema lanza MissingForegroundServiceTypeException en caliente.
+        ServiceCompat.startForeground(
+            this, NOTIF_ID, construirNotificacion(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+        )
         // El primer disparo de la cadena de sondeo NO se hace desde aqui.
         // Intentar reencadenar el Worker interno del plugin "workmanager"
         // desde Kotlin puro no compilaba (ese Worker es una clase privada

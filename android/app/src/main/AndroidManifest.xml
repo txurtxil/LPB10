@@ -21,7 +21,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <!-- Foreground service que mantiene el sondeo activo mientras conduces. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <application
         android:label="LMB10"
         android:name="${applicationName}"
@@ -87,10 +86,17 @@
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
             </intent-filter>
         </receiver>
-        <!-- dataSync: mantiene vivo el sondeo (red + escritura en disco) de
-             la posicion y estado del coche mientras se conduce. No es GPS
-             puro tipo navegador, por eso no lleva el tipo "location". -->
+        <!-- specialUse: mantiene vivo el sondeo (red + escritura en disco)
+             de la posicion y estado del coche mientras se conduce. No encaja
+             en "dataSync" (esa lista cerrada de usos no cubre esto) ni en
+             "location" (el GPS no lo captura este servicio, lo hace la
+             llamada normal a la API del vehiculo). El texto del subtype es
+             el que se explica en Play Console al declarar el tipo. -->
         <service android:name=".CarDriveService" android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Mantiene activo el sondeo periodico (cada 90s) del estado del vehiculo mientras el usuario conduce, para poder grabar el recorrido GPS completo del trayecto. Se activa solo mientras el movil esta conectado por Bluetooth al coche, y se detiene en cuanto se desconecta." />
+        </service>
     </application>
 </manifest>
