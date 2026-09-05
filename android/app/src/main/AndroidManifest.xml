@@ -21,6 +21,15 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <!-- Foreground service que mantiene el sondeo activo mientras conduces. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- Obligatorio ademas del FOREGROUND_SERVICE base: con targetSDK 34+ el
+         sistema exige el permiso especifico del tipo declarado. Sin el, el
+         startForeground lanza SecurityException en caliente aunque el
+         manifest declare bien el foregroundServiceType. Confirmado en el log
+         del 05/09/2026: "Starting FGS with type specialUse ... requires
+         permissions: [android.permission.FOREGROUND_SERVICE_SPECIAL_USE]".
+         Se perdio al migrar de dataSync a specialUse: se quito el permiso
+         viejo y no se puso el nuevo. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <application
         android:label="LMB10"
         android:name="${applicationName}"
