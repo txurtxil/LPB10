@@ -182,9 +182,28 @@ void backgroundCallbackDispatcher() {
       return true;
     }
 
-    // Rama normal: el ciclo periodico de siempre, sin cambios de comportamiento.
+    // Rama normal: el ciclo periodico de siempre.
     try {
       await refreshVehicleDataInBackground();
+      // Si el coche esta conectado por Bluetooth pero la cadena rapida no
+      // esta en marcha, se arranca aqui. Es el unico disparador que queda
+      // tras retirar el foreground service (Play exigia declararlo con un
+      // video de demostracion y revision manual). Contrapartida asumida:
+      // hasta 15 min de retraso en empezar a sondear cada 90s, lo que tarde
+      // este ciclo periodico en tocar.
+      try {
+        if (await _drivingFlagActivo()) {
+          await CarLogBridge.log('DRIVE-CHAIN arrancando cadena rapida');
+          await Workmanager().registerOneOffTask(
+            kDrivePollUniqueName,
+            kDrivePollTaskName,
+            initialDelay: Duration.zero,
+            existingWorkPolicy: ExistingWorkPolicy.keep,
+          );
+        }
+      } catch (e) {
+        await CarLogBridge.log('DRIVE-CHAIN no se pudo arrancar: ' + e.toString());
+      }
       try {
         await BackupHelper.autoBackupIfDue(
           (k) => _storage.read(key: k),

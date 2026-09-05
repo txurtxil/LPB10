@@ -19,17 +19,6 @@
          no entrega el broadcast en absoluto (no es solo que falte el
          nombre/MAC, como se penso al principio: no llega nada). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-    <!-- Foreground service que mantiene el sondeo activo mientras conduces. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <!-- Obligatorio ademas del FOREGROUND_SERVICE base: con targetSDK 34+ el
-         sistema exige el permiso especifico del tipo declarado. Sin el, el
-         startForeground lanza SecurityException en caliente aunque el
-         manifest declare bien el foregroundServiceType. Confirmado en el log
-         del 05/09/2026: "Starting FGS with type specialUse ... requires
-         permissions: [android.permission.FOREGROUND_SERVICE_SPECIAL_USE]".
-         Se perdio al migrar de dataSync a specialUse: se quito el permiso
-         viejo y no se puso el nuevo. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <application
         android:label="LMB10"
         android:name="${applicationName}"
@@ -85,27 +74,17 @@
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="true" />
-        <!-- Arranca/para CarDriveService segun se conecte o desconecte
+        <!-- Marca o quita un fichero-flag segun se conecte o desconecte
              cualquier dispositivo Bluetooth. Confirmado el 04/09/2026 que el
-             coche expone DOS conexiones (TCU + audio); se dispara con la
-             primera de las dos y se para solo cuando ambas se han ido. -->
+             coche expone DOS conexiones (TCU + audio); por eso se cuenta
+             cuantas hay, y el flag se quita solo cuando se va la ultima.
+             Antes esto arrancaba un foreground service, retirado el
+             05/09/2026 porque Play exige declararlo con video. -->
         <receiver android:name=".CarBtReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
             </intent-filter>
         </receiver>
-        <!-- specialUse: mantiene vivo el sondeo (red + escritura en disco)
-             de la posicion y estado del coche mientras se conduce. No encaja
-             en "dataSync" (esa lista cerrada de usos no cubre esto) ni en
-             "location" (el GPS no lo captura este servicio, lo hace la
-             llamada normal a la API del vehiculo). El texto del subtype es
-             el que se explica en Play Console al declarar el tipo. -->
-        <service android:name=".CarDriveService" android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Mantiene activo el sondeo periodico (cada 90s) del estado del vehiculo mientras el usuario conduce, para poder grabar el recorrido GPS completo del trayecto. Se activa solo mientras el movil esta conectado por Bluetooth al coche, y se detiene en cuanto se desconecta." />
-        </service>
     </application>
 </manifest>
