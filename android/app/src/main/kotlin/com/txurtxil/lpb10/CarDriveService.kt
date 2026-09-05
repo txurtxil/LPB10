@@ -58,8 +58,15 @@ class CarDriveService : Service() {
     }
 
     private fun arrancarDeVerdad() {
+        // Traza de entrada. Sin esto no se puede distinguir "el servicio ni
+        // se instancio" de "se instancio pero petó al pasar a primer plano":
+        // en la prueba del 05/09/2026 hubo 4 llamadas a start() y CERO lineas
+        // de arranque, y sin esta traza no se sabia en cual de los dos casos
+        // estabamos.
+        CarLog.log(this, "DRIVE", "onStartCommand: entrando en arrancarDeVerdad")
         try {
             flagFile(this).writeText("1")
+            CarLog.log(this, "DRIVE", "driving.flag escrito en " + flagFile(this).absolutePath)
         } catch (e: Exception) {
             CarLog.log(this, "DRIVE", "no se pudo escribir driving.flag: " + e.toString())
         }
@@ -68,10 +75,31 @@ class CarDriveService : Service() {
         // versiones de Android: en API < 29 ignora el tipo (no existe alli),
         // y en API >= 34 lo exige para que coincida con el manifest o el
         // sistema lanza MissingForegroundServiceTypeException en caliente.
-        ServiceCompat.startForeground(
-            this, NOTIF_ID, construirNotificacion(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-        )
+        // Envuelto a proposito: en Android 12+ arrancar un foreground service
+        // desde segundo plano lanza ForegroundServiceStartNotAllowedException,
+        // y un receptor de Bluetooth NO esta en la lista de excepciones. Es la
+        // hipotesis principal del fallo del 05/09/2026, pero sin capturar la
+        // excepcion real no se puede confirmar ni descartar: hasta ahora
+        // moria en silencio y el log no decia absolutamente nada.
+        try {
+            ServiceCompat.startForeground(
+                this, NOTIF_ID, construirNotificacion(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+            CarLog.log(this, "DRIVE", "startForeground OK")
+        } catch (e: Throwable) {
+            // Throwable y no Exception: ForegroundServiceStartNotAllowedException
+            // hereda de IllegalStateException, pero si algun dia el sistema
+            // lanza un Error en vez de una Exception tambien queremos verlo.
+            CarLog.log(this, "DRIVE", "startForeground FALLO: " + e.javaClass.simpleName +
+                " -> " + e.toString())
+            try {
+                val f = flagFile(this)
+                if (f.exists()) f.delete()
+            } catch (_: Exception) {}
+            stopSelf()
+            return
+        }
         // El primer disparo de la cadena de sondeo NO se hace desde aqui.
         // Intentar reencadenar el Worker interno del plugin "workmanager"
         // desde Kotlin puro no compilaba (ese Worker es una clase privada

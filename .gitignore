@@ -41,3 +41,7 @@ backups/
 
 # Scripts historicos y de un solo uso
 _scripts_viejos/
+
+# Cache del compilador de Kotlin, generada en cada build.
+# Sin esto, el "git add -A" de release_apk.sh la mete en el repositorio.
+android/.kotlin/
