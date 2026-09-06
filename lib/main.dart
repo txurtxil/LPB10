@@ -140,7 +140,6 @@ Future<void> refreshVehicleDataInBackground() async {
   }
 }
 
-@pragma('vm:entry-point')
 const String kDrivePollTaskName = 'lmDrivePollTask';
 const String kDrivePollUniqueName = 'lm_drive_poll';
 const Duration kDrivePollInterval = Duration(seconds: 90);
@@ -150,8 +149,25 @@ const Duration kDrivePollInterval = Duration(seconds: 90);
 /// borra el servicio nativo; mismo patron de carpeta que CarLogBridge.
 Future<bool> _drivingFlagActivo() => DriveFlagBridge.isSet();
 
+// El pragma estaba puesto por error varias lineas mas arriba, encima de
+// kDrivePollTaskName (una constante) en vez de encima de esta funcion. No
+// hace nada sobre una constante. Confirmado el 06/09/2026: en 2h14min de
+// trayecto real, con WorkManager.initialize() registrado y la app en
+// primer plano sin problema, CERO ejecuciones en segundo plano (ni
+// DISPATCH, ni siquiera el ciclo periodico normal de 15 min, que existe
+// desde mucho antes de la fase 2 GPS). El pragma mal puesto es sospechoso
+// de estar detras: sin el en el sitio correcto, el segundo isolate que
+// WorkManager arranca en background puede no encontrar la funcion tras
+// el tree-shaking de la build release.
+@pragma('vm:entry-point')
 void backgroundCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    // Sin esto, los plugins (path_provider detras de CarLogBridge,
+    // flutter_secure_storage detras de casi todo el resto) no estan
+    // registrados en el isolate de fondo y fallan con MissingPluginException
+    // -- excepcion que el catch generico de mas abajo se tragaria en
+    // silencio, dejando el log exactamente tan vacio como se ha visto.
+    DartPluginRegistrant.ensureInitialized();
     // Log de una sola vez: no se ha verificado en produccion si "task" aqui
     // es el nombre unico o el nombre de tarea del plugin. Se borra en cuanto
     // se confirme con un trayecto real.
