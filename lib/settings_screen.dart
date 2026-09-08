@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'car_log_screen.dart';
+import 'car_bt_screen.dart';
 import 'history_archive.dart';
 import 'dart:io';
 import 'package:share_plus/share_plus.dart';
@@ -164,6 +165,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const CarLogScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.bluetooth_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Bluetooth del coche'
+                      : 'Car Bluetooth'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Elige que dispositivos activan la deteccion de conduccion'
+                      : 'Choose which devices trigger drive detection'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CarBtScreen())),
                 ),
                 const Divider(),
                 ListTile(

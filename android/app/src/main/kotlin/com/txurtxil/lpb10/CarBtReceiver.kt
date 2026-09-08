@@ -21,8 +21,12 @@ import java.io.File
  *   - El coche expone DOS conexiones simultaneas (TCU + audio), por eso se
  *     cuenta cuantas hay en vez de mirar una MAC fija.
  *
- *  Limitacion conocida: reacciona a CUALQUIER Bluetooth, tambien unos cascos.
- *  Filtrar por el dispositivo del coche es el paso siguiente, pendiente.
+ *  Filtrado por MAC (07/09/2026): antes reaccionaba a CUALQUIER Bluetooth,
+ *  tambien unos cascos o el reloj. Ahora, si el usuario ha marcado en
+ *  Ajustes que dispositivos son el coche (CarBtConfig), se ignora cualquier
+ *  MAC que no este en esa lista. Si la lista esta vacia (nadie la ha
+ *  configurado todavia) se mantiene el comportamiento antiguo para no dejar
+ *  a nadie sin deteccion de conduccion de un dia para otro.
  */
 class CarBtReceiver : BroadcastReceiver() {
     companion object {
@@ -52,6 +56,12 @@ class CarBtReceiver : BroadcastReceiver() {
             val mac = try { dev?.address } catch (e: SecurityException) { null } ?: "desconocido"
             val nombre = try { dev?.name } catch (e: SecurityException) { null } ?: "?"
 
+            val configuradas = CarBtConfig.carMacs(ctx)
+            if (configuradas.isNotEmpty() && mac !in configuradas) {
+                CarLog.log(ctx, "BT", "ignorado (no es el coche): mac=$mac nombre=$nombre")
+                return
+            }
+
             val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val actuales = HashSet(prefs.getStringSet(KEY_CONECTADOS, emptySet()) ?: emptySet())
             val habiaAntes = actuales.isNotEmpty()
@@ -66,6 +76,7 @@ class CarBtReceiver : BroadcastReceiver() {
                 try {
                     flagFile(ctx).writeText("1")
                     CarLog.log(ctx, "BT", "driving.flag PUESTO")
+                    CarDriveEvents.log(ctx, "connect")
                 } catch (e: Exception) {
                     CarLog.log(ctx, "BT", "no se pudo escribir driving.flag: " + e.toString())
                 }
@@ -74,6 +85,7 @@ class CarBtReceiver : BroadcastReceiver() {
                     val f = flagFile(ctx)
                     if (f.exists()) f.delete()
                     CarLog.log(ctx, "BT", "driving.flag QUITADO")
+                    CarDriveEvents.log(ctx, "disconnect")
                 } catch (e: Exception) {
                     CarLog.log(ctx, "BT", "no se pudo borrar driving.flag: " + e.toString())
                 }

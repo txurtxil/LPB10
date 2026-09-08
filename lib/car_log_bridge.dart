@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
@@ -34,6 +35,31 @@ class DriveFlagBridge {
       return await f.exists();
     } catch (_) {
       return false;
+    }
+  }
+}
+
+/// Lee driving_events.jsonl, escrito por CarDriveEvents.kt cada vez que
+/// driving.flag se pone o se quita: una linea JSON por evento,
+/// {"ts": epoch_ms, "event": "connect"|"disconnect"}. TripRebuild lo usa
+/// para distinguir una parada real del coche de un simple hueco de sondeo.
+class DriveEventsBridge {
+  static Future<List<Map<String, dynamic>>> readAll() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final f = File('${dir.path}/lmb10_history/driving_events.jsonl');
+      if (!await f.exists()) return [];
+      final out = <Map<String, dynamic>>[];
+      for (final line in await f.readAsLines()) {
+        final t = line.trim();
+        if (t.isEmpty) continue;
+        try {
+          out.add(Map<String, dynamic>.from(json.decode(t) as Map));
+        } catch (_) {}
+      }
+      return out;
+    } catch (_) {
+      return [];
     }
   }
 }

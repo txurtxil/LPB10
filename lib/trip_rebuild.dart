@@ -13,11 +13,28 @@
 // pasan kTripMergeGapMs SIN NINGUN avance, no en la primera lectura sin
 // avance.
 import 'dart:convert';
+import 'car_log_bridge.dart' show DriveEventsBridge;
 import 'daily_stats.dart' show DailyStats;
 import 'widget_chart.dart' show gBatteryKwh;
 
 const int kTripMergeGapMs = 20 * 60 * 1000;
 const int kTripApproxGapMs = 6 * 60 * 1000;
+
+/// Parada real del coche (Bluetooth desconectado y reconectado, ver
+/// CarBtReceiver.kt / CarDriveEvents.kt) de al menos este tiempo: fuerza un
+/// corte de ruta en la reconexion aunque el hueco de sondeo en si sea corto.
+///
+/// Bug reportado: al parar unos minutos en medio de un trayecto y reanudar,
+/// la app grababa todo como una unica ruta, porque kTripMergeGapMs (20 min)
+/// es mucho mayor y ademas no mira el Bluetooth para nada, solo el avance
+/// del odometro entre lecturas.
+///
+/// Depende de que el usuario haya configurado el filtrado por MAC del coche
+/// en Ajustes > Bluetooth del coche (CarBtScreen): sin eso, driving.flag
+/// reacciona a cualquier Bluetooth (auriculares, reloj...) y estos eventos
+/// no serian una senal fiable de "parada real", asi que se cortaria por
+/// sitios que no tocan.
+const int kCarStopMs = 5 * 60 * 1000;
 // Tope para RECONSTRUIR una ruta a partir de un unico salto de odometro,
 // cuando el movil no sondeo ni una vez durante el trayecto (Android detiene
 // la app en segundo plano). Validado el 03/09/2026 con simulacion Python
@@ -36,6 +53,41 @@ class _Pt {
   final double? lat;
   final double? lon;
   const _Pt(this.ts, this.km, this.soc, this.lat, this.lon);
+}
+
+class _Stop {
+  final int tsD;
+  final int tsC;
+  const _Stop(this.tsD, this.tsC);
+}
+
+/// Empareja los eventos sueltos de driving_events.jsonl en tramos
+/// desconexion->reconexion, y descarta los mas cortos que kCarStopMs (un
+/// parpadeo de Bluetooth, no una parada real). Un "connect" sin
+/// "disconnect" previo (primer arranque de la app) o un "disconnect" final
+/// sin reconexion aun (coche todavia parado) no generan tramo: no hay nada
+/// que cortar todavia.
+List<_Stop> _buildStops(List<Map<String, dynamic>> events) {
+  final validos = <Map<String, dynamic>>[
+    for (final e in events)
+      if (e['ts'] is int && e['event'] is String) e
+  ];
+  validos.sort((a, b) => (a['ts'] as int).compareTo(b['ts'] as int));
+  final stops = <_Stop>[];
+  int? desconexionPendiente;
+  for (final e in validos) {
+    final ts = e['ts'] as int;
+    final ev = e['event'] as String;
+    if (ev == 'disconnect') {
+      desconexionPendiente = ts;
+    } else if (ev == 'connect' && desconexionPendiente != null) {
+      final tsD = desconexionPendiente;
+      final gap = ts - tsD;
+      if (gap >= kCarStopMs) stops.add(_Stop(tsD, ts));
+      desconexionPendiente = null;
+    }
+  }
+  return stops;
 }
 
 class RouteWaypoint {
@@ -119,6 +171,9 @@ class TripRebuild {
     }
     pts.sort((a, b) => a.ts.compareTo(b.ts));
 
+    final stops = _buildStops(await DriveEventsBridge.readAll());
+    var stopIdx = 0;
+
     final runs = <RouteTrip>[];
     int? ini;
     int? finProv;
@@ -163,6 +218,17 @@ class TripRebuild {
         if (huecoDesdeUltimoAvance > kTripMergeGapMs) {
           cerrar();
         }
+      }
+      // Parada real senalada por Bluetooth: si el coche se reconecto entre
+      // la lectura anterior y esta, se corta aqui aunque el hueco de sondeo
+      // en si sea corto (el caso "unos minutos parado" que el check de
+      // arriba, con su umbral de 20 min, no llega a detectar).
+      while (stopIdx < stops.length && stops[stopIdx].tsC <= pts[i - 1].ts) {
+        stopIdx++;
+      }
+      if (stopIdx < stops.length && stops[stopIdx].tsC <= pts[i].ts) {
+        cerrar();
+        stopIdx++;
       }
       if (kmDelta > 0) {
         ini ??= i - 1;
