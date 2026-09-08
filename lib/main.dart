@@ -118,8 +118,27 @@ Future<void> refreshVehicleDataInBackground() async {
     }
   }
   await _storage.write(key: 'lm_bg_prev_charging_v1', value: status.isCharging ? '1' : '0');
-  await checkAndNotifyStateChanges(status);
-  await sentryBackgroundPoll();
+  // Aislado en su propio try: checkAndNotifyStateChanges ya paso por un
+  // fallo real el 08/09/2026 (ver _initNotifications, requestPermission)
+  // que tumbaba el ciclo entero DESPUES de este punto, perdiendose
+  // sentryBackgroundPoll, las rutinas programadas y la renovacion del
+  // token de sesion. Ese fallo concreto ya esta corregido, pero la
+  // funcion sigue mostrando notificaciones (_showNotification), y un
+  // permiso realmente denegado por el usuario podria volver a lanzar
+  // aqui. Con el try propio, como mucho se pierde un aviso, nunca el
+  // resto del ciclo.
+  try {
+    await checkAndNotifyStateChanges(status);
+  } catch (e) {
+    await CarLogBridge.log('checkAndNotifyStateChanges FALLO: ' + e.toString());
+  }
+  // Mismo motivo: un fallo aqui no debe impedir que las rutinas programadas
+  // de mas abajo se ejecuten.
+  try {
+    await sentryBackgroundPoll();
+  } catch (e) {
+    await CarLogBridge.log('sentryBackgroundPoll FALLO: ' + e.toString());
+  }
   // Rutinas programadas (necesita PIN recordado)
   try {
     final rpin = await _storage.read(key: _pinKey) ?? '';
@@ -451,7 +470,7 @@ const _lastManualUnlockKey = 'lm_last_manual_unlock_ts';
 const _lowBatteryThreshold = 20.0;
 const _unlockedReminderMinutes = 15;
 
-Future<FlutterLocalNotificationsPlugin> _initNotifications() async {
+Future<FlutterLocalNotificationsPlugin> _initNotifications({bool requestPermission = true}) async {
   final plugin = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const iosInit = DarwinInitializationSettings(
@@ -465,8 +484,19 @@ Future<FlutterLocalNotificationsPlugin> _initNotifications() async {
       iOS: iosInit,
     ),
   );
-  final androidImpl = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-  await androidImpl?.requestNotificationsPermission();
+  // requestPermission=false desde el ciclo de fondo (WorkManager): pedir el
+  // permiso exige una Activity para mostrar el dialogo al usuario, y el
+  // isolate de fondo no tiene ninguna. Confirmado con el log de un tester el
+  // 08/09/2026: androidImpl?.requestNotificationsPermission() lanzaba
+  // NullPointerException ahi y tumbaba el ciclo entero DESPUES de guardar
+  // los datos mas importantes, pero ANTES de las rutinas programadas, el
+  // centinela y persistir el token renovado. El permiso ya se pidio (o se
+  // denego) cuando el usuario abrio la app; repetirlo en cada ciclo de
+  // fondo no aporta nada, solo arriesga tumbar el ciclo.
+  if (requestPermission) {
+    final androidImpl = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidImpl?.requestNotificationsPermission();
+  }
   return plugin;
 }
 
@@ -484,7 +514,7 @@ Future<void> markManualLockAction() async {
 }
 
 Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
-  final plugin = await _initNotifications();
+  final plugin = await _initNotifications(requestPermission: false);
 
   Map<String, dynamic> prevState = {};
   final raw = await _storage.read(key: _notifStateKey);
