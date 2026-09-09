@@ -189,10 +189,24 @@ Future<void> exportarRutasPdf(BuildContext context, List<RouteTrip> todas) async
     final grupo = rutas.sublist(i, math.min(i + porPagina, rutas.length));
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
       build: (pwCtx) => pw.GridView(
         crossAxisCount: 2,
         childAspectRatio: 1.35,
-        children: [for (final r in grupo) _rutaCard(r, precios, es)],
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        // Ancho de mapa calculado a mano y pasado explicito a cada tarjeta:
+        // CustomPaint en el paquete 'pdf' NO hereda tamano de su contenedor
+        // (a diferencia de Flutter), su parametro 'size' vale PdfPoint.zero
+        // si no se especifica. El bug original (v3.60.133): el trazado se
+        // dibujaba de verdad, pero en un lienzo de tamano cero -> invisible,
+        // sin ningun error, con todos los demas datos de la tarjeta
+        // correctos. Se calcula aqui, en vez de adivinar constraints
+        // internos del paquete, restando margenes/padding/borde conocidos.
+        children: [
+          for (final r in grupo)
+            _rutaCard(r, precios, es, _mapaSizeParaGrid(PdfPageFormat.a4)),
+        ],
       ),
     ));
   }
@@ -216,7 +230,19 @@ pw.Widget _totalBox(String label, String value) => pw.Column(
       ],
     );
 
-pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es) {
+/// Ancho/alto del lienzo del trazado, calculado a mano a partir del ancho
+/// de pagina real: pagina - margen(24*2) - separacion entre columnas(8) /
+/// 2 columnas - margen de tarjeta(4*2) - padding de tarjeta(8*2) - borde(1).
+/// Alto fijo conservador (90) para no arriesgar overflow con el resto del
+/// contenido de la tarjeta (fecha + fila inferior), dado childAspectRatio.
+PdfPoint _mapaSizeParaGrid(PdfPageFormat page) {
+  final anchoDisponible = page.width - 48 - 8;
+  final anchoCelda = anchoDisponible / 2;
+  final anchoMapa = anchoCelda - 8 - 16 - 1;
+  return PdfPoint(anchoMapa.clamp(60.0, 400.0), 90);
+}
+
+pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint mapaSize) {
   final kwh = r.kwh100 != null ? r.kwh100! * r.km / 100 : null;
   final dia = DailyStats.dayKey(DateTime.fromMillisecondsSinceEpoch(r.startTs));
   final precio = precios[dia];
@@ -235,21 +261,22 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es) {
         pw.Text(_fechaHoraLarga(r.startTs, es),
             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _pdfBlue)),
         pw.SizedBox(height: 4),
-        pw.Expanded(
+        pw.Container(
+          height: mapaSize.y,
+          alignment: pw.Alignment.center,
           child: r.hasGps
               ? pw.ClipRect(
                   child: pw.CustomPaint(
+                    size: mapaSize,
                     painter: (canvas, size) => _dibujarTrazado(canvas, size, r.waypoints),
                   ),
                 )
-              : pw.Center(
-                  child: pw.Text(
-                    r.reconstruida
-                        ? (es ? 'Sin recorrido\n(sondeo interrumpido)' : 'No path\n(polling interrupted)')
-                        : (es ? 'Sin datos GPS' : 'No GPS data'),
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(fontSize: 8, color: _pdfGrey, fontStyle: pw.FontStyle.italic),
-                  ),
+              : pw.Text(
+                  r.reconstruida
+                      ? (es ? 'Sin recorrido\n(sondeo interrumpido)' : 'No path\n(polling interrupted)')
+                      : (es ? 'Sin datos GPS' : 'No GPS data'),
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(fontSize: 8, color: _pdfGrey, fontStyle: pw.FontStyle.italic),
                 ),
         ),
         pw.SizedBox(height: 4),
