@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'trip_rebuild.dart';
 import 'route_map_screen.dart';
+import 'trip_export.dart';
 
 const _cBlue = Color(0xFF0D3B66);
 const _cGood = Color(0xFF2A9D8F);
@@ -84,7 +85,21 @@ class _TripListScreenState extends State<TripListScreen> {
       appBar: AppBar(
         backgroundColor: _cBlue,
         title: Text(es ? 'Ultimas rutas' : 'Recent trips'),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: es ? 'Exportar rutas a PDF' : 'Export trips to PDF',
+            onPressed: () async {
+              // Se relee el historico COMPLETO aqui, no la lista capada a 30
+              // que usa la pantalla para mostrar: el selector de rango de
+              // exportarRutasPdf puede pedir "todo el historico".
+              final todas = await TripRebuild.fromTrips();
+              if (!context.mounted) return;
+              await exportarRutasPdf(context, todas);
+            },
+          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
