@@ -266,18 +266,23 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint 
         pw.Container(
           height: mapaSize.y,
           alignment: pw.Alignment.center,
-          child: r.hasGps
+          // Confirmado el 10/09/2026 en pantalla real: r.waypoints SI incluye
+          // los extremos (inicio/fin) en una ruta reconstruida, porque
+          // _build() en trip_rebuild.dart no filtra por 'reconstruida' al
+          // guardar coordenadas -- solo hasGps bloqueaba a proposito el
+          // dibujo de la LINEA (unirlos seria inventar el trayecto). Con al
+          // menos 1 punto real, se puede mostrar DONDE ocurrio la ruta sin
+          // inventar el COMO: mejor que un rectangulo vacio con texto.
+          child: r.waypoints.isNotEmpty
               ? pw.Stack(
                   children: [
                     pw.ClipRect(
                       child: pw.CustomPaint(
                         size: mapaSize,
-                        painter: (canvas, size) => _dibujarTrazado(canvas, size, r.waypoints),
+                        painter: (canvas, size) =>
+                            _dibujarTrazado(canvas, size, r.waypoints, dibujarLinea: r.hasGps),
                       ),
                     ),
-                    // Indicador de norte. Usa pw.Stack/pw.Positioned, API
-                    // estable del paquete pdf, pero no verificada en pantalla
-                    // real hasta que se confirme esta version (10/09/2026).
                     pw.Positioned(
                       top: 3,
                       right: 4,
@@ -285,12 +290,20 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint 
                           style: pw.TextStyle(
                               fontSize: 7, fontWeight: pw.FontWeight.bold, color: _pdfGrey)),
                     ),
+                    if (r.reconstruida)
+                      pw.Positioned(
+                        bottom: 2,
+                        left: 3,
+                        right: 3,
+                        child: pw.Text(
+                          es ? 'sin trayecto exacto' : 'exact path unknown',
+                          style: pw.TextStyle(fontSize: 6, color: _pdfGrey, fontStyle: pw.FontStyle.italic),
+                        ),
+                      ),
                   ],
                 )
               : pw.Text(
-                  r.reconstruida
-                      ? (es ? 'Sin recorrido\n(sondeo interrumpido)' : 'No path\n(polling interrupted)')
-                      : (es ? 'Sin datos GPS' : 'No GPS data'),
+                  es ? 'Sin datos GPS' : 'No GPS data',
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(fontSize: 8, color: _pdfGrey, fontStyle: pw.FontStyle.italic),
                 ),
@@ -319,7 +332,7 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint 
 /// (corrige la distorsion de longitud multiplicando por cos(lat)), escalada
 /// para llenar el lienzo disponible manteniendo la proporcion real. No es
 /// un mapa: no hay calles ni referencias, solo la forma del recorrido.
-void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps) {
+void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps, {bool dibujarLinea = true}) {
   // Fondo tipo "papel de mapa": distingue el lienzo del trazado del resto
   // de la tarjeta, aunque no haya calles reales dibujadas encima. Usa las
   // mismas primitivas (drawRect/fillPath) confirmadas en pantalla real el
@@ -327,6 +340,17 @@ void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps)
   canvas.setColor(_pdfMapBg);
   canvas.drawRect(0, 0, size.x, size.y);
   canvas.fillPath();
+
+  // Un solo punto conocido: no hay nada que proyectar/escalar entre dos
+  // coordenadas (min == max rompe la division de escala mas abajo). Se
+  // marca el punto centrado, sin pretender indicar una posicion geografica
+  // real dentro del lienzo -- solo confirma "se conoce este punto".
+  if (wps.length == 1) {
+    canvas.setColor(_pdfGood);
+    canvas.drawEllipse(size.x / 2, size.y / 2, 2.5, 2.5);
+    canvas.fillPath();
+    return;
+  }
 
   final lats = wps.map((w) => w.lat).toList();
   final lons = wps.map((w) => w.lon).toList();
@@ -365,15 +389,21 @@ void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps)
   }
   canvas.strokePath();
 
-  canvas.setStrokeColor(_pdfBlue);
-  canvas.setLineWidth(1.3);
-  final p0 = proyectar(wps.first);
-  canvas.moveTo(p0.x, p0.y);
-  for (final w in wps.skip(1)) {
-    final p = proyectar(w);
-    canvas.lineTo(p.x, p.y);
+  // La linea del recorrido SOLO se dibuja si hay sondeo real entre inicio y
+  // fin (dibujarLinea=true, equivalente al viejo r.hasGps). En una ruta
+  // reconstruida (dibujarLinea=false) unir los dos puntos con una recta
+  // inventaria el trayecto -- calles, curvas, todo. Se omite a proposito.
+  if (dibujarLinea) {
+    canvas.setStrokeColor(_pdfBlue);
+    canvas.setLineWidth(1.3);
+    final p0 = proyectar(wps.first);
+    canvas.moveTo(p0.x, p0.y);
+    for (final w in wps.skip(1)) {
+      final p = proyectar(w);
+      canvas.lineTo(p.x, p.y);
+    }
+    canvas.strokePath();
   }
-  canvas.strokePath();
 
   final ini = proyectar(wps.first);
   canvas.setColor(_pdfGood);
