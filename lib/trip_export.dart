@@ -31,6 +31,8 @@ const _pdfBlue = PdfColor.fromInt(0xFF0D3B66);
 const _pdfGood = PdfColor.fromInt(0xFF2A9D8F);
 const _pdfOver = PdfColor.fromInt(0xFFE76F51);
 const _pdfGrey = PdfColor.fromInt(0xFF9AA5B1);
+const _pdfMapBg = PdfColor.fromInt(0xFFEFF3F6);
+const _pdfMapGrid = PdfColor.fromInt(0xFFDCE3E8);
 
 class _RangoExport {
   final String label;
@@ -265,11 +267,25 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint 
           height: mapaSize.y,
           alignment: pw.Alignment.center,
           child: r.hasGps
-              ? pw.ClipRect(
-                  child: pw.CustomPaint(
-                    size: mapaSize,
-                    painter: (canvas, size) => _dibujarTrazado(canvas, size, r.waypoints),
-                  ),
+              ? pw.Stack(
+                  children: [
+                    pw.ClipRect(
+                      child: pw.CustomPaint(
+                        size: mapaSize,
+                        painter: (canvas, size) => _dibujarTrazado(canvas, size, r.waypoints),
+                      ),
+                    ),
+                    // Indicador de norte. Usa pw.Stack/pw.Positioned, API
+                    // estable del paquete pdf, pero no verificada en pantalla
+                    // real hasta que se confirme esta version (10/09/2026).
+                    pw.Positioned(
+                      top: 3,
+                      right: 4,
+                      child: pw.Text('N',
+                          style: pw.TextStyle(
+                              fontSize: 7, fontWeight: pw.FontWeight.bold, color: _pdfGrey)),
+                    ),
+                  ],
                 )
               : pw.Text(
                   r.reconstruida
@@ -304,6 +320,14 @@ pw.Widget _rutaCard(RouteTrip r, Map<String, double> precios, bool es, PdfPoint 
 /// para llenar el lienzo disponible manteniendo la proporcion real. No es
 /// un mapa: no hay calles ni referencias, solo la forma del recorrido.
 void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps) {
+  // Fondo tipo "papel de mapa": distingue el lienzo del trazado del resto
+  // de la tarjeta, aunque no haya calles reales dibujadas encima. Usa las
+  // mismas primitivas (drawRect/fillPath) confirmadas en pantalla real el
+  // 09/09/2026 para el trazado y los marcadores.
+  canvas.setColor(_pdfMapBg);
+  canvas.drawRect(0, 0, size.x, size.y);
+  canvas.fillPath();
+
   final lats = wps.map((w) => w.lat).toList();
   final lons = wps.map((w) => w.lon).toList();
   final latMin = lats.reduce(math.min), latMax = lats.reduce(math.max);
@@ -324,6 +348,23 @@ void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps)
         offY + (w.lat - latMin) * escala,
       );
 
+  // Rejilla decorativa: 3 lineas horizontales y 3 verticales, finas y
+  // claras. NO es una cuadricula geografica real (no marca coordenadas),
+  // solo da textura de "mapa" en vez de fondo liso.
+  canvas.setStrokeColor(_pdfMapGrid);
+  canvas.setLineWidth(0.4);
+  for (var i = 1; i <= 3; i++) {
+    final x = size.x * i / 4;
+    canvas.moveTo(x, 0);
+    canvas.lineTo(x, size.y);
+  }
+  for (var i = 1; i <= 3; i++) {
+    final y = size.y * i / 4;
+    canvas.moveTo(0, y);
+    canvas.lineTo(size.x, y);
+  }
+  canvas.strokePath();
+
   canvas.setStrokeColor(_pdfBlue);
   canvas.setLineWidth(1.3);
   final p0 = proyectar(wps.first);
@@ -339,8 +380,51 @@ void _dibujarTrazado(PdfGraphics canvas, PdfPoint size, List<RouteWaypoint> wps)
   canvas.drawEllipse(ini.x, ini.y, 2.2, 2.2);
   canvas.fillPath();
 
+  // Flecha de direccion en el punto final, orientada segun el ultimo tramo
+  // real del trayecto. Sustituye al circulo simple: mismo dato (donde
+  // termino la ruta) pero indicando ademas hacia donde iba.
   final fin = proyectar(wps.last);
+  final penultimo = wps.length >= 2 ? proyectar(wps[wps.length - 2]) : ini;
+  var rumbo = math.atan2(fin.y - penultimo.y, fin.x - penultimo.x);
+  if (fin.x == penultimo.x && fin.y == penultimo.y) rumbo = math.pi / 2;
+  const largoFlecha = 4.5, anchoFlecha = 3.0;
+  final puntaX = fin.x + math.cos(rumbo) * largoFlecha;
+  final puntaY = fin.y + math.sin(rumbo) * largoFlecha;
+  final baseAng1 = rumbo + math.pi * 0.75, baseAng2 = rumbo - math.pi * 0.75;
+  final b1x = fin.x + math.cos(baseAng1) * anchoFlecha;
+  final b1y = fin.y + math.sin(baseAng1) * anchoFlecha;
+  final b2x = fin.x + math.cos(baseAng2) * anchoFlecha;
+  final b2y = fin.y + math.sin(baseAng2) * anchoFlecha;
   canvas.setColor(_pdfOver);
-  canvas.drawEllipse(fin.x, fin.y, 2.6, 2.6);
+  canvas.moveTo(puntaX, puntaY);
+  canvas.lineTo(b1x, b1y);
+  canvas.lineTo(b2x, b2y);
+  canvas.lineTo(puntaX, puntaY);
   canvas.fillPath();
+
+  // Escala de distancia real, SOLO barra visual sin etiqueta de texto: la
+  // primera version intentaba escribir "500 m" con canvas.setFont(pw.Font...),
+  // pero setFont espera un PdfFont de bajo nivel (dos argumentos: fuente y
+  // tamano), no un pw.Font de widgets -- error de tipos real, detectado por
+  // flutter analyze el 10/09/2026, no una suposicion. Se deja solo la barra,
+  // con las mismas primitivas (moveTo/lineTo/strokePath) ya confirmadas en
+  // pantalla real. Anadir el numero de metros queda pendiente para otra vez,
+  // usando la API de texto correcta del canvas de bajo nivel.
+  if (escala > 0) {
+    final metrosPorGrado = 111320.0;
+    final pxPorMetro = escala / metrosPorGrado;
+    final objetivoPx = size.x * 0.28;
+    final candidatos = [50.0, 100.0, 200.0, 250.0, 500.0, 1000.0, 2000.0, 5000.0];
+    var metrosBarra = candidatos.first;
+    for (final m in candidatos) {
+      if (m * pxPorMetro <= objetivoPx) metrosBarra = m;
+    }
+    final largoBarra = metrosBarra * pxPorMetro;
+    final baseX = 4.0, baseY = 4.0;
+    canvas.setStrokeColor(PdfColors.black);
+    canvas.setLineWidth(1.0);
+    canvas.moveTo(baseX, baseY);
+    canvas.lineTo(baseX + largoBarra, baseY);
+    canvas.strokePath();
+  }
 }
