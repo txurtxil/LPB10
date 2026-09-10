@@ -64,6 +64,21 @@ Gratis, sin publicidad, sin más cuenta que las tuyas de Google/Leapmotor. Si te
 
 ## What's new / Novedades
 
+**v3.60.138**
+- Energy cost is now attributed per charge segment: each stretch of driving is billed at the price of the charge that paid for it. A day with two charges at different prices (home + a rapid charger, for example) is now costed correctly, instead of everything at the last price of the day.
+- Coste de energia atribuido por tramos: cada tramo de conduccion se cobra al precio de la carga que lo pago. Un dia con dos cargas a distinto precio (casa + una rapida, por ejemplo) ya se costea bien, en vez de todo al ultimo precio del dia.
+- PVPC (regulated hourly tariff): price lookups no longer flood the diagnostic log and are cached properly, including "this day has no data"; charges older than 90 days fall back to the fixed price instead of being re-fetched every time.
+- PVPC (tarifa regulada horaria): la consulta de precios ya no inunda el log de diagnostico y se cachea correctamente, incluido el "este dia no tiene datos"; las cargas de mas de 90 dias caen al precio fijo en vez de re-pedirse siempre.
+- Trip PDF export: real OpenStreetMap map background with proper margins around the route.
+- Exportacion de rutas a PDF: mapa OpenStreetMap real de fondo con margen de verdad alrededor del trazado.
+- Reliability: routines survive steps from older or corrupted versions instead of resetting to defaults; the backup now actually attaches the raw trip/charge logs it was meant to include.
+- Fiabilidad: las rutinas sobreviven a pasos de versiones viejas o corruptas sin reiniciarse; la copia de seguridad ahora si adjunta los registros crudos de viajes/cargas que debia incluir.
+- Internal: first automated tests in the repo, and the release pipeline now builds and attaches the iOS IPA automatically.
+- Interno: primeros tests automaticos del repo, y la pipeline de release genera y adjunta el IPA de iOS sola.
+
+**v3.60.133-v3.60.137** (resumen / summary): trip export to PDF, evolving from a vector scheme to real downloaded OpenStreetMap tiles with Web Mercator projection; reconstructed routes show their real recorded points instead of an invented line. Full history in GitHub Releases.
+- Exportacion de rutas a PDF, evolucionando de un esquema vectorial a mosaicos OpenStreetMap reales descargados con proyeccion Web Mercator; las rutas reconstruidas muestran sus puntos reales en vez de una linea inventada. Historial completo en GitHub Releases.
+
 **v3.60.121**
 - Live range shown as "-- km" on some models (confirmed on a T03): the vehicle doesn't report the live range signal. A different range signal the car does report, and which is internally consistent, is now used as a fallback — though it's not 100% confirmed to be exactly the same concept across every model.
 
@@ -361,14 +376,14 @@ Las plantillas de Android Auto no admiten graficos de ningun tipo, asi que los g
 
 - Configurable electricity price, stored as a structure rather than a bare number so that time-of-use bands can be added later without migrating data.
 - Per-charge cost: total paid, or price per kWh, or the house price as an estimate. Estimated values are shown in italics with a `~` prefix.
-- Each day inherits the price of the most recent charge before it, so changing tariff or charging away from home does not retroactively rewrite your history.
+- Driving energy is billed per charge segment: each stretch of consumption is billed at the price of the most recent charge before it, so two charges on the same day at different prices cost correctly. Consumption before your first recorded charge uses the fixed price.
 - Costs appear on the dashboard, in the home-screen widget and in Android Auto.
 
 Note: the figures measure energy **in the battery**, with no charging-loss factor applied, so they land roughly 12–15% below what your electricity bill will say. The app states this in its own interface.
 
 - Precio de la electricidad configurable, guardado como estructura y no como numero suelto, para poder anadir tramos horarios mas adelante sin migrar datos.
 - Coste por carga: total pagado, o precio por kWh, o el precio de casa como estimacion. Los valores estimados se muestran en cursiva y con `~` delante.
-- Cada dia hereda el precio de la carga anterior mas reciente, asi que cambiar de tarifa o cargar fuera de casa no reescribe el historico hacia atras.
+- La energia de conduccion se cobra por tramos: cada tramo se cobra al precio de la carga anterior mas reciente, asi que dos cargas el mismo dia a distinto precio se costean bien. El consumo anterior a tu primera carga registrada usa el precio fijo.
 - Los costes aparecen en el dashboard, en el widget de escritorio y en Android Auto.
 
 Nota: las cifras miden energia **en bateria**, sin aplicar factor de perdidas de carga, asi que salen alrededor de un 12–15 % por debajo de lo que dira tu factura. La app lo advierte en su propia interfaz.
@@ -423,6 +438,10 @@ Disparadas tanto en primer plano como en el refresco de fondo:
 A niche one, born out of curiosity: the app can lay out your consumption and charging listings as a receipt and send them to a thermal printer, the same kind used for shop tickets. Handy for keeping a paper record of a trip or of a month's charging, or just for the novelty of watching your car's data come out of a till roll.
 
 Una funcion de nicho, nacida de la curiosidad: la app puede maquetar tus listados de consumo y cargas como un ticket y mandarlos a una impresora termica, de las de tickets de comercio. Util para tener registro en papel de un viaje o de las cargas de un mes, o simplemente por el gusto de ver los datos del coche saliendo de un rollo de papel.
+
+### Trip export to PDF / Exportacion de rutas a PDF
+- Export any date range of your trip history to a PDF: one card per route with a real OpenStreetMap map background (tiles downloaded at export time), the recorded track with start/end markers, and period totals (routes, km, kWh, average consumption and cost). Routes reconstructed without GPS show their real recorded points instead of an invented line. Map data (c) OpenStreetMap contributors.
+- Exporta cualquier rango de fechas de tu historico de rutas a un PDF: una tarjeta por ruta con mapa OpenStreetMap real de fondo (mosaicos descargados al exportar), el trazado registrado con marcadores de inicio y fin, y totales del periodo (rutas, km, kWh, consumo medio y coste). Las rutas reconstruidas sin GPS muestran sus puntos reales en vez de una linea inventada. Datos de mapa (c) OpenStreetMap contributors.
 
 ### Other / Otros
 - Messages screen: shows the official app's message inbox, reachable from an envelope icon with an unread badge in the toolbar.
@@ -516,6 +535,7 @@ Mismo stack en espanol: Flutter (Android) con Kotlin nativo para el widget y las
     lib/trip_rebuild.dart            Route segmentation from the permanent trip log
     lib/route_map_screen.dart        GPS route map for a single trip
     lib/trip_list_screen.dart        "Recent trips" screen (also linked from the dashboard)
+    lib/trip_export.dart             PDF trip export with real OpenStreetMap maps / exportacion PDF con mapas OSM reales
     lib/drive_backup.dart            Optional automatic backup to the user's own Google Drive
     lib/drive_backup_screen.dart     Google Drive backup settings screen
     lib/ticket_printer.dart          Receipt layout for thermal printers
