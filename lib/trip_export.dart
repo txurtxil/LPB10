@@ -209,8 +209,11 @@ Future<_MapaPreparado?> _prepararMapaReal(
       lonMax = lons.reduce(math.max);
       // Margen del 18% del vano, con un minimo absoluto para trayectos muy
       // cortos o casi rectos (evita un area degenerada de ancho/alto cero).
-      final padLat = math.max((latMax - latMin) * 0.18, 0.0008);
-      final padLon = math.max((lonMax - lonMin) * 0.18, 0.0008);
+      // Pad del 35%: con el 18% la cuantizacion de mosaicos se lo comia
+      // entero y el trazado tocaba los bordes de la tarjeta en trayectos
+      // largos. El minimo absoluto cubre rutas de punto unico.
+      final padLat = math.max((latMax - latMin) * 0.35, 0.0008);
+      final padLon = math.max((lonMax - lonMin) * 0.35, 0.0008);
       latMin -= padLat;
       latMax += padLat;
       lonMin -= padLon;
@@ -243,7 +246,7 @@ Future<_MapaPreparado?> _prepararMapaReal(
     // Tope de 2x2 mosaicos por ruta: si el area pedida es mayor a eso a
     // este zoom, se baja de zoom (menos detalle, pero menos descargas)
     // hasta encajar, o hasta el zoom minimo aceptable.
-    while ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 4 && zoom > 3) {
+    while ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 6 && zoom > 3) {
       zoom--;
       tx0 = _lonATileX(lonMin, zoom);
       tx1 = _lonATileX(lonMax, zoom);
