@@ -129,7 +129,15 @@ class Routine {
             .map((e) => e as int)
             .toList(),
         steps: (j['steps'] as List? ?? [])
-            .map((e) => RoutineStep.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map((e) {
+              try {
+                return RoutineStep.fromJson(
+                    Map<String, dynamic>.from(e as Map));
+              } catch (_) {
+                return null; // paso de otra version o corrupto: se salta
+              }
+            })
+            .whereType<RoutineStep>()
             .toList(),
       );
 }
@@ -150,7 +158,14 @@ class RoutineStore {
     if (raw == null) return _defaults();
     try {
       final list = (json.decode(raw) as List)
-          .map((e) => Routine.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((e) {
+            try {
+              return Routine.fromJson(Map<String, dynamic>.from(e as Map));
+            } catch (_) {
+              return null; // rutina de otra version o corrupta: se salta
+            }
+          })
+          .whereType<Routine>()
           .toList();
       if (list.isEmpty) return _defaults();
       // Migracion: añadir presets nuevos (p. ej. rutinas de clima) que aun no
