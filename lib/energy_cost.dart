@@ -95,8 +95,13 @@ Future<Map<String, double>> preciosPorDia() async {
     return Map.of(cache);
   }
   final out = await _preciosPorDiaImpl();
-  _cachePreciosPorDia = Map.of(out);
-  _cachePreciosPorDiaTs = ahora;
+  // Solo se cachea un resultado con datos: si el calculo fallo (p. ej. el
+  // fichero de puntos no se pudo leer), no se castiga con 5 min de cache
+  // vacio que deja toda la app sin precios.
+  if (out.isNotEmpty) {
+    _cachePreciosPorDia = Map.of(out);
+    _cachePreciosPorDiaTs = ahora;
+  }
   return out;
 }
 
