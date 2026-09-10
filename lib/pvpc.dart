@@ -43,12 +43,25 @@ class PvpcDia {
   static PvpcDia? fromMap(Map<String, dynamic> m) {
     final f = m['fecha'] as String?;
     final h = m['horas'];
-    if (f == null || h is! List || h.length != 24) return null;
+    if (f == null || h is! List) return null;
+    if (h.isEmpty) return PvpcDia(f, const []); // cache negativo persistente
+    if (h.length != 24) return null;
     return PvpcDia(f, h.map((e) => (e as num).toDouble()).toList());
   }
 }
 
 class Pvpc {
+  static int _tsLogInfo = 0;
+  static const _logInfoTtlMs = 300000; // 5 min
+  /// Log informativo con rate-limit: en PVPC cada recalculo de coste pedia
+  /// precio por carga historica y el log se inundaba (76% de las lineas).
+  static Future<void> _logThrottled(String msg) async {
+    final ahora = DateTime.now().millisecondsSinceEpoch;
+    if (ahora - _tsLogInfo < _logInfoTtlMs) return;
+    _tsLogInfo = ahora;
+    await CarLogBridge.log(msg);
+  }
+
   static String _hoy(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
@@ -122,7 +135,10 @@ class Pvpc {
   static Future<PvpcDia?> dia(DateTime fecha, {bool permitirRed = true}) async {
     final clave = _hoy(fecha);
     final c = await _cache();
-    if (c.containsKey(clave)) return c[clave];
+    if (c.containsKey(clave)) {
+      final d = c[clave]!;
+      return d.horas.isEmpty ? null : d; // cache negativo: se pidio y no existia
+    }
     if (!permitirRed) return null;
 
     try {
@@ -188,6 +204,10 @@ class Pvpc {
       if (porFecha.isNotEmpty) await _guardarCache(c);
 
       if (pedido == null) {
+        // Cache negativo: el dia se pidio bien y REE no lo devolvio (fecha
+        // vieja). Sin esto, cada recalculo de coste re-pide el dia a la red.
+        c[clave] = const PvpcDia('', const []);
+        await _guardarCache(c);
         await CarLogBridge.log('PVPC pedido ' + clave + ' pero llegaron ' +
             porFecha.keys.join(',') );
         return null;
@@ -227,7 +247,7 @@ class Pvpc {
         fin = h2 > h1
             ? base.add(Duration(hours: h2))
             : base.add(Duration(days: 1, hours: h2));
-        await CarLogBridge.log('PVPC usando ventana ' + vent);
+        await _logThrottled('PVPC usando ventana ' + vent);
       }
     }
     final dias = <String, PvpcDia>{};
@@ -263,7 +283,7 @@ class Pvpc {
     final medio = suma / minutos;
     final dto = await descuento();
     final res = dto > 0 ? medio * (1 - dto / 100.0) : medio;
-    await CarLogBridge.log('PVPC ok ' + _hoy(ini) + ' ' +
+    await _logThrottled('PVPC ok ' + _hoy(ini) + ' ' +
         ini.hour.toString() + 'h-' + fin.hour.toString() + 'h medio=' +
         medio.toStringAsFixed(4) + ' dto=' + dto.toString() +
         ' final=' + res.toStringAsFixed(4));
