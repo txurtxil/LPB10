@@ -1,0 +1,32 @@
+# Publica el AAB de cada release en Google Play (produccion).
+# Requiere el secreto PLAY_SERVICE_ACCOUNT (JSON de cuenta de servicio).
+# Si el secreto no existe, el paso se salta: la release queda solo en GitHub.
+name: Publicar AAB en Google Play
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    env:
+      PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+    steps:
+      - name: Descargar AAB de la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/play
+          gh release download "${{ github.event.release.tag_name }}" \
+            --pattern '*.aab' --dir /tmp/play --repo ${{ github.repository }}
+          ls -la /tmp/play
+      - name: Subir a Google Play (produccion)
+        if: ${{ env.PLAY_SA != '' }}
+        uses: r0adkull/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+          packageName: com.txurtxil.lpb10
+          releaseFiles: /tmp/play/*.aab
+          track: production
+          status: completed
