@@ -65,7 +65,7 @@ if [ -n "$NOTES_FILE" ] && [ -f "$NOTES_FILE" ]; then
   cp "$NOTES_FILE" /tmp/lmb10_notes.md
   echo "Notas: $NOTES_FILE"
 else
-  ULTIMO_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1 || true)
+  ULTIMO_TAG=$(git tag --sort=-v:refname 'v*' | head -1 || true)
   {
     echo "## LMB10 v${NEW_NAME}"
     echo ""
