@@ -396,6 +396,109 @@ class Vehicle {
       );
 }
 
+/// Ventana lunes-domingo de la semana anterior en UTC (epoch en segundos).
+/// Replica previous_week_window_seconds() de la libreria Python de referencia:
+/// la API de getLastweekEC espera exactamente esa ventana.
+(int, int) previousWeekWindowSeconds([DateTime? now]) {
+  final n = (now ?? DateTime.now()).toUtc();
+  final hoyUtc = DateTime.utc(n.year, n.month, n.day);
+  final esteLunes = hoyUtc.subtract(Duration(days: n.weekday - DateTime.monday));
+  final inicio = esteLunes.subtract(const Duration(days: 7));
+  final fin = esteLunes.subtract(const Duration(seconds: 1));
+  return (inicio.millisecondsSinceEpoch ~/ 1000, fin.millisecondsSinceEpoch ~/ 1000);
+}
+
+double _toDoubleSafe(dynamic v) =>
+    v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0.0;
+
+/// Una semana de consumo oficial (getLastNweeks100kmECAndRank).
+class WeeklyConsumption {
+  final String weekStart, weekEnd;
+  final double hundredKmEC, hundredMiKwhEC;
+  const WeeklyConsumption({
+    required this.weekStart,
+    required this.weekEnd,
+    required this.hundredKmEC,
+    required this.hundredMiKwhEC,
+  });
+
+  factory WeeklyConsumption.fromMap(Map<String, dynamic> m) => WeeklyConsumption(
+        weekStart: m['weekStart']?.toString() ?? '',
+        weekEnd: m['weekEnd']?.toString() ?? '',
+        hundredKmEC: _toDoubleSafe(m['hundredKmEC']),
+        hundredMiKwhEC: _toDoubleSafe(m['hundredMiKwhEC']),
+      );
+}
+
+/// Ranking oficial de consumo frente a otros conductores.
+class ConsumptionRank {
+  final int result;
+  final String rank;
+  final double hundredKmEC, hundredMiKwhEC;
+  const ConsumptionRank({
+    required this.result,
+    required this.rank,
+    required this.hundredKmEC,
+    required this.hundredMiKwhEC,
+  });
+
+  factory ConsumptionRank.fromMap(Map<String, dynamic> m) => ConsumptionRank(
+        result: (m['result'] as num?)?.toInt() ?? int.tryParse(m['result']?.toString() ?? '') ?? 0,
+        rank: m['rank']?.toString() ?? '',
+        hundredKmEC: _toDoubleSafe(m['hundredKmEC']),
+        hundredMiKwhEC: _toDoubleSafe(m['hundredMiKwhEC']),
+      );
+}
+
+/// Respuesta de getLastNweeks100kmECAndRank: ranking + hasta 6 semanas.
+class ConsumptionWeeklyRank {
+  final ConsumptionRank rank;
+  final List<WeeklyConsumption> weekly;
+  const ConsumptionWeeklyRank({required this.rank, required this.weekly});
+
+  factory ConsumptionWeeklyRank.fromMap(Map<String, dynamic> m) => ConsumptionWeeklyRank(
+        rank: ConsumptionRank.fromMap(
+            Map<String, dynamic>.from(m['rankResult'] as Map? ?? const {})),
+        weekly: [
+          for (final w in (m['weeklyEC'] as List? ?? const []))
+            WeeklyConsumption.fromMap(Map<String, dynamic>.from(w as Map)),
+        ],
+      );
+}
+
+/// Desglose oficial de la semana pasada (getLastweekEC), en kWh.
+/// OJO: la API devuelve los valores como STRINGS.
+class ConsumptionLastWeekBreakdown {
+  final double driverEC, acEC, otherEC;
+  const ConsumptionLastWeekBreakdown({
+    required this.driverEC,
+    required this.acEC,
+    required this.otherEC,
+  });
+
+  double get totalEC =>
+      ((driverEC + acEC + otherEC) * 100).roundToDouble() / 100;
+
+  factory ConsumptionLastWeekBreakdown.fromMap(Map<String, dynamic> m) =>
+      ConsumptionLastWeekBreakdown(
+        driverEC: _toDoubleSafe(m['driverEC']),
+        acEC: _toDoubleSafe(m['acEC']),
+        otherEC: _toDoubleSafe(m['otherEC']),
+      );
+}
+
+/// Una instalacion FOTA programada (getAppointment cmdId=392).
+class FotaScheduleEntry {
+  final String pid;
+  final String startTime;
+  const FotaScheduleEntry({required this.pid, required this.startTime});
+
+  factory FotaScheduleEntry.fromMap(Map<String, dynamic> m) => FotaScheduleEntry(
+        pid: m['pid']?.toString() ?? '',
+        startTime: m['start_time']?.toString() ?? '',
+      );
+}
+
 class LeapmotorApiException implements Exception {
   final int statusCode;
   final String message;
@@ -736,6 +839,97 @@ class LeapmotorApiClient {
     if (rawData is Map) return Map<String, dynamic>.from(rawData);
     return {};
   });
+
+  /// Consumo oficial de las ultimas 6 semanas + ranking frente a otros
+  /// conductores (getLastNweeks100kmECAndRank). Solo lectura, sin PIN.
+  /// La firma usa el parametro 'carvin' (NO 'vin'): el orden alfabetico de
+  /// campos firmados coincide con el builder dedicado de la libreria Python.
+  Future<ConsumptionWeeklyRank> getConsumptionWeeklyRank(String vin) => withTokenRetry(() async {
+        final headers = _signedHeaders(bodyParams: {'carvin': vin})..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/drivingRecord/v1/getLastNweeks100kmECAndRank'),
+          headers: headers,
+          body: 'carvin=${Uri.encodeComponent(vin)}',
+        );
+        final data = _parseBody(response.statusCode, response.body, 'consumo semanal oficial');
+        return ConsumptionWeeklyRank.fromMap(_dataAsMap(data));
+      });
+
+  /// Desglose oficial de la semana pasada: conduccion / climatizador / otros
+  /// (getLastweekEC). Solo lectura, sin PIN. La ventana lunes-domingo va en
+  /// epoch segundos UTC, como en la libreria Python de referencia.
+  Future<ConsumptionLastWeekBreakdown> getConsumptionLastWeekBreakdown(String vin) =>
+      withTokenRetry(() async {
+        final (begin, end) = previousWeekWindowSeconds();
+        final headers = _signedHeaders(bodyParams: {
+          'begintime': '$begin',
+          'carvin': vin,
+          'endtime': '$end',
+        })
+          ..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/drivingRecord/v1/getLastweekEC'),
+          headers: headers,
+          body: 'endtime=$end&begintime=$begin&carvin=${Uri.encodeComponent(vin)}',
+        );
+        final data = _parseBody(response.statusCode, response.body, 'desglose semana pasada');
+        return ConsumptionLastWeekBreakdown.fromMap(_dataAsMap(data));
+      });
+
+  /// Instalaciones FOTA programadas en el coche (getAppointment cmdId=392).
+  /// Solo lectura, sin PIN. Lista vacia si no hay ninguna o si el vehiculo
+  /// no soporta esta consulta (mismo criterio tolerante que getChargeSchedule).
+  Future<List<FotaScheduleEntry>> getFotaSchedule(String vin) => withTokenRetry(() async {
+        final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '392'})..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
+          headers: headers,
+          body: 'vin=${Uri.encodeComponent(vin)}&cmdId=392',
+        );
+        Map<String, dynamic> body;
+        try {
+          body = json.decode(response.body) as Map<String, dynamic>;
+        } catch (_) {
+          return [];
+        }
+        final resultCode = body['result'] ?? body['code'];
+        if (response.statusCode != 200 || (resultCode != 0 && resultCode != null)) return [];
+        final rawData = body['data'];
+        if (rawData == null) return [];
+        Map<String, dynamic> parsed;
+        if (rawData is String) {
+          try {
+            parsed = Map<String, dynamic>.from(json.decode(rawData) as Map);
+          } catch (_) {
+            return [];
+          }
+        } else if (rawData is Map) {
+          parsed = Map<String, dynamic>.from(rawData);
+        } else {
+          return [];
+        }
+        final controls = parsed['controls'];
+        if (controls is! List) return [];
+        return [
+          for (final c in controls)
+            FotaScheduleEntry.fromMap(Map<String, dynamic>.from(c as Map)),
+        ];
+      });
+
+  /// El campo data puede venir como objeto o como string JSON doblemente
+  /// codificado (getAppointment hace lo segundo): se normaliza aqui.
+  static Map<String, dynamic> _dataAsMap(Map<String, dynamic> body) {
+    final raw = body['data'];
+    if (raw is String) {
+      try {
+        return Map<String, dynamic>.from(json.decode(raw) as Map);
+      } catch (_) {
+        return {};
+      }
+    }
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return {};
+  }
 
   Future<void> _ensureRemoteCertSync() async {
     if (_remoteCertSynced) return;
