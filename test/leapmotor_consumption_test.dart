@@ -13,11 +13,14 @@ void main() {
       expect(end, 1788739199); // 2026-09-06T23:59:59Z
     });
 
-    test('lunes a las 00:00:01 -> la semana que acaba de cerrarse', () {
+    test('lunes a las 00:00:01 -> la semana que cerro 1 segundo antes', () {
+      // Verificado contra previous_week_window_seconds() de la libreria
+      // Python: en el borde del lunes la "semana anterior" es la que acaba
+      // de cerrarse (31 ago - 6 sep), no la previa a esa.
       final (begin, end) =
           previousWeekWindowSeconds(DateTime.utc(2026, 9, 7, 0, 0, 1));
-      expect(begin, 1787529600); // 2026-08-24T00:00:00Z
-      expect(end, 1788134399); // 2026-08-30T23:59:59Z
+      expect(begin, 1788134400); // 2026-08-31T00:00:00Z
+      expect(end, 1788739199); // 2026-09-06T23:59:59Z
     });
 
     test('domingo -> la semana anterior, no la que esta en curso', () {
