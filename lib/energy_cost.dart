@@ -70,15 +70,11 @@ class EnergyPrice {
 /// de los tramos que pasaron el filtro de plausibilidad.
 double kwhOf(DayAgg a) => a.soc / 100.0 * gBatteryKwh;
 
-/// Euros por kWh aplicables a cada dia, con atribucion por TRAMOS.
+/// Euros por kWh aplicables a cada dia, segun la ULTIMA carga anterior.
 ///
-/// Cada segmento de consumo se cobra al precio de la ultima carga cuyo fin
-/// le precede: la energia se cobra donde se consume y al precio de la carga
-/// que la pago. Asi, si un martes cargaste en un rapido a 0,50 y el miercoles
-/// en casa a 0,15, los km del miercoles hasta la carga se cobran a 0,50 y los
-/// de despues a 0,15 (antes el dia entero salia al ultimo precio del dia, y
-/// dos cargas el mismo dia a distinto precio descuadraban el total).
-/// El consumo anterior a la primera carga registrada se cobra al precio fijo.
+/// Asi el coste deja de asumir que siempre se carga en casa: si el martes
+/// cargaste en un rapido a 0,59, los kilometros del miercoles se cobran a ese
+/// precio. Y si la siguiente carga no se toca, vuelve sola al precio de casa.
 ///
 /// El precio se expresa por kWh que ENTRARON EN LA BATERIA. Cuando el usuario
 /// anota el total pagado, ese precio ya lleva dentro las perdidas de carga,
@@ -147,55 +143,31 @@ Future<Map<String, double>> _preciosPorDiaImpl() async {
       if (p != null) tramos.add([c.endTs.toDouble(), p]);
     }
     tramos.sort((a, b) => a[0].compareTo(b[0]));
-    final segs = await DailyStats.puntosConsumo();
-    final euros = eurosPorTramoCore(
-      tramos,
-      segs,
-      casa,
-      gBatteryKwh,
-      (tsMs) => DailyStats.dayKey(DateTime.fromMillisecondsSinceEpoch(tsMs)),
-    );
+
     for (final d in days) {
-      final k = kwhOf(d);
-      if (k <= 0) continue;
-      final e = euros[d.d];
-      if (e != null) out[d.d] = e / k;
+      DateTime dia;
+      try {
+        dia = DateTime.parse(d.d);
+      } catch (_) {
+        continue;
+      }
+      final finDia =
+          dia.add(const Duration(days: 1)).millisecondsSinceEpoch.toDouble();
+      double? p;
+      for (final t in tramos) {
+        if (t[0] <= finDia) {
+          p = t[1];
+        } else {
+          break;
+        }
+      }
+      p ??= casa;
+      if (p != null) out[d.d] = p;
     }
   } catch (_) {}
   return out;
 }
 
-/// Nucleo puro de la atribucion por tramos (sin I/O: testeable).
-/// [tramos]: [endTsMs, eurKwh] ordenados por endTs; cada tramo precia el
-/// consumo desde su endTs hasta el endTs del siguiente.
-/// [segs]: [tsMs, socDeltaPct] ordenados por ts.
-/// [precioFijo]: precio para consumo anterior al primer tramo (null = ese
-/// consumo no se cobra, como antes).
-/// Devuelve euros por clave de dia.
-Map<String, double> eurosPorTramoCore(
-  List<List<double>> tramos,
-  List<List<double>> segs,
-  double? precioFijo,
-  double batteryKwh,
-  String Function(int tsMs) diaDe,
-) {
-  final euros = <String, double>{};
-  var ti = 0;
-  for (final s in segs) {
-    while (ti + 1 < tramos.length && tramos[ti + 1][0] <= s[0]) ti++;
-    double? p;
-    if (tramos.isNotEmpty && tramos[ti][0] <= s[0]) {
-      p = tramos[ti][1];
-    } else {
-      p = precioFijo;
-    }
-    if (p == null) continue;
-    final kwh = s[1] / 100.0 * batteryKwh;
-    final d = diaDe(s[0].toInt());
-    euros[d] = (euros[d] ?? 0) + kwh * p;
-  }
-  return euros;
-}
 /// Suma km, kWh y euros de un conjunto de dias aplicando el precio de cada uno.
 ({double km, double kwh, double eur, bool hayEur}) totalizar(
     Iterable<DayAgg> ds, Map<String, double> precios) {

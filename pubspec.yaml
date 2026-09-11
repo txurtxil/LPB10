@@ -36,8 +36,6 @@ flutter:
   uses-material-design: true
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:

@@ -198,46 +198,6 @@ class DailyStats {
     return days;
   }
 
-  /// Puntos de CONSUMO para el coste por tramos (energy_cost.dart):
-  /// [ts, socDeltaPct] por cada segmento valido, con EXACTAMENTE el mismo
-  /// filtro y atribucion que _accumulate (segmento -> dia del punto actual,
-  /// sin tramos que cruzan medianoche). Sin esto los euros y los kWh del
-  /// agregado no cuadrarian entre si.
-  static Future<List<List<double>>> puntosConsumo() async {
-    final raw = await (await tripsFile()).readAsString();
-    final pts = <List<num>>[];
-    final seen = <String>{};
-    for (final linea in raw.split('\n')) {
-      if (linea.trim().isEmpty) continue;
-      try {
-        final m = json.decode(linea);
-        if (m is! List || m.length < 3) continue;
-        final ts = m[0], km = m[1], soc = m[2];
-        if (ts is! int || km is! int || soc is! num) continue;
-        final k = ts.toString() + ':' + km.toString() + ':' + soc.toString();
-        if (!seen.add(k)) continue;
-        pts.add([ts, km, soc.toDouble()]);
-      } catch (_) {}
-    }
-    pts.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
-    final out = <List<double>>[];
-    for (var i = 1; i < pts.length; i++) {
-      final cur = pts[i];
-      final prev = pts[i - 1];
-      final kCur = dayKey(DateTime.fromMillisecondsSinceEpoch(cur[0] as int));
-      final kPrev = dayKey(DateTime.fromMillisecondsSinceEpoch(prev[0] as int));
-      if (kPrev != kCur) continue;
-      final kmDelta = (cur[1] - prev[1]).toDouble();
-      final socDelta = (prev[2] - cur[2]).toDouble();
-      if (kmDelta <= 0) continue;
-      if (socDelta <= 0) continue;
-      final pct = socDelta / kmDelta * 100.0;
-      if (pct < kSegMin || pct > kSegMax) continue;
-      out.add([(cur[0] as int).toDouble(), socDelta]);
-    }
-    return out;
-  }
-
   static Future<void> _write(Map<String, DayAgg> days) async {
     final keys = days.keys.toList()..sort();
     final sb = StringBuffer();
