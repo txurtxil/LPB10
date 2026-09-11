@@ -1,22 +1,10 @@
-# Publica el AAB de cada release en Google Play.
+# Publica el AAB de cada release en Google Play (produccion).
 # Requiere el secreto PLAY_SERVICE_ACCOUNT (JSON de cuenta de servicio).
-# - Al publicarse una release: sube el AAB de esa release a PRODUCCION.
-# - Manual (workflow_dispatch): sube el tag indicado a la pista indicada
-#   (por defecto internal, para probar la configuracion sin soltar release).
-# Si el secreto no existe, el paso de subida se salta sin error.
+# Si el secreto no existe, el paso se salta: la release queda solo en GitHub.
 name: Publicar AAB en Google Play
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag de la release con el AAB (ej: v3.60.138)'
-        required: true
-      track:
-        description: 'Pista: internal, beta o production'
-        required: true
-        default: 'internal'
 permissions:
   contents: write
 jobs:
@@ -25,34 +13,20 @@ jobs:
     env:
       PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
     steps:
-      - name: Resolver tag y pista
-        id: meta
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          TRACK="${{ github.event.inputs.track }}"
-          [ -z "$TAG" ] && TAG="${{ github.event.inputs.tag }}"
-          [ -z "$TRACK" ] && TRACK=production
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "track=$TRACK" >> "$GITHUB_OUTPUT"
       - name: Descargar AAB de la release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p /tmp/play
-          gh release download "${{ steps.meta.outputs.tag }}" \
+          gh release download "${{ github.event.release.tag_name }}" \
             --pattern '*.aab' --dir /tmp/play --repo ${{ github.repository }}
           ls -la /tmp/play
-      - name: Subir a Google Play (fastlane supply)
+      - name: Subir a Google Play (produccion)
         if: ${{ env.PLAY_SA != '' }}
-        env:
-          PLAY_SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
-        run: |
-          echo "$PLAY_SA_JSON" > /tmp/play/sa.json
-          sudo gem install fastlane -NV >/dev/null 2>&1 || gem install fastlane -NV >/dev/null 2>&1
-          AAB=$(ls /tmp/play/*.aab | head -1)
-          fastlane supply \
-            --json_key /tmp/play/sa.json \
-            --package_name com.txurtxil.lpb10 \
-            --aab "$AAB" \
-            --track "${{ steps.meta.outputs.track }}" \
-            --release_status completed
+        uses: r0adkull/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+          packageName: com.txurtxil.lpb10
+          releaseFiles: /tmp/play/*.aab
+          track: production
+          status: completed
