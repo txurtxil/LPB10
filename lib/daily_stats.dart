@@ -155,7 +155,7 @@ class DailyStats {
     }
     pts.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
 
-    final days = _accumulate(pts);
+    final days = accumulate(pts);
     await _write(days);
     await _saveMeta(raw.length, pts.isEmpty ? null : pts.last);
     return days.values.toList();
@@ -164,7 +164,7 @@ class DailyStats {
   /// Un tramo cuenta para un dia solo si SUS DOS EXTREMOS caen en ese dia.
   /// Es exactamente lo que hace el calculo por dia actual, y esta medido que
   /// los tramos que cruzan medianoche aportan cero (o cargas o coche parado).
-  static Map<String, DayAgg> _accumulate(List<List<num>> pts) {
+  static Map<String, DayAgg> accumulate(List<List<num>> pts) {
     final days = <String, DayAgg>{};
     for (var i = 0; i < pts.length; i++) {
       final cur = pts[i];
@@ -320,7 +320,7 @@ class DailyStats {
     for (final a in await load()) {
       days[a.d] = a;
     }
-    final delta = _accumulate(nue);
+    final delta = accumulate(nue);
     if (meta['lastTs'] is num) {
       final kFirst = dayKey(DateTime.fromMillisecondsSinceEpoch(
           (meta['lastTs'] as num).toInt()));
