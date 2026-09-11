@@ -38,7 +38,7 @@ Future<String> buildEfficiencyTicket({
   required DateTime to,
   String? nickname,
 }) async {
-  final agg = await DailyStats.load();
+  final agg = await DailyStats.sync();
   final d0 = DateTime(from.year, from.month, from.day);
   final d1 = DateTime(to.year, to.month, to.day);
   final desde = DailyStats.dayKey(d0);

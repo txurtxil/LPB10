@@ -84,7 +84,7 @@ Future<Map<String, double>> preciosPorDia() async {
     final cfg = await EnergyPrice.load();
     final casa = cfg?.eurKwh;
     final esPvpc = cfg?.esPvpc ?? false;
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     if (days.isEmpty) return out;
     final cargas = await ChargeRebuild.fromTrips();
     final costes = await ChargeCostStore.loadAll();
@@ -192,7 +192,7 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 
   Future<void> _load() async {
     final p = await EnergyPrice.load();
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     final ahora = DateTime.now();
     final hoyKey = DailyStats.dayKey(ahora);
     final ayerKey = DailyStats.dayKey(ahora.subtract(const Duration(days: 1)));
@@ -345,7 +345,7 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
 Future<({String widget, String car})> buildCostLines({Map<String, double>? precios}) async {
   const vacio = (widget: '', car: '');
   try {
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     if (days.isEmpty) return vacio;
     precios ??= await preciosPorDia();
     if (precios.isEmpty) return vacio;
@@ -408,7 +408,7 @@ Future<({String widget, String car})> buildCostLines({Map<String, double>? preci
 Future<({String dias, String semanas, String meses})> buildCarSeries({Map<String, double>? precios}) async {
   const vacio = (dias: '', semanas: '', meses: '');
   try {
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     if (days.isEmpty) return vacio;
     final Map<String, double> preciosSeguro = precios ?? await preciosPorDia();
 
@@ -451,7 +451,7 @@ Future<({String dias, String semanas, String meses})> buildCarSeries({Map<String
 Future<({String d7, String mes, String ano})> buildCarTotals({Map<String, double>? precios}) async {
   const vacio = (d7: '', mes: '', ano: '');
   try {
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     if (days.isEmpty) return vacio;
     final Map<String, double> preciosSeguro = precios ?? await preciosPorDia();
     final ahora = DateTime.now();
@@ -491,7 +491,7 @@ Future<double> gastoAnual({Map<String, double>? precios}) async {
     final anoInicio = DateTime(ahora.year, 1, 1);
     final anoKey = ahora.year.toString() + '-';
 
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     precios ??= await preciosPorDia();
     final tAno = totalizar(days.where((a) => a.d.startsWith(anoKey)), precios);
     final cargas = tAno.hayEur ? tAno.eur : 0.0;

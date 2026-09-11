@@ -260,7 +260,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   }
 
   Future<void> _load() async {
-    final days = await DailyStats.load();
+    final days = await DailyStats.sync();
     final precios = await preciosPorDia();
     final t = totalizar(days, precios);
     final ref = await loadReferenceVehicle();

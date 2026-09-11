@@ -219,6 +219,27 @@ class DailyStats {
     await (await _meta()).writeAsString(json.encode(m), flush: true);
   }
 
+  /// Fusiona un delta incremental sobre los dias ya agregados. Estatico y
+  /// puro para poder probarlo. TODOS los campos acumulados se suman,
+  /// kmAllRaw incluido: sin el, los kilometros reales de los tramos nuevos
+  /// se perdian en los dias ya cacheados (kmAll quedaba por debajo de lo
+  /// real) y cuando km acababa superando al kmAllRaw estancado, la guardia
+  /// de coherencia forzaba un rebuild completo en cada sync.
+  static void fusionaDelta(Map<String, DayAgg> days, Map<String, DayAgg> delta) {
+    delta.forEach((k, v) {
+      final ex = days[k];
+      if (ex == null) {
+        days[k] = v;
+      } else {
+        ex.km += v.km;
+        ex.soc += v.soc;
+        ex.segs += v.segs;
+        ex.pts += v.pts;
+        ex.kmAllRaw += v.kmAllRaw;
+      }
+    });
+  }
+
   /// Pone el agregado al dia leyendo SOLO los bytes nuevos de trips.jsonl.
   /// Si el fichero encogio (restauracion de backup, migracion) reconstruye
   /// entero, porque el offset guardado ya no significa nada.
@@ -306,17 +327,7 @@ class DailyStats {
       final dd = delta[kFirst];
       if (dd != null) dd.pts -= 1;
     }
-    delta.forEach((k, v) {
-      final ex = days[k];
-      if (ex == null) {
-        days[k] = v;
-      } else {
-        ex.km += v.km;
-        ex.soc += v.soc;
-        ex.segs += v.segs;
-        ex.pts += v.pts;
-      }
-    });
+    fusionaDelta(days, delta);
 
     await _write(days);
     await _saveMeta(prevLen + consumed, nue.last);

@@ -598,7 +598,7 @@ class WeeklyEfficiency {
 
 Future<WeeklyEfficiency> computeWeeklyEfficiency() async {
   try {
-    final dias = await DailyStats.load();
+    final dias = await DailyStats.sync();
     if (dias.isEmpty) return WeeklyEfficiency();
     final semanas = DailyStats.weeks(dias);
     if (semanas.isEmpty) return WeeklyEfficiency();
