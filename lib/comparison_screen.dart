@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'daily_stats.dart';
 import 'energy_cost.dart';
 import 'comparison_profile.dart';
+import 'leapmotor_engine.dart';
 import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
 
 const _cBlue = Color(0xFF0D3B66);
@@ -238,7 +239,11 @@ class PaybackChartPainter extends CustomPainter {
 }
 
 class ComparisonScreen extends StatefulWidget {
-  const ComparisonScreen({super.key});
+  /// Opcionales: si llegan, se muestra la seccion de consumo oficial
+  /// Leapmotor (getLastNweeks100kmECAndRank + getLastweekEC).
+  final LeapmotorApiClient? client;
+  final Vehicle? vehicle;
+  const ComparisonScreen({super.key, this.client, this.vehicle});
   @override
   State<ComparisonScreen> createState() => _ComparisonScreenState();
 }
@@ -252,6 +257,14 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   double _b10Precio = kB10PrecioListaDefecto;
   bool _b10PrecioConfirmado = false;
   ReferenceVehicle _ref = kTeslaModel3;
+
+  // Consumo oficial Leapmotor: cada pieza carga y falla de forma
+  // independiente para que una no arrastre a la otra.
+  bool _oficialLoading = false;
+  ConsumptionWeeklyRank? _weeklyRank;
+  ConsumptionLastWeekBreakdown? _breakdown;
+  String? _weeklyError;
+  String? _breakdownError;
 
   @override
   void initState() {
@@ -276,6 +289,27 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       _b10Precio = precioPagado ?? kB10PrecioListaDefecto;
       _loading = false;
     });
+    _loadOficial();
+  }
+
+  Future<void> _loadOficial() async {
+    final c = widget.client;
+    final v = widget.vehicle;
+    if (c == null || v == null) return;
+    setState(() => _oficialLoading = true);
+    try {
+      final wr = await c.getConsumptionWeeklyRank(v.vin);
+      if (mounted) setState(() => _weeklyRank = wr);
+    } catch (e) {
+      if (mounted) setState(() => _weeklyError = e.toString());
+    }
+    try {
+      final bd = await c.getConsumptionLastWeekBreakdown(v.vin);
+      if (mounted) setState(() => _breakdown = bd);
+    } catch (e) {
+      if (mounted) setState(() => _breakdownError = e.toString());
+    }
+    if (mounted) setState(() => _oficialLoading = false);
   }
 
   Future<void> _editar() async {
@@ -411,16 +445,18 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : !_hayDatos
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
+              ? ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    Text(
                       es
                           ? 'Todavia no hay suficiente historial de conduccion para calcular tu consumo real. Vuelve cuando hayas recorrido algunos km.'
                           : 'Not enough driving history yet to calculate your real consumption. Come back after a few km.',
                       textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    ..._seccionOficial(es),
+                  ],
                 )
               : _buildContent(es),
     );
@@ -605,6 +641,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
           ]),
         ),
         const SizedBox(height: 24),
+        ..._seccionOficial(es),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(color: _cBlue, borderRadius: BorderRadius.circular(20)),
@@ -634,6 +671,167 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
     return es
         ? 'En el mejor de los casos, ${_ref.nombre} podria ahorrar algo de electricidad frente a tu B10, pero al ritmo actual harian falta cientos de miles de km para recuperar la diferencia de precio de compra.'
         : 'In the best case, ${_ref.nombre} could save a bit on electricity versus your B10, but at this rate it would take hundreds of thousands of km to recover the purchase price gap.';
+  }
+
+  /// Seccion de consumo oficial Leapmotor: ranking + 6 semanas + desglose
+  /// de la semana pasada. Solo aparece si la pantalla recibe client+vehicle.
+  /// Cada pieza (ranking / desglose) falla de forma independiente.
+  List<Widget> _seccionOficial(bool es) {
+    if (widget.client == null || widget.vehicle == null) return const [];
+    final sinNada = _weeklyRank == null &&
+        _breakdown == null &&
+        _weeklyError == null &&
+        _breakdownError == null;
+    return [
+      Text(
+        es ? 'CONSUMO OFICIAL LEAPMOTOR' : 'OFFICIAL LEAPMOTOR CONSUMPTION',
+        style: const TextStyle(fontSize: 11, letterSpacing: 1, color: Colors.grey, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: _cCardSoft, borderRadius: BorderRadius.circular(20)),
+        child: _oficialLoading && sinNada
+            ? const Center(
+                child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_weeklyRank != null) ..._bloqueRanking(es, _weeklyRank!),
+                  if (_weeklyError != null)
+                    _textoNoDisponible(es ? 'Ranking oficial no disponible ahora mismo.' : 'Official ranking not available right now.'),
+                  if (_breakdown != null) ..._bloqueDesglose(es, _breakdown!),
+                  if (_breakdownError != null)
+                    _textoNoDisponible(es ? 'Desglose de la semana pasada no disponible ahora mismo.' : 'Last week breakdown not available right now.'),
+                  if (sinNada && !_oficialLoading)
+                    Text(
+                      es ? 'Sin datos oficiales todavia.' : 'No official data yet.',
+                      style: const TextStyle(fontSize: 12.5, color: Colors.grey),
+                    ),
+                ],
+              ),
+      ),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  Widget _textoNoDisponible(String msg) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Text(msg, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      );
+
+  List<Widget> _bloqueRanking(bool es, ConsumptionWeeklyRank datos) {
+    final r = datos.rank;
+    return [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Expanded(
+          child: Text(
+            es ? 'Tu media oficial' : 'Your official average',
+            style: const TextStyle(fontSize: 12.5, color: Colors.grey),
+          ),
+        ),
+        Text(
+          '${r.hundredKmEC.toStringAsFixed(1)} kWh/100km',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _cBlue),
+        ),
+      ]),
+      if (r.rank.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 4),
+          child: Text(
+            es ? 'Ranking oficial frente a otros conductores: ${r.rank}' : 'Official ranking vs other drivers: ${r.rank}',
+            style: const TextStyle(fontSize: 12, color: _cGood, fontWeight: FontWeight.w600),
+          ),
+        ),
+      if (datos.weekly.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(
+          es ? 'Ultimas ${datos.weekly.length} semanas (kWh/100km)' : 'Last ${datos.weekly.length} weeks (kWh/100km)',
+          style: const TextStyle(fontSize: 11.5, color: Colors.grey),
+        ),
+        const SizedBox(height: 6),
+        _barrasSemanas(datos.weekly),
+      ],
+      const SizedBox(height: 12),
+    ];
+  }
+
+  Widget _barrasSemanas(List<WeeklyConsumption> semanas) {
+    final maxV = semanas.fold<double>(0, (m, s) => math.max(m, s.hundredKmEC));
+    if (maxV <= 0) return const SizedBox.shrink();
+    return SizedBox(
+      height: 140,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final s in semanas)
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(s.hundredKmEC.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 10, color: _cBlue, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 92 * (s.hundredKmEC / maxV),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(color: _cGood, borderRadius: BorderRadius.circular(6)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_cortaFecha(s.weekStart), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// YYYY-MM-DD -> DD/MM
+  static String _cortaFecha(String iso) {
+    final p = iso.split('-');
+    return p.length == 3 ? '${p[2]}/${p[1]}' : iso;
+  }
+
+  List<Widget> _bloqueDesglose(bool es, ConsumptionLastWeekBreakdown b) {
+    final total = b.totalEC;
+    Widget fila(String etiqueta, double valor, Color color) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(children: [
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(etiqueta, style: const TextStyle(fontSize: 12.5, color: _cBlue))),
+            Text('${valor.toStringAsFixed(2)} kWh',
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _cBlue)),
+          ]),
+        );
+    return [
+      const Divider(),
+      const SizedBox(height: 4),
+      Text(
+        es ? 'Semana pasada (oficial): a donde fue la energia' : 'Last week (official): where the energy went',
+        style: const TextStyle(fontSize: 11.5, color: Colors.grey),
+      ),
+      const SizedBox(height: 8),
+      if (total > 0)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 14,
+            child: Row(children: [
+              if (b.driverEC > 0) Expanded(flex: (b.driverEC / total * 1000).round(), child: Container(color: _cGood)),
+              if (b.acEC > 0) Expanded(flex: (b.acEC / total * 1000).round(), child: Container(color: _cBlue)),
+              if (b.otherEC > 0) Expanded(flex: (b.otherEC / total * 1000).round(), child: Container(color: _cOver)),
+            ]),
+          ),
+        ),
+      const SizedBox(height: 8),
+      fila(es ? 'Conduccion' : 'Driving', b.driverEC, _cGood),
+      fila(es ? 'Climatizador' : 'Climate', b.acEC, _cBlue),
+      fila(es ? 'Otros sistemas' : 'Other systems', b.otherEC, _cOver),
+      const Divider(),
+      fila('Total', total, _cBlue),
+    ];
   }
 
   Widget _leyenda(Color c, String texto) {
