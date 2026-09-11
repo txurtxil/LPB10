@@ -338,7 +338,9 @@ Future<String> importHistoryBackup() async {
         continue;
       }
       await HistoryArchive.appendTrip(
-          t['ts'] as int, t['km'] as int, (t['soc'] as num).toDouble());
+          t['ts'] as int, t['km'] as int, (t['soc'] as num).toDouble(),
+          lat: (t['lat'] as num?)?.toDouble(),
+          lon: (t['lon'] as num?)?.toDouble());
       nuevosTrips++;
     }
 
