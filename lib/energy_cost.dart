@@ -57,12 +57,10 @@ class EnergyPrice {
         key: kEnergyPriceKey,
         value: json.encode(
             {'mode': pvpc ? 'pvpc' : 'single', 'eur_kwh': eurKwh}));
-    _cachePreciosPorDia = null; // el precio cambio: no servir cache viejo
   }
 
   static Future<void> clear() async {
     await _priceStorage.delete(key: kEnergyPriceKey);
-    _cachePreciosPorDia = null;
   }
 }
 
@@ -80,23 +78,7 @@ double kwhOf(DayAgg a) => a.soc / 100.0 * gBatteryKwh;
 /// anota el total pagado, ese precio ya lleva dentro las perdidas de carga,
 /// porque pago la energia que entrego el cargador y no la que llego a la
 /// bateria. Es mas exacto que la estimacion con el precio de casa.
-Map<String, double>? _cachePreciosPorDia;
-int _cachePreciosPorDiaTs = 0;
-const _cachePreciosTtlMs = 300000; // 5 min: rebuild + posibles HTTP
-
 Future<Map<String, double>> preciosPorDia() async {
-  final ahora = DateTime.now().millisecondsSinceEpoch;
-  final cache = _cachePreciosPorDia;
-  if (cache != null && ahora - _cachePreciosPorDiaTs < _cachePreciosTtlMs) {
-    return Map.of(cache);
-  }
-  final out = await _preciosPorDiaImpl();
-  _cachePreciosPorDia = Map.of(out);
-  _cachePreciosPorDiaTs = ahora;
-  return out;
-}
-
-Future<Map<String, double>> _preciosPorDiaImpl() async {
   final out = <String, double>{};
   try {
     final cfg = await EnergyPrice.load();
@@ -125,18 +107,10 @@ Future<Map<String, double>> _preciosPorDiaImpl() async {
         //
         // Si REE no responde o no hay datos de ese dia, cae al precio fijo:
         // NUNCA se inventa un precio.
-        final limitePvpc =
-            DateTime.now().millisecondsSinceEpoch - 90 * 24 * 60 * 60 * 1000;
-        if (c.startTs >= limitePvpc) {
-          p = await Pvpc.precioFranja(
-                  DateTime.fromMillisecondsSinceEpoch(c.startTs),
-                  DateTime.fromMillisecondsSinceEpoch(c.endTs!)) ??
-              casa;
-        } else {
-          // Carga de mas de 90 dias: re-pedirla a REE en cada recalculo
-          // solo genera red y log. Se cobra al precio fijo.
-          p = casa;
-        }
+        p = await Pvpc.precioFranja(
+                DateTime.fromMillisecondsSinceEpoch(c.startTs),
+                DateTime.fromMillisecondsSinceEpoch(c.endTs!)) ??
+            casa;
       } else {
         p = casa;
       }
