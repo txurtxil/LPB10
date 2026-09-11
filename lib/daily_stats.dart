@@ -198,26 +198,6 @@ class DailyStats {
     return days;
   }
 
-  /// Parsea una linea de trips.jsonl en [ts, km, soc]. Acepta los DOS
-  /// formatos que ha habido en el proyecto: array [ts,km,soc] y objeto
-  /// {"ts":..,"km":..,"soc":..} (el que escribe history_archive). Devuelve
-  /// null si la linea no es un punto valido. ES PUBLICO para poder testearlo:
-  /// el bug del coste en v3.60.138 vino de un parser que solo aceptaba arrays.
-  static List<num>? puntoDesdeJsonl(String linea) {
-    try {
-      final m = json.decode(linea);
-      if (m is List && m.length >= 3) {
-        if (m[0] is int && m[1] is int && m[2] is num) {
-          return [m[0] as int, m[1] as int, (m[2] as num).toDouble()];
-        }
-      } else if (m is Map) {
-        final t = m['ts'], k = m['km'], s = m['soc'];
-        if (t is int && k is int && s is num) return [t, k, s.toDouble()];
-      }
-    } catch (_) {}
-    return null;
-  }
-
   /// Puntos de CONSUMO para el coste por tramos (energy_cost.dart):
   /// [ts, socDeltaPct] por cada segmento valido, con EXACTAMENTE el mismo
   /// filtro y atribucion que _accumulate (segmento -> dia del punto actual,
@@ -229,11 +209,15 @@ class DailyStats {
     final seen = <String>{};
     for (final linea in raw.split('\n')) {
       if (linea.trim().isEmpty) continue;
-      final p = puntoDesdeJsonl(linea);
-      if (p == null) continue;
-      final k = p[0].toString() + ':' + p[1].toString() + ':' + p[2].toString();
-      if (!seen.add(k)) continue;
-      pts.add(p);
+      try {
+        final m = json.decode(linea);
+        if (m is! List || m.length < 3) continue;
+        final ts = m[0], km = m[1], soc = m[2];
+        if (ts is! int || km is! int || soc is! num) continue;
+        final k = ts.toString() + ':' + km.toString() + ':' + soc.toString();
+        if (!seen.add(k)) continue;
+        pts.add([ts, km, soc.toDouble()]);
+      } catch (_) {}
     }
     pts.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
     final out = <List<double>>[];
@@ -253,7 +237,6 @@ class DailyStats {
     }
     return out;
   }
-
 
   static Future<void> _write(Map<String, DayAgg> days) async {
     final keys = days.keys.toList()..sort();
