@@ -176,8 +176,8 @@ Future<bool> exportHistoryAndShare() async {
     // Adjunta trips.jsonl/charges.jsonl SIN fusionar con el store volatil,
     // para poder diagnosticar divergencias entre lo persistido de verdad
     // y lo que hay en memoria (bug de rutas ausentes, agosto 2026).
-    final rawTrips = File('${dir.path}/trips.jsonl');
-    final rawCharges = File('${dir.path}/charges.jsonl');
+    final rawTrips = File('\${dir.path}/trips.jsonl');
+    final rawCharges = File('\${dir.path}/charges.jsonl');
     if (await rawTrips.exists()) rawFiles.add(XFile(rawTrips.path));
     if (await rawCharges.exists()) rawFiles.add(XFile(rawCharges.path));
     await SharePlus.instance.share(
