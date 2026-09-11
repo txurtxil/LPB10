@@ -12,6 +12,8 @@ import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
 import 'comparison_screen.dart';
+import 'fota_screen.dart';
+import 'leapmotor_engine.dart';
 import 'trip_list_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
@@ -27,7 +29,11 @@ Future<bool> loadShowMapSetting() async {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  /// Opcionales: habilitan las fichas con datos en vivo de la API
+  /// (consumo oficial en la comparativa, consulta OTA del coche).
+  final LeapmotorApiClient? client;
+  final Vehicle? vehicle;
+  const SettingsScreen({super.key, this.client, this.vehicle});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -125,9 +131,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : 'Your real consumption vs a Tesla Model 3 (or whichever you set)'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const ComparisonScreen())),
+                      builder: (_) => ComparisonScreen(client: widget.client, vehicle: widget.vehicle))),
                 ),
                 const Divider(),
+                if (widget.client != null && widget.vehicle != null)
+                  ListTile(
+                    leading: const Icon(Icons.system_update_alt),
+                    title: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Actualizacion del coche (OTA)'
+                        : 'Car update (OTA)'),
+                    subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Consulta si hay instalacion de firmware programada'
+                        : 'Check whether a firmware install is scheduled'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => FotaScreen(client: widget.client!, vehicle: widget.vehicle!))),
+                  ),
+                if (widget.client != null && widget.vehicle != null)
+                  const Divider(),
                 ListTile(
                   leading: const Icon(Icons.euro_symbol),
                   title: Text(Localizations.localeOf(context).languageCode == 'es'

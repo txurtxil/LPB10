@@ -1305,7 +1305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final es = Localizations.localeOf(context).languageCode == 'es';
               switch (v) {
                 case 'settings':
-                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(client: widget.client, vehicle: widget.vehicle)));
                   final s = await loadShowMapSetting();
                   if (mounted) setState(() => _showMap = s);
                   break;
