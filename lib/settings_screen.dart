@@ -11,6 +11,7 @@ import 'cert_import_screen.dart';
 import 'price_screen.dart';
 import 'vehicle_profile.dart';
 import 'vehicle_profile_screen.dart';
+import 'charge_history_screen.dart';
 import 'comparison_screen.dart';
 import 'fota_screen.dart';
 import 'leapmotor_engine.dart';
@@ -146,6 +147,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => FotaScreen(client: widget.client!, vehicle: widget.vehicle!))),
+                  ),
+                if (widget.client != null && widget.vehicle != null)
+                  const Divider(),
+                if (widget.client != null && widget.vehicle != null)
+                  ListTile(
+                    leading: const Icon(Icons.ev_station_outlined),
+                    title: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Historial de cargas'
+                        : 'Charging history'),
+                    subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Sesiones de carga oficiales, ultimos 90 dias'
+                        : 'Official charging sessions, last 90 days'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ChargeHistoryScreen(client: widget.client!, vehicle: widget.vehicle!))),
                   ),
                 if (widget.client != null && widget.vehicle != null)
                   const Divider(),
