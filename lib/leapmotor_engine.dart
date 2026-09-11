@@ -499,6 +499,52 @@ class FotaScheduleEntry {
       );
 }
 
+/// Offset local actual formateado como la API lo espera: "GMT+01:00".
+/// DateTime.timeZoneOffset ya tiene en cuenta el horario de verano.
+String gmtOffset([DateTime? now]) {
+  final o = (now ?? DateTime.now()).timeZoneOffset;
+  final sign = o.isNegative ? '-' : '+';
+  final h = o.inHours.abs().toString().padLeft(2, '0');
+  final m = (o.inMinutes.abs() % 60).toString().padLeft(2, '0');
+  return 'GMT$sign$h:$m';
+}
+
+int _toIntSafe(dynamic v) =>
+    v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
+
+/// Una sesion de carga oficial (/carownerservice/charge/daily/detail/page).
+class ChargeRecord {
+  /// Epoch ms de inicio y fin (chargeGunStartTs / chargeGunEndTs).
+  final int startTs, endTs;
+
+  /// chargeType "2" = DC (carga rapida); "1" (y cualquier otro) = AC.
+  final bool isFast;
+  final double energyKwh;
+  final String? longitude, latitude, zone;
+  const ChargeRecord({
+    required this.startTs,
+    required this.endTs,
+    required this.isFast,
+    required this.energyKwh,
+    this.longitude,
+    this.latitude,
+    this.zone,
+  });
+
+  int get durationSeconds =>
+      (startTs > 0 && endTs > startTs) ? (endTs - startTs) ~/ 1000 : 0;
+
+  factory ChargeRecord.fromMap(Map<String, dynamic> m) => ChargeRecord(
+        startTs: _toIntSafe(m['chargeGunStartTs']),
+        endTs: _toIntSafe(m['chargeGunEndTs']),
+        isFast: m['chargeType']?.toString() == '2',
+        energyKwh: _toDoubleSafe(m['chargeInEnergy']),
+        longitude: m['chargeStartLongitude']?.toString(),
+        latitude: m['chargeStartLatitude']?.toString(),
+        zone: m['zone']?.toString(),
+      );
+}
+
 class LeapmotorApiException implements Exception {
   final int statusCode;
   final String message;
@@ -914,6 +960,60 @@ class LeapmotorApiClient {
           for (final c in controls)
             FotaScheduleEntry.fromMap(Map<String, dynamic>.from(c as Map)),
         ];
+      });
+
+  /// Historial oficial de cargas (/carownerservice/charge/daily/detail/page).
+  /// Solo lectura, sin PIN. A diferencia del resto, va con body JSON y la
+  /// firma incluye los 6 parametros del body (como strings), igual que en la
+  /// libreria Python. Pagina hasta [maxPages] paginas de [pageSize] sesiones;
+  /// por defecto cubre los ultimos 90 dias.
+  Future<List<ChargeRecord>> getChargingDailyDetail(
+    String vin, {
+    DateTime? start,
+    DateTime? end,
+    int pageSize = 50,
+    int maxPages = 5,
+  }) =>
+      withTokenRetry(() async {
+        final e = end ?? DateTime.now();
+        final s = start ?? e.subtract(const Duration(days: 90));
+        String fmt(DateTime d) =>
+            '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        final tz = gmtOffset();
+        final all = <ChargeRecord>[];
+        for (var page = 1; page <= maxPages; page++) {
+          final headers = _signedHeaders(bodyParams: {
+            'vin': vin,
+            'timeZone': tz,
+            'startTime': fmt(s),
+            'endTime': fmt(e),
+            'pageNum': '$page',
+            'pageSize': '$pageSize',
+          })
+            ..addAll(_authHeaders());
+          headers['Content-Type'] = 'application/json';
+          final response = await _accountClient!.post(
+            Uri.parse('$kBaseUrl/carownerservice/charge/daily/detail/page'),
+            headers: headers,
+            body: json.encode({
+              'vin': vin,
+              'timeZone': tz,
+              'startTime': fmt(s),
+              'endTime': fmt(e),
+              'pageNum': page,
+              'pageSize': pageSize,
+            }),
+          );
+          final data = _parseBody(response.statusCode, response.body, 'historial de cargas');
+          final list = _dataAsMap(data)['list'];
+          final records = [
+            for (final r in (list as List? ?? const []))
+              ChargeRecord.fromMap(Map<String, dynamic>.from(r as Map)),
+          ];
+          all.addAll(records);
+          if (records.length < pageSize) break; // ultima pagina
+        }
+        return all;
       });
 
   /// El campo data puede venir como objeto o como string JSON doblemente
