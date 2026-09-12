@@ -11,7 +11,7 @@
       "hero.kicker": "APP NO OFICIAL · ANDROID · GPLv3",
       "hero.sub": "Tu Leapmotor, bajo tu control. Monitoriza y controla tu coche desde Android con funciones que la app oficial no ofrece.",
       "hero.cta1": "Conviértete en tester", "hero.cta2": "Descargar APK",
-      "hero.note": "v3.60.151+301 · gratis · sin anuncios · desarrollada sobre un B10 real",
+      "hero.note": " · gratis · sin anuncios · desarrollada sobre un B10 real",
       "notice": "⚠ ANDROID AUTO — temporalmente desactivado por una revisión de políticas de Google Play. Volverá.",
       "stats.v": "versión actual", "stats.refresh": "refresco en vivo",
       "stats.free": "sin anuncios ni cuentas extra", "stats.gpl": "código abierto", "stats.mtls": "+ firma HMAC-SHA256",
@@ -64,6 +64,7 @@
       "ver.147": "Limpieza: eliminados el historial de cargas y FOTA, inertes en este modelo.",
       "ver.121": "Autonomía de reserva en modelos sin señal en vivo (confirmado en un T03).",
       "ver.all": "Historial completo en GitHub →",
+      "ver.loading": "Cargando releases desde GitHub…",
       "coffee.label": "06 — APOYAR EL PROYECTO",
       "coffee.title": "Gratis siempre.<br>Si te sirve, invítame a un café.",
       "coffee.lead": "Sin anuncios, sin suscripciones, sin más cuentas que las tuyas. El café es totalmente opcional — nunca hace falta para ser tester ni para usar nada.",
@@ -217,4 +218,70 @@
       });
     }, { passive: true });
   }
+
+  /* ── Releases dinámicas desde la API de GitHub ──────
+     La web se actualiza sola con cada release publicada;
+     si la API falla, queda el contenido estático.        */
+  const REPO = "txurtxil/LPB10";
+
+  function stripMd(s) {
+    return s
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/[*_`#>~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function releaseSummary(rel) {
+    const body = (rel.body || "").split("\n")
+      .map((l) => stripMd(l))
+      .filter((l) => l.length > 12 && !/^(-\s*)?(apk|aab|sha256|checksum)/i.test(l));
+    let s = body[0] || stripMd(rel.name || "") || rel.tag_name;
+    if (s.length > 180) s = s.slice(0, 177).replace(/\s+\S*$/, "") + "…";
+    return s;
+  }
+
+  function fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString(html.lang === "es" ? "es-ES" : "en-GB",
+        { day: "numeric", month: "short", year: "numeric" });
+    } catch (e) { return ""; }
+  }
+
+  fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=6")
+    .then((r) => { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+    .then((rels) => {
+      if (!Array.isArray(rels) || !rels.length) throw new Error("empty");
+      const latest = rels[0].tag_name;
+      const heroVer = document.getElementById("heroVer");
+      const statVer = document.getElementById("statVer");
+      if (heroVer) heroVer.textContent = latest;
+      if (statVer) statVer.textContent = latest;
+
+      const tl = document.getElementById("timeline");
+      if (!tl) return;
+      tl.innerHTML = "";
+      rels.forEach((rel) => {
+        const row = document.createElement("div");
+        row.className = "tl-row in";
+        const v = document.createElement("span");
+        v.className = "mono tl-v";
+        v.textContent = rel.tag_name;
+        const p = document.createElement("p");
+        p.textContent = releaseSummary(rel) + " ";
+        const d = document.createElement("span");
+        d.className = "tl-date";
+        d.textContent = "· " + fmtDate(rel.published_at);
+        p.appendChild(d);
+        row.appendChild(v);
+        row.appendChild(p);
+        tl.appendChild(row);
+      });
+    })
+    .catch(() => {
+      // Fallback: contenido estático ya presente en el HTML
+      const loading = document.getElementById("tlLoading");
+      if (loading) loading.remove();
+    });
 })();

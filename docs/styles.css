@@ -242,6 +242,8 @@ section{padding:clamp(80px,10vw,140px) 0}
 .tl-row:last-of-type{border-bottom:1px solid var(--line-d)}
 .tl-v{color:var(--violet)}
 .tl-row p{color:var(--txt-d2);font-size:.98rem;max-width:70ch}
+.tl-date{font-family:var(--font-m);font-size:.72rem;letter-spacing:.06em;opacity:.6;white-space:nowrap}
+.tl-loading{color:var(--txt-d2);opacity:.6;padding:26px 0;border-top:1px solid var(--line-d);letter-spacing:.1em}
 
 /* ═══════════════ COFFEE ═══════════════ */
 .coffee{text-align:center}

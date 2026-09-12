@@ -64,7 +64,7 @@
         <a class="btn btn-primary" href="#instalar"><span data-i18n="hero.cta1">Conviértete en tester</span></a>
         <a class="btn btn-ghost" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener"><span data-i18n="hero.cta2">Descargar APK</span></a>
       </div>
-      <p class="hero-note mono" data-i18n="hero.note">v3.60.151+301 · gratis · sin anuncios · desarrollada sobre un B10 real</p>
+      <p class="hero-note mono"><span id="heroVer">v3.60.151+301</span><span data-i18n="hero.note"> · gratis · sin anuncios · desarrollada sobre un B10 real</span></p>
     </div>
     <div class="hero-phone" aria-hidden="true">
       <div class="phone">
@@ -83,7 +83,7 @@
 
 <!-- ══════════ STATS ══════════ -->
 <section class="stats" aria-label="Datos clave">
-  <div class="stat"><b class="mono">v3.60.151</b><span data-i18n="stats.v">versión actual</span></div>
+  <div class="stat"><b class="mono" id="statVer">v3.60.151</b><span data-i18n="stats.v">versión actual</span></div>
   <div class="stat"><b class="mono">90 s</b><span data-i18n="stats.refresh">refresco en vivo</span></div>
   <div class="stat"><b class="mono">0 €</b><span data-i18n="stats.free">sin anuncios ni cuentas extra</span></div>
   <div class="stat"><b class="mono">GPLv3</b><span data-i18n="stats.gpl">código abierto</span></div>
@@ -246,7 +246,8 @@
   <div class="wrap">
     <p class="label mono reveal" data-i18n="ver.label">05 — VERSIONES</p>
     <h2 class="h2 reveal" data-i18n="ver.title">Un cambio por release, validado en coche real.</h2>
-    <div class="timeline">
+    <div class="timeline" id="timeline">
+      <p class="mono tl-loading" id="tlLoading" data-i18n="ver.loading">Cargando releases desde GitHub…</p>
       <div class="tl-row reveal"><span class="mono tl-v">v3.60.151</span><p data-i18n="ver.151">Ventana barata PVPC: la app sugiere las horas más baratas en el programador de carga.</p></div>
       <div class="tl-row reveal"><span class="mono tl-v">v3.60.150</span><p data-i18n="ver.150">Enviar destino al navegador del coche (búsqueda Nominatim, sin PIN).</p></div>
       <div class="tl-row reveal"><span class="mono tl-v">v3.60.149</span><p data-i18n="ver.149">Odómetro: km totales, días desde la entrega y media diaria.</p></div>
