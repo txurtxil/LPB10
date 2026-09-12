@@ -499,51 +499,6 @@ class FotaScheduleEntry {
       );
 }
 
-/// Offset local actual formateado como la API lo espera: "GMT+01:00".
-/// DateTime.timeZoneOffset ya tiene en cuenta el horario de verano.
-String gmtOffset([DateTime? now]) {
-  final o = (now ?? DateTime.now()).timeZoneOffset;
-  final sign = o.isNegative ? '-' : '+';
-  final h = o.inHours.abs().toString().padLeft(2, '0');
-  final m = (o.inMinutes.abs() % 60).toString().padLeft(2, '0');
-  return 'GMT$sign$h:$m';
-}
-
-int _toIntSafe(dynamic v) =>
-    v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
-
-/// Una sesion de carga oficial (/carownerservice/charge/daily/detail/page).
-class ChargeRecord {
-  /// Epoch ms de inicio y fin (chargeGunStartTs / chargeGunEndTs).
-  final int startTs, endTs;
-
-  /// chargeType "2" = DC (carga rapida); "1" (y cualquier otro) = AC.
-  final bool isFast;
-  final double energyKwh;
-  final String? longitude, latitude, zone;
-  const ChargeRecord({
-    required this.startTs,
-    required this.endTs,
-    required this.isFast,
-    required this.energyKwh,
-    this.longitude,
-    this.latitude,
-    this.zone,
-  });
-
-  int get durationSeconds =>
-      (startTs > 0 && endTs > startTs) ? (endTs - startTs) ~/ 1000 : 0;
-
-  factory ChargeRecord.fromMap(Map<String, dynamic> m) => ChargeRecord(
-        startTs: _toIntSafe(m['chargeGunStartTs']),
-        endTs: _toIntSafe(m['chargeGunEndTs']),
-        isFast: m['chargeType']?.toString() == '2',
-        energyKwh: _toDoubleSafe(m['chargeInEnergy']),
-        longitude: m['chargeStartLongitude']?.toString(),
-        latitude: m['chargeStartLatitude']?.toString(),
-        zone: m['zone']?.toString(),
-      );
-}
 
 class LeapmotorApiException implements Exception {
   final int statusCode;
@@ -925,104 +880,54 @@ class LeapmotorApiClient {
   /// Instalaciones FOTA programadas en el coche (getAppointment cmdId=392).
   /// Solo lectura, sin PIN. Lista vacia si no hay ninguna o si el vehiculo
   /// no soporta esta consulta (mismo criterio tolerante que getChargeSchedule).
-  Future<List<FotaScheduleEntry>> getFotaSchedule(String vin) => withTokenRetry(() async {
+  /// Devuelve (entradas, respuesta cruda): la cruda se muestra en el
+  /// registro de conexion de la pantalla OTA para que se vea exactamente
+  /// que contesta el servidor (recortada a 800 chars).
+  Future<(List<FotaScheduleEntry>, String)> getFotaSchedule(String vin) => withTokenRetry(() async {
         final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '392'})..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
           headers: headers,
           body: 'vin=${Uri.encodeComponent(vin)}&cmdId=392',
         );
+        final rawBody = response.body;
+        final cruda = 'HTTP ${response.statusCode}  ' +
+            (rawBody.length > 800 ? rawBody.substring(0, 800) + '...' : rawBody);
         Map<String, dynamic> body;
         try {
-          body = json.decode(response.body) as Map<String, dynamic>;
+          body = json.decode(rawBody) as Map<String, dynamic>;
         } catch (_) {
-          return [];
+          return (<FotaScheduleEntry>[], cruda);
         }
         final resultCode = body['result'] ?? body['code'];
-        if (response.statusCode != 200 || (resultCode != 0 && resultCode != null)) return [];
+        if (response.statusCode != 200 || (resultCode != 0 && resultCode != null)) {
+          return (<FotaScheduleEntry>[], cruda);
+        }
         final rawData = body['data'];
-        if (rawData == null) return [];
+        if (rawData == null) return (<FotaScheduleEntry>[], cruda);
         Map<String, dynamic> parsed;
         if (rawData is String) {
           try {
             parsed = Map<String, dynamic>.from(json.decode(rawData) as Map);
           } catch (_) {
-            return [];
+            return (<FotaScheduleEntry>[], cruda);
           }
         } else if (rawData is Map) {
           parsed = Map<String, dynamic>.from(rawData);
         } else {
-          return [];
+          return (<FotaScheduleEntry>[], cruda);
         }
         final controls = parsed['controls'];
-        if (controls is! List) return [];
-        return [
-          for (final c in controls)
-            FotaScheduleEntry.fromMap(Map<String, dynamic>.from(c as Map)),
-        ];
+        if (controls is! List) return (<FotaScheduleEntry>[], cruda);
+        return (
+          [
+            for (final c in controls)
+              FotaScheduleEntry.fromMap(Map<String, dynamic>.from(c as Map)),
+          ],
+          cruda,
+        );
       });
 
-  /// Historial oficial de cargas (/carownerservice/charge/daily/detail/page).
-  /// Solo lectura, sin PIN. A diferencia del resto, va con body JSON y la
-  /// firma incluye los 6 parametros del body (como strings), igual que en la
-  /// libreria Python. Pagina hasta [maxPages] paginas de [pageSize] sesiones;
-  /// por defecto cubre los ultimos 90 dias.
-  Future<List<ChargeRecord>> getChargingDailyDetail(
-    String vin, {
-    DateTime? start,
-    DateTime? end,
-    int pageSize = 50,
-    int maxPages = 5,
-  }) =>
-      withTokenRetry(() async {
-        final e = end ?? DateTime.now();
-        final s = start ?? e.subtract(const Duration(days: 90));
-        String fmt(DateTime d) =>
-            '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        final tz = gmtOffset();
-        final all = <ChargeRecord>[];
-        for (var page = 1; page <= maxPages; page++) {
-          final headers = _signedHeaders(bodyParams: {
-            'vin': vin,
-            'timeZone': tz,
-            'startTime': fmt(s),
-            'endTime': fmt(e),
-            'pageNum': '$page',
-            'pageSize': '$pageSize',
-          })
-            ..addAll(_authHeaders());
-          headers['Content-Type'] = 'application/json';
-          final response = await _accountClient!.post(
-            Uri.parse('$kBaseUrl/carownerservice/charge/daily/detail/page'),
-            headers: headers,
-            body: json.encode({
-              'vin': vin,
-              'timeZone': tz,
-              'startTime': fmt(s),
-              'endTime': fmt(e),
-              'pageNum': page,
-              'pageSize': pageSize,
-            }),
-          );
-          // Diagnostico v146: volcar la respuesta cruda al carlog para ver
-          // que contesta Leapmotor cuando la lista llega vacia (se recorta a
-          // 1500 chars para no hinchar el log; solo se registra la pagina 1).
-          if (page == 1) {
-            final raw = response.body;
-            CarLogBridge.log('CARGAS diag status=${response.statusCode} body=' +
-                raw.substring(0, raw.length > 1500 ? 1500 : raw.length));
-          }
-          final data = _parseBody(response.statusCode, response.body, 'historial de cargas');
-          final list = _dataAsMap(data)['list'];
-          final records = [
-            for (final r in (list as List? ?? const []))
-              ChargeRecord.fromMap(Map<String, dynamic>.from(r as Map)),
-          ];
-          all.addAll(records);
-          if (records.length < pageSize) break; // ultima pagina
-        }
-        return all;
-      });
 
   /// El campo data puede venir como objeto o como string JSON doblemente
   /// codificado (getAppointment hace lo segundo): se normaliza aqui.
