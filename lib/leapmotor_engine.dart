@@ -411,6 +411,9 @@ class Vehicle {
 double _toDoubleSafe(dynamic v) =>
     v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0.0;
 
+int _toIntSafe(dynamic v) =>
+    v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
+
 /// Una semana de consumo oficial (getLastNweeks100kmECAndRank).
 class WeeklyConsumption {
   final String weekStart, weekEnd;
@@ -484,6 +487,24 @@ class ConsumptionLastWeekBreakdown {
         driverEC: _toDoubleSafe(m['driverEC']),
         acEC: _toDoubleSafe(m['acEC']),
         otherEC: _toDoubleSafe(m['otherEC']),
+      );
+}
+
+/// Detalle oficial de kilometraje (mileage/energy/detail).
+/// OJO: los valores pueden venir como STRINGS, como en getLastweekEC.
+class MileageEnergyDetail {
+  final double totalMileageKm, totalMileageMile;
+  final int deliveryDays;
+  const MileageEnergyDetail({
+    required this.totalMileageKm,
+    required this.totalMileageMile,
+    required this.deliveryDays,
+  });
+
+  factory MileageEnergyDetail.fromMap(Map<String, dynamic> m) => MileageEnergyDetail(
+        totalMileageKm: _toDoubleSafe(m['totalmileage']),
+        totalMileageMile: _toDoubleSafe(m['totalmileageMile']),
+        deliveryDays: _toIntSafe(m['deliveryDays']),
       );
 }
 
@@ -863,6 +884,20 @@ class LeapmotorApiClient {
         );
         final data = _parseBody(response.statusCode, response.body, 'desglose semana pasada');
         return ConsumptionLastWeekBreakdown.fromMap(_dataAsMap(data));
+      });
+
+  /// Kilometraje total oficial y dias desde la entrega (mileage/energy/detail).
+  /// Solo lectura, sin PIN. Sirve para cruzar el odometro y el consumo
+  /// oficial con el calculo local de la app.
+  Future<MileageEnergyDetail> getMileageEnergyDetail(String vin) => withTokenRetry(() async {
+        final headers = _signedHeaders(vin: vin)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/drivingRecord/v1/mileage/energy/detail'),
+          headers: headers,
+          body: 'vin=${Uri.encodeComponent(vin)}',
+        );
+        final data = _parseBody(response.statusCode, response.body, 'kilometraje oficial');
+        return MileageEnergyDetail.fromMap(_dataAsMap(data));
       });
 
 
