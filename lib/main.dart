@@ -31,6 +31,7 @@ import 'messages_screen.dart';
 import 'charge_schedule_screen.dart';
 import 'settings_screen.dart';
 import 'trip_list_screen.dart';
+import 'send_destination_screen.dart';
 import 'backup_helper.dart';
 import 'ticket_screen.dart';
 import 'efficiency_coach.dart';
@@ -1415,6 +1416,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const TripListScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.navigation_outlined, size: 18),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Enviar destino al coche'
+                        : 'Send destination to car'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => SendDestinationScreen(client: widget.client, vehicle: widget.vehicle))),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
