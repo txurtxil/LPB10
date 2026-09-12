@@ -90,4 +90,22 @@ void main() {
     });
   });
 
+  group('MileageEnergyDetail.fromMap', () {
+    test('parsea kilometraje y dias, numericos o string', () {
+      final m = MileageEnergyDetail.fromMap({
+        'totalmileage': 3030,
+        'totalmileageMile': '1882.7',
+        'deliveryDays': '95',
+      });
+      expect(m.totalMileageKm, closeTo(3030, 1e-9));
+      expect(m.totalMileageMile, closeTo(1882.7, 1e-9));
+      expect(m.deliveryDays, 95);
+    });
+
+    test('valores ausentes caen a cero', () {
+      final m = MileageEnergyDetail.fromMap({});
+      expect(m.totalMileageKm, 0.0);
+      expect(m.deliveryDays, 0);
+    });
+  });
 }
