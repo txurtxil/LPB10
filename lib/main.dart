@@ -1375,6 +1375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
                       child: Text(_transientError!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
                     ),
+                  _CarImageCard(client: widget.client, vehicle: widget.vehicle),
 (_showMap && s.latitude != null && s.longitude != null)
                       ? Column(children: [
                           LocationCard(latitude: s.latitude!, longitude: s.longitude!),
@@ -3975,4 +3976,70 @@ class _ActionBtn {
   final IconData icon;
   final VoidCallback onTap;
   _ActionBtn(this.label, this.icon, this.onTap);
+}
+
+
+/// Tarjeta con la foto oficial del coche (carpicture/key). Se oculta sola
+/// si la consulta falla, si no hay URL o si estamos en modo demo: el
+/// dashboard nunca se rompe por una imagen decorativa.
+class _CarImageCard extends StatefulWidget {
+  final LeapmotorApiClient client;
+  final Vehicle vehicle;
+  const _CarImageCard({required this.client, required this.vehicle});
+
+  @override
+  State<_CarImageCard> createState() => _CarImageCardState();
+}
+
+class _CarImageCardState extends State<_CarImageCard> {
+  String? _url;
+  bool _fallo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.client.modoDemo) {
+      if (mounted) setState(() => _fallo = true);
+      return;
+    }
+    try {
+      final url = await widget.client.getCarPictureUrl(widget.vehicle.vin);
+      if (!mounted) return;
+      setState(() {
+        _url = url;
+        _fallo = url == null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _fallo = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_fallo) return const SizedBox.shrink();
+    final url = _url;
+    if (url == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          url,
+          height: 170,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, progress) => progress == null
+              ? child
+              : const SizedBox(
+                  height: 170,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+          errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
 }
