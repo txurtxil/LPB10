@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LMB10 — App no oficial para Leapmotor</title>
+<meta name="description" content="LMB10: companion app no oficial para Leapmotor B10. Monitoriza y controla tu coche desde Android: batería, climatización, PVPC, rutinas y mucho más. GPLv3, gratis y sin anuncios.">
+<meta property="og:title" content="LMB10 — App no oficial para Leapmotor">
+<meta property="og:description" content="Monitoriza y controla tu Leapmotor desde Android. Gratis, sin anuncios, código abierto (GPLv3).">
+<meta property="og:image" content="assets/feature.png">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#main" data-i18n="skip">Saltar al contenido</a>
+
+<!-- ══════════ NAV ══════════ -->
+<header class="nav" id="nav">
+  <div class="nav-pill">
+    <a class="nav-brand" href="#top" aria-label="LMB10">
+      <img src="assets/icon.png" alt="" class="nav-logo">
+      <span class="nav-word">LMB10</span>
+    </a>
+    <span class="razor" aria-hidden="true"></span>
+    <nav class="nav-links" aria-label="Principal">
+      <a href="#funciones" data-i18n="nav.features">Funciones</a>
+      <a href="#capturas" data-i18n="nav.shots">Capturas</a>
+      <a href="#compatibilidad" data-i18n="nav.compat">Compatibilidad</a>
+      <a href="#versiones" data-i18n="nav.versions">Versiones</a>
+      <a href="#instalar" data-i18n="nav.install">Instalar</a>
+    </nav>
+    <span class="razor" aria-hidden="true"></span>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" aria-label="Change language">
+        <span data-lang="es">ES</span><i>/</i><span data-lang="en">EN</span>
+      </button>
+      <a class="nav-gh" href="https://github.com/txurtxil/LPB10" target="_blank" rel="noopener" aria-label="GitHub">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero" id="top">
+  <div class="hero-bg" aria-hidden="true">
+    <img src="assets/hero.jpg" alt="" id="heroBg">
+    <div class="hero-veil"></div>
+  </div>
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <p class="kicker reveal-line"><span data-i18n="hero.kicker">APP NO OFICIAL · ANDROID · GPLv3</span></p>
+      <h1 class="hero-title" aria-label="LMB10">
+        <span class="w"><span>L</span></span><span class="w"><span>M</span></span><span class="w"><span>B</span></span><span class="w"><span>1</span></span><span class="w"><span>0</span></span>
+      </h1>
+      <p class="hero-sub reveal-line" data-i18n="hero.sub">Tu Leapmotor, bajo tu control. Monitoriza y controla tu coche desde Android con funciones que la app oficial no ofrece.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#instalar"><span data-i18n="hero.cta1">Conviértete en tester</span></a>
+        <a class="btn btn-ghost" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener"><span data-i18n="hero.cta2">Descargar APK</span></a>
+      </div>
+      <p class="hero-note mono" data-i18n="hero.note">v3.60.151+301 · gratis · sin anuncios · desarrollada sobre un B10 real</p>
+    </div>
+    <div class="hero-phone" aria-hidden="true">
+      <div class="phone">
+        <img src="assets/shots/04panel_coche.jpg" alt="">
+        <span class="phone-glare"></span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll mono" aria-hidden="true">scroll ↓</div>
+</section>
+
+<!-- ══════════ AVISO ANDROID AUTO ══════════ -->
+<div class="notice">
+  <p class="mono" data-i18n="notice">⚠ ANDROID AUTO — temporalmente desactivado por una revisión de políticas de Google Play. Volverá.</p>
+</div>
+
+<!-- ══════════ STATS ══════════ -->
+<section class="stats" aria-label="Datos clave">
+  <div class="stat"><b class="mono">v3.60.151</b><span data-i18n="stats.v">versión actual</span></div>
+  <div class="stat"><b class="mono">90 s</b><span data-i18n="stats.refresh">refresco en vivo</span></div>
+  <div class="stat"><b class="mono">0 €</b><span data-i18n="stats.free">sin anuncios ni cuentas extra</span></div>
+  <div class="stat"><b class="mono">GPLv3</b><span data-i18n="stats.gpl">código abierto</span></div>
+  <div class="stat"><b class="mono">mTLS</b><span data-i18n="stats.mtls">+ firma HMAC-SHA256</span></div>
+</section>
+
+<!-- ══════════ FUNCIONES ══════════ -->
+<section class="features section-dark" id="funciones">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="feat.label">01 — FUNCIONES</p>
+    <h2 class="h2 reveal" data-i18n="feat.title">Todo lo que tu coche sabe, en tu bolsillo.</h2>
+
+    <div class="feat-list">
+      <article class="feat reveal">
+        <span class="feat-num mono">01</span>
+        <div>
+          <h3 data-i18n="feat.1.t">Panel en vivo</h3>
+          <p data-i18n="feat.1.d">Batería precisa, autonomía, cerradura, carga, clima, maletero y centinela, con refresco automático cada 90 segundos. Odómetro, consumo real frente al dato del fabricante y la foto de tu propio coche servida por la nube.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">02</span>
+        <div>
+          <h3 data-i18n="feat.2.t">Controles remotos completos</h3>
+          <p data-i18n="feat.2.d">Bloqueo, climatización, asientos calefactados y ventilados, techo, ventanillas, maletero, limitador de velocidad, precalentado de batería, límite de carga y programación horaria. Con PIN, igual que la app oficial.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">03</span>
+        <div>
+          <h3 data-i18n="feat.3.t">Carga en la ventana más barata</h3>
+          <p data-i18n="feat.3.d">Precios PVPC horarios de REData integrados: la app calcula la ventana contigua más barata de 2 a 8 horas y te la sugiere en el programador de carga. También coste por día, semana y mes en euros.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">04</span>
+        <div>
+          <h3 data-i18n="feat.4.t">Destino al navegador del coche</h3>
+          <p data-i18n="feat.4.d">Busca una dirección y envíala directamente al navegador del vehículo antes de salir de casa. Sin PIN y sin tocar la pantalla del coche.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">05</span>
+        <div>
+          <h3 data-i18n="feat.5.t">Rutinas y precondicionado</h3>
+          <p data-i18n="feat.5.d">Programa climatización, carga al 80 %, precalentado de batería o salidas matutinas. Se ejecutan en segundo plano aunque la app esté cerrada.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">06</span>
+        <div>
+          <h3 data-i18n="feat.6.t">Tus datos son tuyos</h3>
+          <p data-i18n="feat.6.d">Todo se guarda cifrado en tu teléfono; nada va a servidores del desarrollador. Copia de seguridad exportable (JSON + CSV) y copia diaria opcional en tu propio Google Drive.</p>
+        </div>
+      </article>
+    </div>
+
+    <ul class="chips reveal" aria-label="Más funciones">
+      <li class="mono">ABRP</li>
+      <li class="mono" data-i18n="chip.widget">Widget de escritorio</li>
+      <li class="mono" data-i18n="chip.ticket">Tickets en impresora térmica</li>
+      <li class="mono" data-i18n="chip.sentry">Modo centinela</li>
+      <li class="mono" data-i18n="chip.odo">Odómetro</li>
+      <li class="mono" data-i18n="chip.tires">Presión de neumáticos</li>
+      <li class="mono" data-i18n="chip.map">Mapa y ubicación</li>
+      <li class="mono" data-i18n="chip.log">Log de diagnóstico</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════ CAPTURAS ══════════ -->
+<section class="shots section-dark" id="capturas">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="shots.label">02 — CAPTURAS</p>
+    <h2 class="h2 reveal" data-i18n="shots.title">La app, tal como es.</h2>
+  </div>
+  <div class="shots-rail" id="shotsRail">
+    <figure class="shot" data-parallax><img src="assets/shots/01panel.jpg" alt="Panel principal" loading="lazy"><figcaption class="mono" data-i18n="shot.1">Panel principal</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/01controles.jpg" alt="Controles del vehículo" loading="lazy"><figcaption class="mono" data-i18n="shot.2">Controles remotos</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/02controles.jpg" alt="Confort y batería" loading="lazy"><figcaption class="mono" data-i18n="shot.3">Confort y batería</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/01rutinas.jpg" alt="Rutinas" loading="lazy"><figcaption class="mono" data-i18n="shot.4">Rutinas</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/02panel.jpg" alt="Consumo y coste" loading="lazy"><figcaption class="mono" data-i18n="shot.5">Consumo y coste</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/03ajustes.jpg" alt="Precio de la luz" loading="lazy"><figcaption class="mono" data-i18n="shot.6">Precio de la luz</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/01ticket.jpg" alt="Ticket de eficiencia" loading="lazy"><figcaption class="mono" data-i18n="shot.7">Ticket de eficiencia</figcaption></figure>
+    <figure class="shot" data-parallax><img src="assets/shots/widget.jpg" alt="Widget" loading="lazy"><figcaption class="mono" data-i18n="shot.8">Widget</figcaption></figure>
+  </div>
+</section>
+
+<!-- ══════════ COMPATIBILIDAD ══════════ -->
+<section class="compat section-light" id="compatibilidad">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="compat.label">03 — COMPATIBILIDAD</p>
+    <h2 class="h2 reveal" data-i18n="compat.title">Confirmado en coches reales, no en teoría.</h2>
+    <p class="lead reveal" data-i18n="compat.lead">Desarrollada y probada a diario sobre un B10. El login y el protocolo funcionan en toda la gama Leapmotor; el resto crece con cada tester que reporta.</p>
+    <div class="table-wrap reveal">
+      <table class="compat-table">
+        <thead>
+          <tr><th data-i18n="compat.feat">Función</th><th>B10</th><th>T03</th><th>C10</th><th>B05</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="c.1">Batería y autonomía</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.2">Presión de neumáticos</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.3">Cerradura, maletero y clima</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.4">Ubicación GPS y odómetro</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.5">Telemetría ABRP</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.6">Controles remotos</td><td class="ok">✓</td><td class="warn" data-i18n="c.untested">sin probar</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td>Android Auto</td><td class="pause">⏸</td><td class="unk">?</td><td class="unk">?</td><td class="unk">?</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fine reveal" data-i18n="compat.note">Los híbridos de autonomía extendida (C10 REEV) no están soportados. ¿Tienes un C10 o un B05? Tu reporte en el grupo de testers completa esta tabla.</p>
+  </div>
+</section>
+
+<!-- ══════════ INSTALACIÓN ══════════ -->
+<section class="install section-light" id="instalar">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="inst.label">04 — INSTALACIÓN</p>
+    <h2 class="h2 reveal" data-i18n="inst.title">Tester en 3 pasos.</h2>
+    <p class="lead reveal" data-i18n="inst.lead">Si alguien te ha mandado el enlace, esto es todo lo que necesitas. Un minuto, sin aprobación.</p>
+
+    <div class="stepper">
+      <div class="step reveal">
+        <span class="step-num mono">01</span>
+        <div class="step-body">
+          <h3 data-i18n="inst.s1.t">Únete al grupo de testers</h3>
+          <p data-i18n="inst.s1.d">Un clic, sin aprobación. El grupo es además el canal de dudas, fallos y sugerencias.</p>
+          <a class="btn btn-dark" href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener"><span data-i18n="inst.s1.cta">groups.google.com/g/lmb10-testers</span></a>
+        </div>
+      </div>
+      <div class="step reveal">
+        <span class="step-num mono">02</span>
+        <div class="step-body">
+          <h3 data-i18n="inst.s2.t">Activa la prueba en Google Play</h3>
+          <p data-i18n="inst.s2.d">Con la misma cuenta de Google, pulsa «Convertirte en tester».</p>
+          <a class="btn btn-dark" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.s2.cta">play.google.com · Convertirte en tester</span></a>
+        </div>
+      </div>
+      <div class="step reveal">
+        <span class="step-num mono">03</span>
+        <div class="step-body">
+          <h3 data-i18n="inst.s3.t">Instala e importa tu certificado</h3>
+          <p data-i18n="inst.s3.d">Instala LMB10 desde Play (puede tardar unos minutos en aparecer) y sigue Ajustes → Importar certificado: la nube de Leapmotor exige mTLS con tu propio certificado.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-channel reveal">
+      <div>
+        <h4 data-i18n="inst.alt.t">¿Prefieres el APK directo?</h4>
+        <p data-i18n="inst.alt.d">Está en GitHub Releases. Ojo: las dos vías van firmadas con claves distintas — cambiar de una a otra exige exportar copia, desinstalar e importar de nuevo, y el APK no aparece en Android Auto.</p>
+      </div>
+      <a class="btn btn-outline" href="https://github.com/txurtxil/LPB10/releases/latest" target="_blank" rel="noopener"><span data-i18n="inst.alt.cta">APK en GitHub</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ VERSIONES ══════════ -->
+<section class="versions section-dark" id="versiones">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="ver.label">05 — VERSIONES</p>
+    <h2 class="h2 reveal" data-i18n="ver.title">Un cambio por release, validado en coche real.</h2>
+    <div class="timeline">
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.151</span><p data-i18n="ver.151">Ventana barata PVPC: la app sugiere las horas más baratas en el programador de carga.</p></div>
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.150</span><p data-i18n="ver.150">Enviar destino al navegador del coche (búsqueda Nominatim, sin PIN).</p></div>
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.149</span><p data-i18n="ver.149">Odómetro: km totales, días desde la entrega y media diaria.</p></div>
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.148</span><p data-i18n="ver.148">La foto real de tu coche en el panel, servida por la nube de Leapmotor.</p></div>
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.147</span><p data-i18n="ver.147">Limpieza: eliminados el historial de cargas y FOTA, inertes en este modelo.</p></div>
+      <div class="tl-row reveal"><span class="mono tl-v">v3.60.121</span><p data-i18n="ver.121">Autonomía de reserva en modelos sin señal en vivo (confirmado en un T03).</p></div>
+    </div>
+    <a class="text-link reveal" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener" data-i18n="ver.all">Historial completo en GitHub →</a>
+  </div>
+</section>
+
+<!-- ══════════ CAFÉ ══════════ -->
+<section class="coffee section-light" id="cafe">
+  <div class="wrap coffee-inner">
+    <p class="label mono reveal" data-i18n="coffee.label">06 — APOYAR EL PROYECTO</p>
+    <h2 class="h2 coffee-title reveal" data-i18n="coffee.title">Gratis siempre.<br>Si te sirve, invítame a un café.</h2>
+    <p class="lead reveal" data-i18n="coffee.lead">Sin anuncios, sin suscripciones, sin más cuentas que las tuyas. El café es totalmente opcional — nunca hace falta para ser tester ni para usar nada.</p>
+    <a class="btn btn-coffee reveal" href="https://ko-fi.com/txurtxil" target="_blank" rel="noopener">
+      <span data-i18n="coffee.cta">☕ ko-fi.com/txurtxil</span>
+    </a>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <img src="assets/icon.png" alt="" class="nav-logo">
+        <p class="mono">LMB10</p>
+        <p class="fine" data-i18n="foot.by">por SurferRule · @txurtxil</p>
+      </div>
+      <div class="foot-col">
+        <p class="mono foot-h" data-i18n="foot.project">PROYECTO</p>
+        <a href="https://github.com/txurtxil/LPB10" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener" data-i18n="foot.group">Grupo de testers</a>
+        <a href="privacy.html" data-i18n="foot.privacy">Privacidad</a>
+      </div>
+      <div class="foot-col">
+        <p class="mono foot-h" data-i18n="foot.credits">CRÉDITOS</p>
+        <a href="https://github.com/markoceri/leapmotor-api" target="_blank" rel="noopener">markoceri/leapmotor-api</a>
+        <a href="https://github.com/markoceri/leapmotor-certs" target="_blank" rel="noopener">markoceri/leapmotor-certs</a>
+        <a href="https://github.com/kerniger/leapmotor-ha" target="_blank" rel="noopener">kerniger/leapmotor-ha</a>
+      </div>
+      <div class="foot-col">
+        <p class="mono foot-h" data-i18n="foot.legal">LEGAL</p>
+        <p class="fine" data-i18n="foot.license">Licencia GNU GPLv3. Proyecto personal, experimental y sin ánimo de lucro, con fines de interoperabilidad e investigación (EU Data Act).</p>
+      </div>
+    </div>
+    <div class="foot-base">
+      <p class="fine" data-i18n="foot.disclaimer">App no oficial e independiente. No afiliada ni respaldada por Leapmotor. Úsala bajo tu responsabilidad; se recomienda una cuenta secundaria.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
