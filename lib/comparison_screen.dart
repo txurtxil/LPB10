@@ -265,6 +265,8 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   ConsumptionLastWeekBreakdown? _breakdown;
   String? _weeklyError;
   String? _breakdownError;
+  MileageEnergyDetail? _mileage;
+  String? _mileageError;
 
   @override
   void initState() {
@@ -308,6 +310,12 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       if (mounted) setState(() => _breakdown = bd);
     } catch (e) {
       if (mounted) setState(() => _breakdownError = e.toString());
+    }
+    try {
+      final md = await c.getMileageEnergyDetail(v.vin);
+      if (mounted) setState(() => _mileage = md);
+    } catch (e) {
+      if (mounted) setState(() => _mileageError = e.toString());
     }
     if (mounted) setState(() => _oficialLoading = false);
   }
@@ -681,7 +689,9 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
     final sinNada = _weeklyRank == null &&
         _breakdown == null &&
         _weeklyError == null &&
-        _breakdownError == null;
+        _breakdownError == null &&
+        _mileage == null &&
+        _mileageError == null;
     return [
       Text(
         es ? 'CONSUMO OFICIAL LEAPMOTOR' : 'OFFICIAL LEAPMOTOR CONSUMPTION',
@@ -703,6 +713,9 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                   if (_breakdown != null) ..._bloqueDesglose(es, _breakdown!),
                   if (_breakdownError != null)
                     _textoNoDisponible(es ? 'Desglose de la semana pasada no disponible ahora mismo.' : 'Last week breakdown not available right now.'),
+                  if (_mileage != null) ..._bloqueKilometraje(es, _mileage!),
+                  if (_mileageError != null)
+                    _textoNoDisponible(es ? 'Kilometraje oficial no disponible ahora mismo.' : 'Official mileage not available right now.'),
                   if (sinNada && !_oficialLoading)
                     Text(
                       es ? 'Sin datos oficiales todavia.' : 'No official data yet.',
@@ -831,6 +844,44 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       fila(es ? 'Otros sistemas' : 'Other systems', b.otherEC, _cOver),
       const Divider(),
       fila('Total', total, _cBlue),
+    ];
+  }
+
+  /// Odometro oficial y dias desde la entrega: sirve de referencia para
+  /// cruzar el consumo oficial con el calculo local de la app.
+  List<Widget> _bloqueKilometraje(bool es, MileageEnergyDetail m) {
+    final kmDia = m.deliveryDays > 0 ? m.totalMileageKm / m.deliveryDays : 0.0;
+    return [
+      const Divider(),
+      const SizedBox(height: 4),
+      Text(
+        es ? 'Odometro oficial' : 'Official odometer',
+        style: const TextStyle(fontSize: 11.5, color: Colors.grey),
+      ),
+      const SizedBox(height: 6),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Expanded(
+          child: Text(
+            es ? 'Kilometraje total' : 'Total mileage',
+            style: const TextStyle(fontSize: 12.5, color: Colors.grey),
+          ),
+        ),
+        Text(
+          '${m.totalMileageKm.toStringAsFixed(0)} km',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _cBlue),
+        ),
+      ]),
+      if (m.deliveryDays > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            es
+                ? 'Entregado hace ${m.deliveryDays} dias · media de ${kmDia.toStringAsFixed(1)} km/dia'
+                : 'Delivered ${m.deliveryDays} days ago · ${kmDia.toStringAsFixed(1)} km/day average',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ),
+      const SizedBox(height: 4),
     ];
   }
 
