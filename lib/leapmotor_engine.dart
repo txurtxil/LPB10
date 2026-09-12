@@ -414,6 +414,23 @@ double _toDoubleSafe(dynamic v) =>
 int _toIntSafe(dynamic v) =>
     v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
 
+/// cmdContent de send_destination (cmdId=180): JSON compacto con las claves
+/// en el orden exacto de la referencia Python (address, addressname,
+/// latitude, linenum, longitude) y coordenadas como STRING.
+String destinationCmdContent({
+  required String address,
+  required String addressName,
+  required double latitude,
+  required double longitude,
+}) =>
+    json.encode({
+      'address': address,
+      'addressname': addressName,
+      'latitude': latitude.toString(),
+      'linenum': '0',
+      'longitude': longitude.toString(),
+    });
+
 /// Una semana de consumo oficial (getLastNweeks100kmECAndRank).
 class WeeklyConsumption {
   final String weekStart, weekEnd;
@@ -1000,6 +1017,57 @@ class LeapmotorApiClient {
         }
         return result;
       });
+
+  /// Variante sin PIN del control remoto (p.ej. send_destination, cmdId=180):
+  /// mismo flujo pero sin verify ni operatePassword.
+  Future<Map<String, dynamic>> _remoteControlNoPin({
+    required String vin, required String cmdId, required String cmdContent, required String actionLabel,
+  }) =>
+      withTokenRetry(() async {
+        if (token == null) throw LeapmotorApiException(0, 'Not logged in');
+        await _ensureRemoteCertSync();
+
+        final ctlHeaders = _signedHeaders(
+          vin: vin,
+          bodyParams: {'cmdContent': cmdContent, 'cmdId': cmdId},
+        )..addAll(_authHeaders());
+        final ctlBody = 'cmdContent=${Uri.encodeComponent(cmdContent)}&vin=${Uri.encodeComponent(vin)}'
+            '&cmdId=${Uri.encodeComponent(cmdId)}';
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl'),
+          headers: ctlHeaders,
+          body: ctlBody,
+        );
+        final result = _parseBody(response.statusCode, response.body, 'remote $actionLabel');
+
+        final remoteData = result['data'] as Map<String, dynamic>? ?? {};
+        final remoteCtlId = remoteData['remoteCtlId']?.toString();
+        if (remoteCtlId != null) {
+          await _pollRemoteControlResult(
+            remoteCtlId: remoteCtlId,
+            timeoutMs: _asInt(remoteData['queryRemoteCtlResultTimeout']) ?? 30000,
+            intervalMs: _asInt(remoteData['queryInterval']) ?? 2000,
+          );
+        }
+        return result;
+      });
+
+  /// Envia un destino de navegacion al coche (cmdId=180). NO requiere PIN.
+  /// Port de send_destination de la referencia Python.
+  Future<Map<String, dynamic>> sendDestination(
+    String vin, {
+    required String address,
+    required String addressName,
+    required double latitude,
+    required double longitude,
+  }) =>
+      _remoteControlNoPin(
+        vin: vin,
+        cmdId: '180',
+        cmdContent: destinationCmdContent(
+          address: address, addressName: addressName, latitude: latitude, longitude: longitude),
+        actionLabel: 'send_destination',
+      );
 
   Future<void> _pollRemoteControlResult({required String remoteCtlId, required int timeoutMs, required int intervalMs}) async {
     final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs < 1000 ? 1000 : timeoutMs));
