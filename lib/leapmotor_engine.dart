@@ -1004,6 +1004,14 @@ class LeapmotorApiClient {
               'pageSize': pageSize,
             }),
           );
+          // Diagnostico v146: volcar la respuesta cruda al carlog para ver
+          // que contesta Leapmotor cuando la lista llega vacia (se recorta a
+          // 1500 chars para no hinchar el log; solo se registra la pagina 1).
+          if (page == 1) {
+            final raw = response.body;
+            CarLogBridge.log('CARGAS diag status=${response.statusCode} body=' +
+                raw.substring(0, raw.length > 1500 ? 1500 : raw.length));
+          }
           final data = _parseBody(response.statusCode, response.body, 'historial de cargas');
           final list = _dataAsMap(data)['list'];
           final records = [
