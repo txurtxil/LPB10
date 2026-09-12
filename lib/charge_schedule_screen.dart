@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'leapmotor_engine.dart';
+import 'pvpc.dart';
 import 'l10n/generated/app_localizations.dart';
 
 class ChargeScheduleScreen extends StatefulWidget {
@@ -19,6 +20,9 @@ class _ChargeScheduleScreenState extends State<ChargeScheduleScreen> {
 
   bool _enabled = false;
   double _socLimit = 80;
+  int _duracionPvpc = 4;
+  bool _pvpcBuscando = false;
+  String? _pvpcInfo;
   TimeOfDay _startTime = const TimeOfDay(hour: 0, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 7, minute: 0);
   final Set<int> _selectedWeekdays = {1, 2, 3, 4, 5, 6, 7};
@@ -65,6 +69,51 @@ class _ChargeScheduleScreenState extends State<ChargeScheduleScreen> {
 
   String _fmtTime(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
+  /// Rellena inicio/fin con la ventana contigua mas barata del PVPC de
+  /// manana. NO guarda nada: el usuario revisa y pulsa Guardar como siempre.
+  Future<void> _sugerirPvpc() async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    setState(() {
+      _pvpcBuscando = true;
+      _pvpcInfo = null;
+    });
+    try {
+      final d = await Pvpc.dia(DateTime.now().add(const Duration(days: 1)));
+      if (!mounted) return;
+      if (d == null || d.horas.length != 24) {
+        setState(() {
+          _pvpcBuscando = false;
+          _pvpcInfo = es
+              ? 'Los precios de manana aun no estan publicados (se publican ~20:15).'
+              : "Tomorrow's prices are not published yet (~20:15).";
+        });
+        return;
+      }
+      final (ini, fin) = cheapestWindowHours(d.horas, _duracionPvpc);
+      var suma = 0.0, sumaDia = 0.0;
+      for (var h = 0; h < 24; h++) {
+        sumaDia += d.horas[h];
+        if (h >= ini && h < fin) suma += d.horas[h];
+      }
+      final mediaVentana = suma / _duracionPvpc;
+      final mediaDia = sumaDia / 24;
+      setState(() {
+        _startTime = TimeOfDay(hour: ini, minute: 0);
+        _endTime = fin == 24 ? const TimeOfDay(hour: 23, minute: 59) : TimeOfDay(hour: fin, minute: 0);
+        _pvpcBuscando = false;
+        _pvpcInfo = es
+            ? 'Ventana mas barata de manana: ${'$ini'}:00 - ${'$fin'}:00 · ${mediaVentana.toStringAsFixed(3)} EUR/kWh (media del dia: ${mediaDia.toStringAsFixed(3)}). Revisa y pulsa Guardar.'
+            : 'Cheapest window tomorrow: $ini:00 - $fin:00 · ${mediaVentana.toStringAsFixed(3)} EUR/kWh (day average: ${mediaDia.toStringAsFixed(3)}). Review and tap Save.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pvpcBuscando = false;
+        _pvpcInfo = es ? 'Error consultando PVPC: $e' : 'PVPC query failed: $e';
+      });
+    }
+  }
+
   Future<void> _save() async {
     setState(() { _busy = true; _message = null; });
     try {
@@ -110,6 +159,52 @@ class _ChargeScheduleScreenState extends State<ChargeScheduleScreen> {
                   if (_message != null)
                     Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(_message!, style: const TextStyle(color: Colors.amber))),
 
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: Colors.teal.withOpacity(0.10), borderRadius: BorderRadius.circular(8)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Ventana barata PVPC (manana)'
+                              : 'Cheapest PVPC window (tomorrow)',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final h in [2, 3, 4, 5, 6, 7, 8])
+                              ChoiceChip(
+                                label: Text('${h}h'),
+                                selected: _duracionPvpc == h,
+                                onSelected: (_) => setState(() => _duracionPvpc = h),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.bolt, size: 18),
+                          label: Text(Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Sugerir ventana mas barata'
+                              : 'Suggest cheapest window'),
+                          onPressed: _pvpcBuscando ? null : _sugerirPvpc,
+                        ),
+                        if (_pvpcBuscando)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: LinearProgressIndicator(),
+                          ),
+                        if (_pvpcInfo != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(_pvpcInfo!, style: const TextStyle(fontSize: 12)),
+                          ),
+                      ],
+                    ),
+                  ),
                   SwitchListTile(
                     value: _enabled,
                     onChanged: (v) => setState(() => _enabled = v),
