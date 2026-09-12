@@ -4,7 +4,13 @@ import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
+import dev.fluttercommunity.workmanager.BackgroundWorker
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /** Marca en un fichero-flag si el movil esta conectado a algun Bluetooth.
  *
@@ -27,6 +33,13 @@ import java.io.File
  *  MAC que no este en esa lista. Si la lista esta vacia (nadie la ha
  *  configurado todavia) se mantiene el comportamiento antiguo para no dejar
  *  a nadie sin deteccion de conduccion de un dia para otro.
+ *
+ *  Arranque inmediato del sondeo (12/09/2026): al ponerse el flag se encola
+ *  desde aqui la primera tarea de sondeo de conduccion. Antes dependia de
+ *  que el ciclo periodico de ~15 min de WorkManager cayera DENTRO del
+ *  trayecto: si no caia, no se sondeaba ni una vez y la ruta salia
+ *  "reconstruida" (sin mapa ni duracion). Caso real del 12/09/2026: dos
+ *  trayectos de 6 y 11 km con CERO puntos de sondeo.
  */
 class CarBtReceiver : BroadcastReceiver() {
     companion object {
@@ -77,6 +90,7 @@ class CarBtReceiver : BroadcastReceiver() {
                     flagFile(ctx).writeText("1")
                     CarLog.log(ctx, "BT", "driving.flag PUESTO")
                     CarDriveEvents.log(ctx, "connect")
+                    encolarSondeoConduccion(ctx)
                 } catch (e: Exception) {
                     CarLog.log(ctx, "BT", "no se pudo escribir driving.flag: " + e.toString())
                 }
@@ -92,6 +106,45 @@ class CarBtReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             try { CarLog.log(ctx, "BT", "excepcion en onReceive: " + e.toString()) } catch (_: Exception) {}
+        }
+    }
+
+    /** Encola la primera tarea de sondeo de conduccion nada mas conectar el
+     *  Bluetooth del coche, sin esperar al ciclo periodico de WorkManager.
+     *
+     *  La peticion es identica a la que encola el lado Dart
+     *  (registerOneOffTask en main.dart): mismo worker del plugin
+     *  (BackgroundWorker), misma clave de tarea (DART_TASK_KEY), mismo
+     *  nombre unico ("lm_drive_poll") y politica KEEP para no molestar a
+     *  una cadena ya en marcha (si hay una tarea pendiente, esta se
+     *  descarta). Cuando se ejecuta, backgroundCallbackDispatcher la
+     *  reconoce como kDrivePollTaskName y reencadena cada 90s mientras
+     *  driving.flag exista; si el coche ya se ha desconectado, la cadena
+     *  muere en la primera pasada. El arranque por ciclo periodico se
+     *  mantiene como respaldo.
+     *
+     *  OJO al actualizar el plugin workmanager: BackgroundWorker y
+     *  DART_TASK_KEY son internos del plugin (verificados en
+     *  workmanager_android 0.9.0+2). Si cambian, este encolado dejaria de
+     *  arrancar la cadena (sin romper nada mas: quedaria el respaldo del
+     *  ciclo periodico). */
+    private fun encolarSondeoConduccion(ctx: Context) {
+        try {
+            val datos = Data.Builder()
+                .putString(BackgroundWorker.DART_TASK_KEY, "lmDrivePollTask")
+                .build()
+            val req = OneTimeWorkRequest.Builder(BackgroundWorker::class.java)
+                .setInputData(datos)
+                .setInitialDelay(0, TimeUnit.SECONDS)
+                .build()
+            WorkManager.getInstance(ctx).enqueueUniqueWork(
+                "lm_drive_poll",
+                ExistingWorkPolicy.KEEP,
+                req,
+            )
+            CarLog.log(ctx, "BT", "DRIVE-KICK sondeo encolado al conectar")
+        } catch (e: Exception) {
+            CarLog.log(ctx, "BT", "DRIVE-KICK fallo al encolar: " + e.toString())
         }
     }
 }
