@@ -358,6 +358,16 @@ class Pvpc {
     };
   }
 
+  /// La ventana CONTIGUA mas barata de manana para [duracionHoras] horas:
+  /// devuelve (horaInicio, horaFin) en hora local, sin cruzar medianoche
+  /// (el coche acepta ventanas que cruzan, pero no esta verificado: v1 segura).
+  /// Null si los precios de manana aun no estan publicados (~20:15).
+  static Future<(int, int)?> ventanaMasBarata(int duracionHoras) async {
+    final d = await dia(DateTime.now().add(const Duration(days: 1)));
+    if (d == null || d.horas.length != 24) return null;
+    return cheapestWindowHours(d.horas, duracionHoras);
+  }
+
   /// Las N horas mas baratas de manana, para saber cuando enchufar.
   static Future<List<int>?> mejoresHoras(int cuantas) async {
     final d = await dia(DateTime.now().add(const Duration(days: 1)));
@@ -366,4 +376,25 @@ class Pvpc {
       ..sort((a, b) => d.horas[a].compareTo(d.horas[b]));
     return idx.take(cuantas).toList()..sort();
   }
+}
+
+/// Ventana contigua mas barata en 24 precios horarios: devuelve
+/// (horaInicio, horaFin) con fin exclusivo (07 -> 07:00). No cruza
+/// medianoche a proposito. En empates gana la ventana que empieza antes.
+(int, int) cheapestWindowHours(List<double> horas, int duracionHoras) {
+  assert(horas.length == 24);
+  final d = duracionHoras.clamp(1, 24);
+  var mejorInicio = 0;
+  var mejorSuma = double.infinity;
+  for (var ini = 0; ini + d <= 24; ini++) {
+    var suma = 0.0;
+    for (var h = ini; h < ini + d; h++) {
+      suma += horas[h];
+    }
+    if (suma < mejorSuma) {
+      mejorSuma = suma;
+      mejorInicio = ini;
+    }
+  }
+  return (mejorInicio, mejorInicio + d);
 }
