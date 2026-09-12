@@ -90,20 +90,4 @@ void main() {
     });
   });
 
-  group('FotaScheduleEntry.fromMap', () {
-    test('parsea pid y start_time', () {
-      final f = FotaScheduleEntry.fromMap({
-        'pid': 'PKG-2026-09',
-        'start_time': '2026-09-15T03:00:00',
-      });
-      expect(f.pid, 'PKG-2026-09');
-      expect(f.startTime, '2026-09-15T03:00:00');
-    });
-
-    test('campos ausentes caen a cadena vacia', () {
-      final f = FotaScheduleEntry.fromMap({});
-      expect(f.pid, '');
-      expect(f.startTime, '');
-    });
-  });
 }

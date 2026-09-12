@@ -487,18 +487,6 @@ class ConsumptionLastWeekBreakdown {
       );
 }
 
-/// Una instalacion FOTA programada (getAppointment cmdId=392).
-class FotaScheduleEntry {
-  final String pid;
-  final String startTime;
-  const FotaScheduleEntry({required this.pid, required this.startTime});
-
-  factory FotaScheduleEntry.fromMap(Map<String, dynamic> m) => FotaScheduleEntry(
-        pid: m['pid']?.toString() ?? '',
-        startTime: m['start_time']?.toString() ?? '',
-      );
-}
-
 
 class LeapmotorApiException implements Exception {
   final int statusCode;
@@ -877,57 +865,36 @@ class LeapmotorApiClient {
         return ConsumptionLastWeekBreakdown.fromMap(_dataAsMap(data));
       });
 
-  /// Instalaciones FOTA programadas en el coche (getAppointment cmdId=392).
-  /// Solo lectura, sin PIN. Lista vacia si no hay ninguna o si el vehiculo
-  /// no soporta esta consulta (mismo criterio tolerante que getChargeSchedule).
-  /// Devuelve (entradas, respuesta cruda): la cruda se muestra en el
-  /// registro de conexion de la pantalla OTA para que se vea exactamente
-  /// que contesta el servidor (recortada a 800 chars).
-  Future<(List<FotaScheduleEntry>, String)> getFotaSchedule(String vin) => withTokenRetry(() async {
-        final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '392'})..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
-          headers: headers,
-          body: 'vin=${Uri.encodeComponent(vin)}&cmdId=392',
-        );
-        final rawBody = response.body;
-        final cruda = 'HTTP ${response.statusCode}  ' +
-            (rawBody.length > 800 ? rawBody.substring(0, 800) + '...' : rawBody);
-        Map<String, dynamic> body;
-        try {
-          body = json.decode(rawBody) as Map<String, dynamic>;
-        } catch (_) {
-          return (<FotaScheduleEntry>[], cruda);
-        }
-        final resultCode = body['result'] ?? body['code'];
-        if (response.statusCode != 200 || (resultCode != 0 && resultCode != null)) {
-          return (<FotaScheduleEntry>[], cruda);
-        }
-        final rawData = body['data'];
-        if (rawData == null) return (<FotaScheduleEntry>[], cruda);
-        Map<String, dynamic> parsed;
-        if (rawData is String) {
-          try {
-            parsed = Map<String, dynamic>.from(json.decode(rawData) as Map);
-          } catch (_) {
-            return (<FotaScheduleEntry>[], cruda);
-          }
-        } else if (rawData is Map) {
-          parsed = Map<String, dynamic>.from(rawData);
-        } else {
-          return (<FotaScheduleEntry>[], cruda);
-        }
-        final controls = parsed['controls'];
-        if (controls is! List) return (<FotaScheduleEntry>[], cruda);
-        return (
-          [
-            for (final c in controls)
-              FotaScheduleEntry.fromMap(Map<String, dynamic>.from(c as Map)),
-          ],
-          cruda,
-        );
-      });
 
+
+  /// URL de la imagen oficial del coche (carpicture/key): la misma foto
+  /// que muestra la app oficial, con el color y la configuracion reales.
+  /// Solo lectura, sin PIN. Variante de firma propia: deviceId va DOS veces
+  /// y el vin al final (port de build_car_picture_headers de la referencia).
+  Future<String?> getCarPictureUrl(String vin) => withTokenRetry(() async {
+        final nonce = _nonce();
+        final timestamp = _ts();
+        final signInput = kLanguage +
+            kChannel +
+            deviceId +
+            deviceId +
+            kDeviceType +
+            nonce +
+            kSource +
+            timestamp +
+            kAppVersion +
+            vin;
+        final sign = crypto.Hmac(crypto.sha256, _signKey!).convert(utf8.encode(signInput)).toString();
+        final headers = _baseHeaders(nonce, timestamp, sign)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/carpicture/key'),
+          headers: headers,
+          body: 'deviceID=${Uri.encodeComponent(deviceId)}&vin=${Uri.encodeComponent(vin)}',
+        );
+        final data = _parseBody(response.statusCode, response.body, 'imagen del coche');
+        final url = _dataAsMap(data)['shareBindUrl']?.toString() ?? '';
+        return url.isEmpty ? null : url;
+      });
 
   /// El campo data puede venir como objeto o como string JSON doblemente
   /// codificado (getAppointment hace lo segundo): se normaliza aqui.
