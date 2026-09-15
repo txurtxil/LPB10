@@ -3419,6 +3419,20 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
     }
   }
 
+  Future<void> _probeFota() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Sondeando centro de mensajes y claves del vehiculo...';
+    });
+    try {
+      final raw = await widget.client.probeFotaRaw(widget.vehicle.vin);
+      setState(() { _text = raw; _loading = false; });
+    } catch (e) {
+      setState(() { _text = 'Error en la sonda FOTA:\n\n$e'; _loading = false; });
+    }
+  }
+
   void _saveSnapshot() {
     if (_current == null) return;
     setState(() {
@@ -3518,6 +3532,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: historial de cargas (nube)'
                     : 'Probe: charge history (cloud)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeFota,
+                icon: const Icon(Icons.system_update_alt, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: FOTA (mensajes y version)'
+                    : 'Probe: FOTA (messages and version)'),
               ),
             ),
           ),

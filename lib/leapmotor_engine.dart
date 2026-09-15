@@ -1366,6 +1366,124 @@ class LeapmotorApiClient {
   });
 
   // ============================================================
+  // SONDA FOTA: centro de mensajes + claves crudas del vehiculo.
+  //
+  // Los comandos FOTA (390 descarga / 391 instalacion / 392 programacion)
+  // exigen PIN + VehicleRight + un taskId que ningun endpoint conocido
+  // expone; la consulta de programacion (392) ya devolvio code 40 en el
+  // B10. El unico canal abierto es el centro de mensajes (message/v1/list,
+  // sin PIN ni derechos; la integracion leapmotor-ha lo sondea en cada
+  // ciclo en produccion): si Leapmotor avisa de una OTA por ahi, el aviso
+  // deberia nombrar la version. Se vuelca el JSON CRUDO de cada mensaje
+  // (para ver msgType, url y cualquier campo no documentado) y las claves
+  // del vehicle list, por si alguna esconde la version instalada.
+  // ============================================================
+  Future<String> probeFotaRaw(String vin) => withTokenRetry(() async {
+    if (_accountClient == null) throw Exception('Not logged in');
+    final buf = StringBuffer();
+    buf.writeln('SONDA FOTA - mensajes y claves del vehiculo');
+    buf.writeln('Hora local: ' + DateTime.now().toIso8601String());
+    buf.writeln('');
+
+    // 1. Contador de no leidos (crudo).
+    try {
+      final headers = _signedHeaders()..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/message/v1/unread/count'),
+        headers: headers,
+        body: '',
+      );
+      buf.writeln('### 1. unread/count -> HTTP ' + r.statusCode.toString());
+      buf.writeln(r.body);
+    } catch (e) {
+      buf.writeln('### 1. unread/count -> EXCEPCION: ' + e.toString());
+    }
+    buf.writeln('');
+
+    // 2. Lista de mensajes: cada mensaje con TODOS sus campos, no solo los
+    //    que muestra la pantalla de mensajes (title/message/sendTime).
+    try {
+      final headers = _signedHeaders(bodyParams: {'pageNo': '1', 'pageSize': '20'})
+        ..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/message/v1/list'),
+        headers: headers,
+        body: 'pageNo=1&pageSize=20',
+      );
+      buf.writeln('### 2. message/list -> HTTP ' + r.statusCode.toString());
+      dynamic body;
+      try {
+        body = json.decode(r.body);
+      } catch (_) {
+        body = null;
+      }
+      final data = body is Map ? body['data'] : null;
+      final list = data is Map ? (data as Map)['list'] : null;
+      if (list is List) {
+        buf.writeln('mensajes en la pagina: ' + list.length.toString() +
+            ' (total segun servidor: ' + (data as Map)['count'].toString() + ')');
+        var i = 0;
+        for (final m in list) {
+          i++;
+          var js = const JsonEncoder.withIndent('  ').convert(m);
+          if (js.length > 900) js = js.substring(0, 900) + '...(recortado)';
+          buf.writeln('--- mensaje ' + i.toString() + ' ---');
+          buf.writeln(js);
+        }
+      } else {
+        var cuerpo = r.body;
+        if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
+        buf.writeln('estructura inesperada, cuerpo crudo:');
+        buf.writeln(cuerpo);
+      }
+    } catch (e) {
+      buf.writeln('### 2. message/list -> EXCEPCION: ' + e.toString());
+    }
+    buf.writeln('');
+
+    // 3. Claves crudas del vehicle list, marcando las que tengan pinta de
+    //    version de firmware (la clase Vehicle solo parsea 4 campos; el
+    //    resto del JSON nunca se ha inspeccionado en un B10).
+    try {
+      final headers = _signedHeaders()..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/list'),
+        headers: headers,
+        body: '',
+      );
+      buf.writeln('### 3. vehicle/list -> HTTP ' + r.statusCode.toString());
+      dynamic body;
+      try {
+        body = json.decode(r.body);
+      } catch (_) {
+        body = null;
+      }
+      final data = body is Map ? body['data'] : null;
+      final list = data is Map ? (data as Map)['list'] : null;
+      if (list is List && list.isNotEmpty && list.first is Map) {
+        final v = list.first as Map;
+        final pista = RegExp('ver|sw|soft|firm|tbox|mcu|ota|rev', caseSensitive: false);
+        final claves = v.keys.map((k) => k.toString()).toList()..sort();
+        buf.writeln('claves del vehiculo (' + claves.length.toString() + '):');
+        for (final k in claves) {
+          var valor = v[k].toString();
+          if (valor.length > 60) valor = valor.substring(0, 60) + '...';
+          buf.writeln('  ' + k + ' = ' + valor + (pista.hasMatch(k) ? '   <== PISTA VERSION?' : ''));
+        }
+      } else {
+        var cuerpo = r.body;
+        if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
+        buf.writeln('estructura inesperada, cuerpo crudo:');
+        buf.writeln(cuerpo);
+      }
+    } catch (e) {
+      buf.writeln('### 3. vehicle/list -> EXCEPCION: ' + e.toString());
+    }
+
+    return buf.toString();
+  });
+
+  // ============================================================
   // SONDA: historial real de cargas desde la nube.
   //
   // Endpoint /carownerservice/charge/daily/detail/page. Es el UNICO de toda la
