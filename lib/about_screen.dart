@@ -6,7 +6,7 @@ class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   // Version visible de la app. La actualiza release_apk.sh en cada release.
-  static const String kDisplayVersion = '3.60.152';
+  static const String kDisplayVersion = '3.60.153';
   static const _releasesUrl = 'https://github.com/txurtxil/LPB10/releases';
   static const _autismUrl = 'https://es.wikipedia.org/wiki/Trastornos_del_espectro_autista';
   static const _kofiUrl = 'https://ko-fi.com/txurtxil';
@@ -49,6 +49,49 @@ class AboutScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline),
               ),
             ),
+            const SizedBox(height: 24),
+            Text(
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Creditos y agradecimientos'
+                    : 'Credits and thanks',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'La comunicacion con la nube de Leapmotor es un port a Dart del cliente de referencia markoceri/leapmotor-api, y los certificados mTLS salen del material publicado por el mismo autor en markoceri/leapmotor-certs. Gracias, markoceri, por ambos.'
+                  : 'The Leapmotor cloud communication is a Dart port of the reference client markoceri/leapmotor-api, and the mTLS certificates come from material published by the same author at markoceri/leapmotor-certs. Thanks, markoceri, for both.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            _enlaceCredito('https://github.com/markoceri/leapmotor-api'),
+            _enlaceCredito('https://github.com/markoceri/leapmotor-certs'),
+            const SizedBox(height: 12),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Los videos de los bajos del B10 del canal EvCanariasB10, de Dani (@EVCanariasDani) con el mecanico Pedro (@P_38_87), han sido documentacion clave para entender este coche. Gracias a ambos.'
+                  : 'The B10 underbody videos from the EvCanariasB10 channel, by Dani (@EVCanariasDani) with mechanic Pedro (@P_38_87), have been key documentation to understand this car. Thanks to both.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            _enlaceCredito('https://www.youtube.com/@EvCanariasB10'),
+            const SizedBox(height: 12),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'El grupo de Telegram LEAPMOTOR B10 CLUB, donde se reunen los betatesters: pruebas, reportes de compatibilidad y soporte a los usuarios. La app es mejor gracias a ellos.'
+                  : 'The LEAPMOTOR B10 CLUB Telegram group, where the beta testers gather: testing, compatibility reports and user support. The app is better thanks to them.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            _enlaceCredito('https://t.me/LEAPMOTORB10CLUB'),
+            const SizedBox(height: 12),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? '@juanludetoledo: gracias por su apoyo al proyecto. Si te interesa el B10 y el mundo electrico, apoya su canal de YouTube.'
+                  : '@juanludetoledo: thanks for supporting the project. If you are into the B10 and the EV world, support his YouTube channel.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            _enlaceCredito('https://youtube.com/@juanludetoledo'),
             const SizedBox(height: 24),
             Text(
                 Localizations.localeOf(context).languageCode == 'es'
@@ -104,4 +147,19 @@ class AboutScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Enlace de la seccion de creditos: abre siempre en el navegador o en la
+/// app correspondiente (LaunchMode.externalApplication), nunca en WebView.
+Widget _enlaceCredito(String url) {
+  return InkWell(
+    onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text(
+        url,
+        style: const TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline, fontSize: 13),
+      ),
+    ),
+  );
 }
