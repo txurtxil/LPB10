@@ -232,6 +232,31 @@ section{padding:clamp(80px,10vw,140px) 0}
 }
 .alt-channel h4{font-family:var(--font-d);font-size:1.15rem;margin-bottom:8px}
 .alt-channel p{color:var(--txt-l2);font-size:.92rem;max-width:72ch}
+.cert-link{margin-top:6px;font-size:.9rem}
+.section-light .cert-link{color:var(--violet-deep)}
+.section-light .cert-link::after{background:var(--violet-deep)}
+
+/* ═══════════════ COMMUNITY ═══════════════ */
+.videos{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,3vw,40px);margin-top:48px}
+.video-frame{
+  position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;
+  border:1px solid var(--line-d);background:var(--ink-2);
+  box-shadow:0 24px 60px -28px rgba(0,0,0,.8);
+}
+.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.video figcaption{margin-top:14px;color:var(--txt-d2);letter-spacing:.08em;text-align:center}
+.video-credit{margin-top:22px;max-width:80ch}
+.thanks-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:56px}
+.thanks-grid .thanks{margin-top:0;flex-direction:column;align-items:flex-start;justify-content:flex-start}
+.thanks{
+  margin-top:56px;border:1px solid var(--line-d);border-radius:22px;
+  padding:clamp(24px,3.5vw,44px);
+  display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;
+  background:linear-gradient(120deg,rgba(157,140,255,.10),transparent 60%);
+}
+.thanks h3{font-family:var(--font-d);font-weight:700;font-size:clamp(1.3rem,2.4vw,1.7rem);letter-spacing:-.01em;margin-bottom:10px}
+.thanks p{color:var(--txt-d2);max-width:60ch}
+.thanks .btn{flex-shrink:0}
 
 /* ═══════════════ VERSIONS ═══════════════ */
 .timeline{margin-top:48px}
@@ -277,12 +302,14 @@ section{padding:clamp(80px,10vw,140px) 0}
   .phone{width:min(230px,60vw)}
   .stats{grid-template-columns:repeat(2,1fr)}
   .stat{border-top:1px solid var(--line-d)}
-  .channels{grid-template-columns:1fr}
+  .videos{grid-template-columns:1fr}
+  .thanks-grid{grid-template-columns:1fr}
   .foot-grid{grid-template-columns:1fr 1fr}
   .nav-links{display:none}
 }
 @media(max-width:560px){
   .feat{grid-template-columns:52px 1fr}
+  .step{grid-template-columns:56px 1fr}
   .tl-row{grid-template-columns:1fr;gap:4px}
   .foot-grid{grid-template-columns:1fr}
   .hero-ctas .btn{width:100%}

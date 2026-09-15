@@ -32,6 +32,7 @@
       <a href="#compatibilidad" data-i18n="nav.compat">Compatibilidad</a>
       <a href="#versiones" data-i18n="nav.versions">Versiones</a>
       <a href="#instalar" data-i18n="nav.install">Instalar</a>
+      <a href="#comunidad" data-i18n="nav.community">Comunidad</a>
     </nav>
     <span class="razor" aria-hidden="true"></span>
     <div class="nav-right">
@@ -227,6 +228,7 @@
         <div class="step-body">
           <h3 data-i18n="inst.s3.t">Instala e importa tu certificado</h3>
           <p data-i18n="inst.s3.d">Instala LMB10 desde Play (puede tardar unos minutos en aparecer) y sigue Ajustes → Importar certificado: la nube de Leapmotor exige mTLS con tu propio certificado.</p>
+          <p class="step-cert"><a class="text-link cert-link" href="https://github.com/markoceri/leapmotor-certs" target="_blank" rel="noopener" data-i18n="inst.s3.cert">🔐 Certificados: markoceri/leapmotor-certs — gracias a su autor por el material</a></p>
         </div>
       </div>
     </div>
@@ -241,10 +243,51 @@
   </div>
 </section>
 
+<!-- ══════════ COMUNIDAD ══════════ -->
+<section class="community section-dark" id="comunidad">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="com.label">05 — COMUNIDAD</p>
+    <h2 class="h2 reveal" data-i18n="com.title">El B10, en vídeo y en grupo.</h2>
+
+    <div class="videos">
+      <figure class="video reveal">
+        <div class="video-frame">
+          <iframe src="https://www.youtube-nocookie.com/embed/cFIIMU8wNio" title="Mecánico nos enseña los bajos del LeapMotor B10" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+        <figcaption class="mono" data-i18n="com.v1">Mecánico nos enseña los bajos del LeapMotor B10</figcaption>
+      </figure>
+      <figure class="video reveal">
+        <div class="video-frame">
+          <iframe src="https://www.youtube-nocookie.com/embed/I3Of3xbIdhI" title="Parte 2 - Leapmotor B10 ¿Cómo es realmente por debajo? Sin desmontar nada" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+        <figcaption class="mono" data-i18n="com.v2">Parte 2 — ¿Cómo es realmente por debajo? Sin desmontar nada</figcaption>
+      </figure>
+    </div>
+    <p class="fine reveal video-credit" data-i18n="com.credit">Vídeos del canal de YouTube EvCanariasB10, de Dani (@EVCanariasDani), con el mecánico Pedro (@P_38_87). Publicados aquí con su permiso — gracias a ambos por su trabajo.</p>
+
+    <div class="thanks-grid">
+      <div class="thanks reveal">
+        <div>
+          <h3 data-i18n="com.thanks.t">Gracias, LEAPMOTOR B10 CLUB</h3>
+          <p data-i18n="com.thanks.d">El grupo de Telegram donde nos hemos reunido los betatesters: dudas, reportes de compatibilidad y vida real con el B10. La app es mejor gracias a ellos.</p>
+        </div>
+        <a class="btn btn-primary" href="https://t.me/LEAPMOTORB10CLUB" target="_blank" rel="noopener"><span data-i18n="com.thanks.cta">t.me/LEAPMOTORB10CLUB</span></a>
+      </div>
+      <div class="thanks reveal">
+        <div>
+          <h3 data-i18n="com.thanks2.t">Gracias, @juanludetoledo</h3>
+          <p data-i18n="com.thanks2.d">Por su apoyo al proyecto y por difundir el B10. Si te interesa el coche y el mundo eléctrico, apoya su canal de YouTube.</p>
+        </div>
+        <a class="btn btn-primary" href="https://youtube.com/@juanludetoledo" target="_blank" rel="noopener"><span data-i18n="com.thanks2.cta">youtube.com/@juanludetoledo</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════ VERSIONES ══════════ -->
 <section class="versions section-dark" id="versiones">
   <div class="wrap">
-    <p class="label mono reveal" data-i18n="ver.label">05 — VERSIONES</p>
+    <p class="label mono reveal" data-i18n="ver.label">06 — VERSIONES</p>
     <h2 class="h2 reveal" data-i18n="ver.title">Un cambio por release, validado en coche real.</h2>
     <div class="timeline" id="timeline">
       <p class="mono tl-loading" id="tlLoading" data-i18n="ver.loading">Cargando releases desde GitHub…</p>
@@ -262,7 +305,7 @@
 <!-- ══════════ CAFÉ ══════════ -->
 <section class="coffee section-light" id="cafe">
   <div class="wrap coffee-inner">
-    <p class="label mono reveal" data-i18n="coffee.label">06 — APOYAR EL PROYECTO</p>
+    <p class="label mono reveal" data-i18n="coffee.label">07 — APOYAR EL PROYECTO</p>
     <h2 class="h2 coffee-title reveal" data-i18n="coffee.title">Gratis siempre.<br>Si te sirve, invítame a un café.</h2>
     <p class="lead reveal" data-i18n="coffee.lead">Sin anuncios, sin suscripciones, sin más cuentas que las tuyas. El café es totalmente opcional — nunca hace falta para ser tester ni para usar nada.</p>
     <a class="btn btn-coffee reveal" href="https://ko-fi.com/txurtxil" target="_blank" rel="noopener">
@@ -293,6 +336,7 @@
         <p class="mono foot-h" data-i18n="foot.credits">CRÉDITOS</p>
         <a href="https://github.com/markoceri/leapmotor-api" target="_blank" rel="noopener">markoceri/leapmotor-api</a>
         <a href="https://github.com/markoceri/leapmotor-certs" target="_blank" rel="noopener">markoceri/leapmotor-certs</a>
+        <a href="https://youtube.com/@juanludetoledo" target="_blank" rel="noopener">youtube.com/@juanludetoledo</a>
         <a href="https://github.com/kerniger/leapmotor-ha" target="_blank" rel="noopener">kerniger/leapmotor-ha</a>
       </div>
       <div class="foot-col">
