@@ -5,8 +5,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'sentry_adapter.dart';
+import 'sentry_autoarm.dart';
 import 'sentry_engine.dart';
 import 'sentry_models.dart';
 import 'sentry_store.dart';
@@ -29,6 +31,7 @@ class _SentryScreenState extends State<SentryScreen> {
   bool _busy = false;
   bool _armed = false;
   bool _online = true;
+  bool _autoArm = false;
   SentryConfig _cfg = const SentryConfig();
   List<SentryEvent> _log = [];
   Timer? _timer;
@@ -56,6 +59,9 @@ class _SentryScreenState extends State<SentryScreen> {
     _online = await _store.loadOnline();
     _cfg = await _store.loadConfig();
     _log = await _store.loadLog();
+    _autoArm = (await SharedPreferences.getInstance())
+            .getBool(kSentryAutoArmEnabledKey) ??
+        false;
     if (mounted) setState(() {});
   }
 
@@ -319,6 +325,19 @@ class _SentryScreenState extends State<SentryScreen> {
               title: Text(s.cfgNative),
               subtitle: Text(s.cfgNativeHint),
             ),
+            // Auto-armado por Bluetooth (v157). Va en SharedPreferences (no
+            // en SentryConfig) porque lo lee el isolate de fondo sin pasar
+            // por el store del centinela.
+            SwitchListTile(
+              value: _autoArm,
+              onChanged: (v) async {
+                (await SharedPreferences.getInstance())
+                    .setBool(kSentryAutoArmEnabledKey, v);
+                setState(() => _autoArm = v);
+              },
+              title: Text(s.cfgAutoArm),
+              subtitle: Text(s.cfgAutoArmHint),
+            ),
             SwitchListTile(
               value: _cfg.useDeterrent,
               onChanged: (v) => _saveCfg(_cfg.copyWith(useDeterrent: v)),
@@ -534,6 +553,11 @@ class _S {
   String get cfgNativeHint => es
       ? 'Deteccion de vibracion del propio vehiculo al armar.'
       : 'Vehicle shake detection armed with sentry.';
+  String get cfgAutoArm =>
+      es ? 'Auto-armar al alejarse (Bluetooth)' : 'Auto-arm on walk-away (Bluetooth)';
+  String get cfgAutoArmHint => es
+      ? 'Se arma solo ~3 min tras desconectarse el Bluetooth del coche y se desarma al volver. Requiere el PIN recordado y el coche marcado en Ajustes > Bluetooth.'
+      : 'Arms itself ~3 min after the car Bluetooth disconnects and disarms on return. Requires remembered PIN and the car selected in Settings > Bluetooth.';
   String get cfgDeterrent =>
       es ? 'Disuasion: claxon + luces' : 'Deterrent: horn + lights';
   String get cfgDeterrentHint => es

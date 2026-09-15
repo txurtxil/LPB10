@@ -23,6 +23,7 @@ import 'about_screen.dart';
 import 'guard_mode_screen.dart';
 import 'sentry/sentry_screen.dart';
 import 'sentry/sentry_background.dart';
+import 'sentry/sentry_autoarm.dart';
 import 'routines/routines_screen.dart';
 import 'routines/routines_background.dart';
 import 'routines/routine_engine.dart';
@@ -192,6 +193,17 @@ void backgroundCallbackDispatcher() {
     // es el nombre unico o el nombre de tarea del plugin. Se borra en cuanto
     // se confirme con un trayecto real.
     await CarLogBridge.log('DISPATCH task="' + task + '"');
+
+    // Ramas del centinela automatico por Bluetooth (v157): las encola el
+    // nativo CarBtReceiver al conectar/desconectar el BT del coche.
+    if (task == kSentryAutoArmTaskName) {
+      await ejecutarAutoArmado();
+      return true;
+    }
+    if (task == kSentryAutoDisarmTaskName) {
+      await ejecutarAutoDesarmado();
+      return true;
+    }
 
     if (task == kDrivePollTaskName) {
       // Rama de conduccion: sondeo ligero cada 90s, SIN el backup diario

@@ -40,6 +40,27 @@ Future<SentryClient> buildSentryClient({String? pin}) async {
   return _RealSentryClient(api, effectivePin);
 }
 
+/// Igual que [buildSentryClient] pero devolviendo tambien el VIN del primer
+/// vehiculo de la cuenta. Lo usa el auto-armado por Bluetooth (v157), que
+/// corre en un isolate de fondo sin ningun VIN en contexto.
+Future<(SentryClient, String)> buildSentryClientConVin({String? pin}) async {
+  final raw = await _storage.read(key: _kSessionKey);
+  if (raw == null) {
+    throw StateError('Sin sesion guardada: inicia sesion en la app primero.');
+  }
+  final session =
+      SessionData.fromMap(Map<String, String>.from(json.decode(raw) as Map));
+  final staticClient = await createStaticClient();
+  final api = LeapmotorApiClient(staticClient);
+  await api.restoreSession(session);
+  final vehicles = await api.getVehicleList();
+  if (vehicles.isEmpty) {
+    throw StateError('La cuenta no tiene vehiculos.');
+  }
+  final effectivePin = pin ?? await _storage.read(key: _kPinKey) ?? '';
+  return (_RealSentryClient(api, effectivePin), vehicles.first.vin);
+}
+
 class _RealSentryClient implements SentryClient {
   _RealSentryClient(this.api, this.pin);
 

@@ -91,6 +91,11 @@ class CarBtReceiver : BroadcastReceiver() {
                     CarLog.log(ctx, "BT", "driving.flag PUESTO")
                     CarDriveEvents.log(ctx, "connect")
                     encolarSondeoConduccion(ctx)
+                    // Centinela automatico (v157): al volver al coche ya no
+                    // hace falta el armado pendiente, y si el auto-armado lo
+                    // habia armado, se desarma solo.
+                    cancelarAutoArmadoCentinela(ctx)
+                    encolarAutoDesarmadoCentinela(ctx)
                 } catch (e: Exception) {
                     CarLog.log(ctx, "BT", "no se pudo escribir driving.flag: " + e.toString())
                 }
@@ -100,6 +105,13 @@ class CarBtReceiver : BroadcastReceiver() {
                     if (f.exists()) f.delete()
                     CarLog.log(ctx, "BT", "driving.flag QUITADO")
                     CarDriveEvents.log(ctx, "disconnect")
+                    // Centinela automatico (v157): al alejarte del coche se
+                    // encola el armado con 3 min de gracia (por si la caida
+                    // del BT fue momentanea). Si vuelves antes, la conexion
+                    // lo cancela. El TCU sigue despierto justo al aparcar
+                    // (se duerme ~13 min despues), asi que el comando 220
+                    // llega de inmediato.
+                    encolarAutoArmadoCentinela(ctx)
                 } catch (e: Exception) {
                     CarLog.log(ctx, "BT", "no se pudo borrar driving.flag: " + e.toString())
                 }
@@ -145,6 +157,70 @@ class CarBtReceiver : BroadcastReceiver() {
             CarLog.log(ctx, "BT", "DRIVE-KICK sondeo encolado al conectar")
         } catch (e: Exception) {
             CarLog.log(ctx, "BT", "DRIVE-KICK fallo al encolar: " + e.toString())
+        }
+    }
+
+    /** Centinela automatico (v157): encola el ARMADO con 3 minutos de gracia
+     *  al desconectar el BT del coche. Politica REPLACE: si te alejas, vuelves
+     *  un momento y te vuelves a alejar, solo queda el ultimo armado.
+     *
+     *  OJO: el nombre de tarea Dart ("lmSentryAutoArmTask") esta DUPLICADO
+     *  como literal aqui y en sentry_autoarm.dart (kSentryAutoArmTaskName);
+     *  el lado nativo no puede importar Dart. Si se cambia en un sitio, hay
+     *  que cambiarlo en el otro. La decision de armar de verdad (ajuste
+     *  activado, no conduciendo, PIN recordado, coche no encendido) se toma
+     *  en Dart, en ejecutarAutoArmado(). */
+    private fun encolarAutoArmadoCentinela(ctx: Context) {
+        try {
+            val datos = Data.Builder()
+                .putString(BackgroundWorker.DART_TASK_KEY, "lmSentryAutoArmTask")
+                .build()
+            val req = OneTimeWorkRequest.Builder(BackgroundWorker::class.java)
+                .setInputData(datos)
+                .setInitialDelay(3, TimeUnit.MINUTES)
+                .build()
+            WorkManager.getInstance(ctx).enqueueUniqueWork(
+                "lm_sentry_autoarm",
+                ExistingWorkPolicy.REPLACE,
+                req,
+            )
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM armado encolado (3 min de gracia)")
+        } catch (e: Exception) {
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM fallo al encolar armado: " + e.toString())
+        }
+    }
+
+    /** Cancela el armado pendiente: el BT ha vuelto antes de que se
+     *  ejecutara, asi que la desconexion fue momentanea. */
+    private fun cancelarAutoArmadoCentinela(ctx: Context) {
+        try {
+            WorkManager.getInstance(ctx).cancelUniqueWork("lm_sentry_autoarm")
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM armado pendiente cancelado")
+        } catch (e: Exception) {
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM fallo al cancelar: " + e.toString())
+        }
+    }
+
+    /** Encola el DESARMADO inmediato al conectar el BT. En Dart solo se
+     *  desarma si el centinela lo armo el propio auto-armado (bandera en
+     *  prefs): un armado manual nunca se toca. */
+    private fun encolarAutoDesarmadoCentinela(ctx: Context) {
+        try {
+            val datos = Data.Builder()
+                .putString(BackgroundWorker.DART_TASK_KEY, "lmSentryAutoDisarmTask")
+                .build()
+            val req = OneTimeWorkRequest.Builder(BackgroundWorker::class.java)
+                .setInputData(datos)
+                .setInitialDelay(0, TimeUnit.SECONDS)
+                .build()
+            WorkManager.getInstance(ctx).enqueueUniqueWork(
+                "lm_sentry_autodisarm",
+                ExistingWorkPolicy.REPLACE,
+                req,
+            )
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM desarmado encolado")
+        } catch (e: Exception) {
+            CarLog.log(ctx, "BT", "SENTRY-AUTOARM fallo al encolar desarmado: " + e.toString())
         }
     }
 }
