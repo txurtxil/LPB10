@@ -6,8 +6,9 @@ class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   // Version visible de la app. La actualiza release_apk.sh en cada release.
-  static const String kDisplayVersion = '3.60.153';
+  static const String kDisplayVersion = '3.60.154';
   static const _releasesUrl = 'https://github.com/txurtxil/LPB10/releases';
+  static const _webUrl = 'https://txurtxil.github.io/LPB10/';
   static const _autismUrl = 'https://es.wikipedia.org/wiki/Trastornos_del_espectro_autista';
   static const _kofiUrl = 'https://ko-fi.com/txurtxil';
 
@@ -46,6 +47,20 @@ class AboutScreen extends StatelessWidget {
               onTap: () => launchUrl(Uri.parse(_releasesUrl), mode: LaunchMode.externalApplication),
               child: const Text(
                 _releasesUrl,
+                style: TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Pagina web del proyecto'
+                    : 'Project website',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () => launchUrl(Uri.parse(_webUrl), mode: LaunchMode.externalApplication),
+              child: const Text(
+                _webUrl,
                 style: TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline),
               ),
             ),
