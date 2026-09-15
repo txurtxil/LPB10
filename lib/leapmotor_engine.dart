@@ -1366,22 +1366,28 @@ class LeapmotorApiClient {
   });
 
   // ============================================================
-  // SONDA FOTA: centro de mensajes + claves crudas del vehiculo.
+  // SONDA FOTA v2: historico de mensajes + claves del vehiculo + la
+  // consulta decisiva de programacion FOTA.
   //
   // Los comandos FOTA (390 descarga / 391 instalacion / 392 programacion)
   // exigen PIN + VehicleRight + un taskId que ningun endpoint conocido
-  // expone; la consulta de programacion (392) ya devolvio code 40 en el
-  // B10. El unico canal abierto es el centro de mensajes (message/v1/list,
-  // sin PIN ni derechos; la integracion leapmotor-ha lo sondea en cada
-  // ciclo en produccion): si Leapmotor avisa de una OTA por ahi, el aviso
-  // deberia nombrar la version. Se vuelca el JSON CRUDO de cada mensaje
-  // (para ver msgType, url y cualquier campo no documentado) y las claves
-  // del vehicle list, por si alguna esconde la version instalada.
+  // expone. La v1 confirmo que el centro de mensajes funciona sin PIN ni
+  // derechos y que la cuenta secundaria (compartida) tiene una rightList
+  // SIN 390/391/392: de ahi el code 40. La cuenta propietaria no lleva
+  // rightList (derechos implicitos), asi que la unica forma de saber si
+  // FOTA esta abierto para ella es llamar a la consulta 392 (solo
+  // lectura): es la seccion 4 de esta sonda.
+  //
+  // Secciones: 1) unread/count crudo. 2) TODAS las paginas de mensajes en
+  // lista compacta, con JSON completo solo en los que contengan palabras
+  // clave de actualizacion. 3) Claves crudas del vehicle list (bindcars +
+  // sharedcars) marcando posibles campos de version. 4) getAppointment
+  // cmdId=392 crudo, con lectura del code.
   // ============================================================
   Future<String> probeFotaRaw(String vin) => withTokenRetry(() async {
     if (_accountClient == null) throw Exception('Not logged in');
     final buf = StringBuffer();
-    buf.writeln('SONDA FOTA - mensajes y claves del vehiculo');
+    buf.writeln('SONDA FOTA v2 - historico completo + consulta 392');
     buf.writeln('Hora local: ' + DateTime.now().toIso8601String());
     buf.writeln('');
 
@@ -1400,42 +1406,63 @@ class LeapmotorApiClient {
     }
     buf.writeln('');
 
-    // 2. Lista de mensajes: cada mensaje con TODOS sus campos, no solo los
-    //    que muestra la pantalla de mensajes (title/message/sendTime).
+    // 2. Historico COMPLETO de mensajes (todas las paginas), con buscador de
+    //    palabras clave FOTA. La v1 solo veia la primera pagina (20) y los
+    //    avisos OTA, si los hubo, estan en las paginas antiguas. Lista
+    //    compacta de una linea por mensaje; JSON completo solo en las
+    //    coincidencias, para que el volcado siga siendo copiable.
+    final pistaFota = RegExp('fota|ota|actualiz|update|firmware|versi|software', caseSensitive: false);
     try {
-      final headers = _signedHeaders(bodyParams: {'pageNo': '1', 'pageSize': '20'})
-        ..addAll(_authHeaders());
-      final r = await _accountClient!.post(
-        Uri.parse('$kBaseUrl/carownerservice/oversea/message/v1/list'),
-        headers: headers,
-        body: 'pageNo=1&pageSize=20',
-      );
-      buf.writeln('### 2. message/list -> HTTP ' + r.statusCode.toString());
-      dynamic body;
-      try {
-        body = json.decode(r.body);
-      } catch (_) {
-        body = null;
+      final todos = <dynamic>[];
+      for (var pagina = 1; pagina <= 5; pagina++) {
+        final headers = _signedHeaders(bodyParams: {'pageNo': pagina.toString(), 'pageSize': '20'})
+          ..addAll(_authHeaders());
+        final r = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/message/v1/list'),
+          headers: headers,
+          body: 'pageNo=' + pagina.toString() + '&pageSize=20',
+        );
+        dynamic body;
+        try {
+          body = json.decode(r.body);
+        } catch (_) {
+          body = null;
+        }
+        final data = body is Map ? body['data'] : null;
+        final list = data is Map ? (data as Map)['list'] : null;
+        if (list is! List || list.isEmpty) break;
+        todos.addAll(list);
+        if (list.length < 20) break;
       }
-      final data = body is Map ? body['data'] : null;
-      final list = data is Map ? (data as Map)['list'] : null;
-      if (list is List) {
-        buf.writeln('mensajes en la pagina: ' + list.length.toString() +
-            ' (total segun servidor: ' + (data as Map)['count'].toString() + ')');
-        var i = 0;
-        for (final m in list) {
-          i++;
+      buf.writeln('### 2. message/list (historico completo)');
+      buf.writeln('mensajes descargados: ' + todos.length.toString());
+      buf.writeln('');
+      var coincidencias = 0;
+      for (final m in todos) {
+        if (m is! Map) continue;
+        final titulo = m['title']?.toString() ?? '';
+        final cuerpoMsg = m['message']?.toString() ?? '';
+        final ms = m['sendTime'] is num
+            ? (m['sendTime'] as num).toInt()
+            : int.tryParse(m['sendTime']?.toString() ?? '');
+        final fecha = ms == null
+            ? '?'
+            : DateTime.fromMillisecondsSinceEpoch(ms).toString().substring(0, 16);
+        var resumen = cuerpoMsg;
+        if (resumen.length > 70) resumen = resumen.substring(0, 70) + '...';
+        buf.writeln(fecha + '  [' + titulo + '] ' + resumen);
+        if (pistaFota.hasMatch(titulo) || pistaFota.hasMatch(cuerpoMsg)) {
+          coincidencias++;
           var js = const JsonEncoder.withIndent('  ').convert(m);
           if (js.length > 900) js = js.substring(0, 900) + '...(recortado)';
-          buf.writeln('--- mensaje ' + i.toString() + ' ---');
+          buf.writeln('>>> COINCIDENCIA FOTA, mensaje completo:');
           buf.writeln(js);
         }
-      } else {
-        var cuerpo = r.body;
-        if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
-        buf.writeln('estructura inesperada, cuerpo crudo:');
-        buf.writeln(cuerpo);
       }
+      buf.writeln('');
+      buf.writeln(coincidencias == 0
+          ? 'Sin mensajes con pinta de FOTA/actualizacion en todo el historico.'
+          : 'COINCIDENCIAS FOTA: ' + coincidencias.toString());
     } catch (e) {
       buf.writeln('### 2. message/list -> EXCEPCION: ' + e.toString());
     }
@@ -1443,7 +1470,9 @@ class LeapmotorApiClient {
 
     // 3. Claves crudas del vehicle list, marcando las que tengan pinta de
     //    version de firmware (la clase Vehicle solo parsea 4 campos; el
-    //    resto del JSON nunca se ha inspeccionado en un B10).
+    //    resto del JSON nunca se ha inspeccionado en un B10). El servidor
+    //    devuelve dos listas: bindcars (propietario) y sharedcars
+    //    (compartidos, con rightList recortada).
     try {
       final headers = _signedHeaders()..addAll(_authHeaders());
       final r = await _accountClient!.post(
@@ -1459,9 +1488,12 @@ class LeapmotorApiClient {
         body = null;
       }
       final data = body is Map ? body['data'] : null;
-      final list = data is Map ? (data as Map)['list'] : null;
-      if (list is List && list.isNotEmpty && list.first is Map) {
-        final v = list.first as Map;
+      final coches = <dynamic>[
+        if (data is Map) ...(data['bindcars'] as List? ?? const []),
+        if (data is Map) ...(data['sharedcars'] as List? ?? const []),
+      ];
+      if (coches.isNotEmpty && coches.first is Map) {
+        final v = coches.first as Map;
         final pista = RegExp('ver|sw|soft|firm|tbox|mcu|ota|rev', caseSensitive: false);
         final claves = v.keys.map((k) => k.toString()).toList()..sort();
         buf.writeln('claves del vehiculo (' + claves.length.toString() + '):');
@@ -1478,6 +1510,42 @@ class LeapmotorApiClient {
       }
     } catch (e) {
       buf.writeln('### 3. vehicle/list -> EXCEPCION: ' + e.toString());
+    }
+    buf.writeln('');
+
+    // 4. LA PRUEBA DECISIVA: consulta de programacion FOTA (getAppointment
+    //    cmdId=392). Es SOLO LECTURA: consulta tareas/horarios, no ejecuta
+    //    ningun comando. Con la cuenta secundaria devolvio code 40 porque
+    //    la comparticion no incluye los derechos 390/391/392; con la cuenta
+    //    propietaria deberia responder code 0 y, si hay una OTA programada,
+    //    el taskId que exigen los comandos 390/391 apareceria aqui.
+    try {
+      final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '392'})..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
+        headers: headers,
+        body: 'vin=${Uri.encodeComponent(vin)}&cmdId=392',
+      );
+      buf.writeln('### 4. getAppointment cmdId=392 (consulta programacion FOTA) -> HTTP ' + r.statusCode.toString());
+      var cuerpo = r.body;
+      if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
+      buf.writeln(cuerpo);
+      dynamic body;
+      try {
+        body = json.decode(r.body);
+      } catch (_) {
+        body = null;
+      }
+      if (body is Map) {
+        final code = body['code'] ?? body['result'];
+        if (code == 0) {
+          buf.writeln('>>> code 0: la consulta FOTA responde en esta cuenta. Si data trae tareas, ahi esta el taskId.');
+        } else {
+          buf.writeln('>>> code ' + code.toString() + ': FOTA sigue cerrado para esta cuenta.');
+        }
+      }
+    } catch (e) {
+      buf.writeln('### 4. getAppointment cmdId=392 -> EXCEPCION: ' + e.toString());
     }
 
     return buf.toString();
