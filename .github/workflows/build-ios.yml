@@ -30,11 +30,24 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Cablea el target LmBatteryWidget en el proyecto Xcode (v161):
+      # el script es idempotente y la gema xcodeproj viene con CocoaPods
+      # (preinstalada en los runners macos-latest).
+      - name: Wire iOS widget extension target
+        run: |
+          ruby -e 'require "xcodeproj"' 2>/dev/null || gem install xcodeproj --user-install
+          ruby tool/ios_add_widget_target.rb
+          xcodebuild -list -project ios/Runner.xcodeproj | grep LmBatteryWidget
+
       # Compila los bundles de iOS en modo release sin firma
       - name: Build iOS App
         run: flutter build ios --release --no-codesign
 
       # Construye el Payload empaquetando adecuadamente la estructura de iOS
+      # La extension del widget debe viajar dentro de Runner.app/PlugIns
+      - name: Verify widget extension bundled
+        run: ls build/ios/iphoneos/Runner.app/PlugIns/LmBatteryWidget.appex
+
       - name: Create IPA Package
         run: |
           cd build/ios/iphoneos
