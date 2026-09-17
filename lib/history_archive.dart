@@ -247,7 +247,15 @@ Future<int> _escribirAjustes(Map<String, dynamic> m) async {
 
 Future<String> importHistoryBackup() async {
   try {
-    const grupo = XTypeGroup(label: 'Backup JSON', extensions: ['json']);
+    // iOS exige uniformTypeIdentifiers: con solo 'extensions' el selector
+    // ni siquiera se abre (Invalid argument: XTypeGroup should ... have a
+    // non-empty "uniformTypeIdentifiers"). Error real capturado en un
+    // iPhone el 16/09/2026 gracias al mensaje detallado de la v158.
+    const grupo = XTypeGroup(
+      label: 'Backup JSON',
+      extensions: ['json'],
+      uniformTypeIdentifiers: ['public.json'],
+    );
     final XFile? file = await openFile(acceptedTypeGroups: [grupo]);
     if (file == null) return 'Importacion cancelada';
     final content = await file.readAsString();
