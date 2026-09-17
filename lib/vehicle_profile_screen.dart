@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:home_widget/home_widget.dart';
+import 'widget_bridge.dart';
 
 import 'vehicle_profile.dart';
 import 'widget_chart.dart' show gBatteryKwh, gMaxRangeKm;
@@ -53,8 +53,8 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   /// da 432 km frente a los 430 de catalogo.
   Future<void> _estimarDelCoche() async {
     try {
-      final r = double.tryParse((await HomeWidget.getWidgetData<String>('range')) ?? '');
-      final s = double.tryParse((await HomeWidget.getWidgetData<String>('soc')) ?? '');
+      final r = double.tryParse((await LmWidget.getWidgetData<String>('range')) ?? '');
+      final s = double.tryParse((await LmWidget.getWidgetData<String>('soc')) ?? '');
       if (r != null && s != null && s > 15 && r > 0) {
         if (mounted) setState(() => _rangeSegunCoche = r / (s / 100.0));
       }

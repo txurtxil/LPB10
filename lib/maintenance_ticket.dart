@@ -5,7 +5,7 @@
 // o PDF compartido. Reutiliza Mantenimiento.estado()/cargar(), no reinventa
 // ningun calculo.
 
-import 'package:home_widget/home_widget.dart';
+import 'widget_bridge.dart';
 
 import 'energy_cost.dart';
 import 'maintenance.dart';
@@ -33,7 +33,7 @@ Future<String> buildMaintenanceTicket({String? nickname}) async {
   var odo = 0;
   try {
     odo = int.tryParse(
-            (await HomeWidget.getWidgetData<String>('odometro')) ?? '') ??
+            (await LmWidget.getWidgetData<String>('odometro')) ?? '') ??
         0;
   } catch (_) {}
 

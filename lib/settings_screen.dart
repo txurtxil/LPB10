@@ -198,7 +198,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     try {
                       final path = await BackupHelper.writeNow();
                       await Share.shareXFiles([XFile(path)], text: 'LMB10 backup');
-                    } catch (_) {}
+                    } catch (e) {
+                      // Antes se tragaba el error en silencio: en iOS el
+                      // boton "no hacia nada" y no habia forma de saber por
+                      // que (v158).
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Error al exportar: ' + e.toString())));
+                    }
                   },
                 ),
                 ListTile(

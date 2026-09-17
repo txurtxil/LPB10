@@ -112,7 +112,30 @@ class _DriveBackupScreenState extends State<DriveBackupScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          if (!conectado) ...[
+          if (DriveBackup.faltaClienteIos) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Text(
+                es
+                    ? 'En iOS esta funcion esta pendiente de configurar: hace '
+                        'falta crear un cliente de Google especifico para iOS '
+                        '(paso unico del desarrollador en Google Cloud). '
+                        'Mientras tanto, usa Ajustes > Exportar copia de '
+                        'seguridad, que si funciona en iOS.'
+                    : 'On iOS this feature is pending setup: a Google client '
+                        'specific for iOS must be created (one-time developer '
+                        'step in Google Cloud). Meanwhile, use Settings > '
+                        'Export backup, which works on iOS.',
+                style: TextStyle(fontSize: 12, height: 1.35,
+                    color: Theme.of(context).colorScheme.onSurface),
+              ),
+            ),
+          ] else if (!conectado) ...[
             FilledButton.icon(
               onPressed: _conectando ? null : _conectar,
               icon: _conectando

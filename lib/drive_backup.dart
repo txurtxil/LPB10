@@ -15,6 +15,7 @@
 // Google.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -32,6 +33,23 @@ class DriveBackup {
 
   static const _carpetaNombre = 'LMB10 backups';
   static const _maxCopias = 6;
+
+  /// Cliente OAuth de tipo iOS del MISMO proyecto de Google Cloud que el
+  /// serverClientId de abajo. VACIO = aun no configurado: en iOS la
+  /// conexion se bloquea con un aviso claro en pantalla en vez de fallar
+  /// con una excepcion criptica del plugin (v158).
+  ///
+  /// Para activarlo (paso unico, consola de Google Cloud del dueno):
+  ///   1. Crear credencial OAuth de tipo "iOS" con bundle com.txurtxil.lpb10
+  ///   2. Pegar aqui el client ID resultante
+  ///   3. En ios/Runner/Info.plist, anadir su REVERSED_CLIENT_ID como
+  ///      URL scheme (CFBundleURLTypes) — sin el, el login no vuelve a la app
+  static const _kIosClientId = '';
+
+  /// true solo en iOS mientras _kIosClientId este vacio: la pantalla de
+  /// backup muestra el aviso de "pendiente de configuracion" en lugar del
+  /// boton de conectar.
+  static bool get faltaClienteIos => Platform.isIOS && _kIosClientId.isEmpty;
 
   static bool _inicializado = false;
   static GoogleSignInAccount? _cuenta;
@@ -71,11 +89,21 @@ class DriveBackup {
     await GoogleSignIn.instance.initialize(
       serverClientId:
           '457622951832-gp7co9k1j0rs7qku77cf0v4e7gpuagrt.apps.googleusercontent.com',
+      // En Android no hace falta clientId (lo resuelve el plugin); en iOS es
+      // obligatorio y debe ser el cliente de tipo iOS del mismo proyecto.
+      clientId:
+          Platform.isIOS && _kIosClientId.isNotEmpty ? _kIosClientId : null,
     );
     _inicializado = true;
   }
 
   static Future<GoogleSignInAccount?> conectar() async {
+    if (faltaClienteIos) {
+      await CarLogBridge.log(
+          'Drive iOS: sin client ID de iOS configurado (_kIosClientId vacio). '
+          'Hace falta crear el cliente OAuth iOS en Google Cloud (paso unico del dueno).');
+      return null;
+    }
     try {
       await _asegurarInit();
       final cuenta = await GoogleSignIn.instance.authenticate();
@@ -88,6 +116,7 @@ class DriveBackup {
   }
 
   static Future<GoogleSignInAccount?> conectarSilencioso() async {
+    if (faltaClienteIos) return null; // sin cliente iOS no hay nada que intentar
     try {
       await _asegurarInit();
       final cuenta =

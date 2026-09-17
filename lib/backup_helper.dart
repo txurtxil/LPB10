@@ -4,13 +4,22 @@ import 'package:path_provider/path_provider.dart';
 import 'history_archive.dart';
 
 /// Copia de seguridad automatica del historico a una carpeta accesible.
-/// Ruta: /Android/data/com.txurtxil.lpb10/files/backups/ (sin permisos).
+/// Ruta en Android: /Android/data/com.txurtxil.lpb10/files/backups/ (sin
+/// permisos). En iOS: Documents/backups de la app (visible desde la app
+/// Archivos si se declara; si no, accesible al compartir el fichero).
 /// AVISO: esta carpeta se BORRA al desinstalar la app.
 class BackupHelper {
   static const _lastBackupKey = 'lm_last_auto_backup_ms';
 
   static Future<Directory> _backupDir() async {
-    final ext = await getExternalStorageDirectory();
+    // getExternalStorageDirectory NO existe en iOS: no devuelve null, LANZA
+    // (UnsupportedError/MissingPluginException), y el catch de quien llama se
+    // lo tragaba en silencio. Resultado: exportar backup y el backup local
+    // automatico estaban rotos en iOS desde el principio (v158).
+    Directory? ext;
+    if (Platform.isAndroid) {
+      ext = await getExternalStorageDirectory();
+    }
     final base = ext ?? await getApplicationDocumentsDirectory();
     final dir = Directory('${base.path}/backups');
     if (!await dir.exists()) await dir.create(recursive: true);

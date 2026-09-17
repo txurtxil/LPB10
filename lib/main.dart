@@ -9,7 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:home_widget/home_widget.dart';
+import 'widget_bridge.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -775,9 +775,9 @@ Future<void> widgetActionCallback(Uri? uri) async {
       var aviso2 = 'Pulsa otra vez';
       try {
         final lat = double.tryParse(
-            await HomeWidget.getWidgetData<String>('lat') ?? '');
+            await LmWidget.getWidgetData<String>('lat') ?? '');
         final lon = double.tryParse(
-            await HomeWidget.getWidgetData<String>('lon') ?? '');
+            await LmWidget.getWidgetData<String>('lon') ?? '');
         if (lat != null && lon != null) {
           final pos = await Geolocator.getLastKnownPosition();
           if (pos != null) {
@@ -793,13 +793,13 @@ Future<void> widgetActionCallback(Uri? uri) async {
       } catch (_) {}
       await CarLogBridge.log('widget armado: ' + cmd);
       try {
-        await HomeWidget.saveWidgetData<String>('qw_status', aviso2);
-        await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
+        await LmWidget.saveWidgetData<String>('qw_status', aviso2);
+        await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
         await Future.delayed(const Duration(seconds: 8));
         if (gWidgetArmado == cmd && gWidgetArmadoTs == ahora) {
           gWidgetArmado = null;
-          await HomeWidget.saveWidgetData<String>('qw_status', '');
-          await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
+          await LmWidget.saveWidgetData<String>('qw_status', '');
+          await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
         }
       } catch (_) {}
       return;
@@ -811,8 +811,8 @@ Future<void> widgetActionCallback(Uri? uri) async {
   // esperar al resultado. Sin aviso, el widget parece roto.
   Future<void> aviso(String t) async {
     try {
-      await HomeWidget.saveWidgetData<String>('qw_status', t);
-      await HomeWidget.updateWidget(androidName: 'QuickWidgetProvider');
+      await LmWidget.saveWidgetData<String>('qw_status', t);
+      await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
     } catch (_) {}
   }
   await aviso('enviando...');
@@ -840,13 +840,13 @@ void main() async {
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
   try {
-    gPendingRoutineId = _routineIdFromUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
+    gPendingRoutineId = _routineIdFromUri(await LmWidget.initiallyLaunchedFromHomeWidget());
   } catch (_) {}
   try {
-    HomeWidget.registerInteractivityCallback(widgetActionCallback);
+    LmWidget.registerInteractivityCallback(widgetActionCallback);
   } catch (_) {}
   try {
-    final cmd0 = _actionFromUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
+    final cmd0 = _actionFromUri(await LmWidget.initiallyLaunchedFromHomeWidget());
     if (cmd0 != null) {
       await CarLogBridge.log('VIA-ARRANQUE ' + cmd0);
       // La Activity solo arranca tras desbloquear, asi que esto se ejecuta ya
@@ -854,7 +854,7 @@ void main() async {
       unawaited(carQuickAction(cmd0));
     }
   } catch (_) {}
-  HomeWidget.widgetClicked.listen((uri) {
+  LmWidget.widgetClicked.listen((uri) {
     final id = _routineIdFromUri(uri);
     if (id != null) {
       gPendingRoutineId = id;
@@ -1777,7 +1777,7 @@ Future<List<({int ts, int km, double soc})>> _readPermanentTripsMain() async {
 
 Future<void> _pushToHomeWidget(VehicleStatus s) async {
   final soc = (s.preciseSoc ?? s.soc?.toDouble())?.toStringAsFixed(1);
-  await HomeWidget.saveWidgetData<String>('soc', soc ?? '--');
+  await LmWidget.saveWidgetData<String>('soc', soc ?? '--');
   // Telemetria a ABRP. No lanza excepcion nunca, asi que no puede afectar al
   // resto del refresco.
   try {
@@ -1800,13 +1800,13 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   try {
     final r = await Pvpc.resumenWidget();
     if (r != null) {
-      await HomeWidget.saveWidgetData<String>('pvpc_ahora', (r['ahora'] as double).toStringAsFixed(4));
-      await HomeWidget.saveWidgetData<String>('pvpc_nivel', r['nivel'] as String);
-      await HomeWidget.saveWidgetData<String>('pvpc_hora_barata', (r['horaBarata'] as int).toString());
-      await HomeWidget.saveWidgetData<String>('pvpc_precio_barato', (r['precioBarato'] as double).toStringAsFixed(4));
-      await HomeWidget.saveWidgetData<String>('pvpc_barato_manana', (r['baratoEsManana'] as bool) ? '1' : '0');
-      await HomeWidget.saveWidgetData<String>('pvpc_hora_cara', (r['horaCara'] as int).toString());
-      await HomeWidget.saveWidgetData<String>('pvpc_precio_caro', (r['precioCaro'] as double).toStringAsFixed(4));
+      await LmWidget.saveWidgetData<String>('pvpc_ahora', (r['ahora'] as double).toStringAsFixed(4));
+      await LmWidget.saveWidgetData<String>('pvpc_nivel', r['nivel'] as String);
+      await LmWidget.saveWidgetData<String>('pvpc_hora_barata', (r['horaBarata'] as int).toString());
+      await LmWidget.saveWidgetData<String>('pvpc_precio_barato', (r['precioBarato'] as double).toStringAsFixed(4));
+      await LmWidget.saveWidgetData<String>('pvpc_barato_manana', (r['baratoEsManana'] as bool) ? '1' : '0');
+      await LmWidget.saveWidgetData<String>('pvpc_hora_cara', (r['horaCara'] as int).toString());
+      await LmWidget.saveWidgetData<String>('pvpc_precio_caro', (r['precioCaro'] as double).toStringAsFixed(4));
     }
   } catch (_) {}
   // Precio de cada dia calculado UNA sola vez para las 4 funciones
@@ -1816,7 +1816,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   // Gasto anual: cargas + seguro/impuesto anotados este ano.
   try {
     final ga = await gastoAnual(precios: _preciosCache);
-    await HomeWidget.saveWidgetData<String>('gasto_anual_total', ga.toStringAsFixed(2));
+    await LmWidget.saveWidgetData<String>('gasto_anual_total', ga.toStringAsFixed(2));
     await CarLogBridge.log('gasto_anual: ' + ga.toStringAsFixed(2));
   } catch (e) {
     await CarLogBridge.log('gasto_anual excepcion: ' + e.toString());
@@ -1826,61 +1826,61 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   try {
     await DriveBackup.autoBackupIfDue();
   } catch (_) {}
-  await HomeWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
+  await LmWidget.saveWidgetData<String>('range', '${s.liveRemainingRange ?? '--'}');
   // Odometro para el widget y el mantenimiento. No viajaba hasta ahora.
-  await HomeWidget.saveWidgetData<String>(
+  await LmWidget.saveWidgetData<String>(
       'odometro', s.totalMileage?.toString() ?? '');
   // Aviso de mantenimiento: solo habla cuando queda poco. Un aviso permanente
   // se deja de mirar.
   try {
-    await HomeWidget.saveWidgetData<String>(
+    await LmWidget.saveWidgetData<String>(
         'mant_aviso', await Mantenimiento.aviso(s.totalMileage ?? 0));
   } catch (_) {}
-  await HomeWidget.saveWidgetData<String>('locked', s.isLocked ? '1' : '0');
-  await HomeWidget.saveWidgetData<String>('updated', 'Actualizado ${TimeOfDay.now().format24Hour()}');
+  await LmWidget.saveWidgetData<String>('locked', s.isLocked ? '1' : '0');
+  await LmWidget.saveWidgetData<String>('updated', 'Actualizado ${TimeOfDay.now().format24Hour()}');
   // Marca de tiempo cruda para poder decir "hace N min". Con el TCU
   // durmiendose a los ~13 min, la hora exacta parece fresca aunque el dato
   // tenga horas; la antiguedad es la informacion mas honesta del widget.
-  await HomeWidget.saveWidgetData<String>(
+  await LmWidget.saveWidgetData<String>(
       'updatedTs', DateTime.now().millisecondsSinceEpoch.toString());
-  await HomeWidget.saveWidgetData<String>('lat', s.latitude != null ? s.latitude.toString() : '');
-  await HomeWidget.saveWidgetData<String>('lon', s.longitude != null ? s.longitude.toString() : '');
+  await LmWidget.saveWidgetData<String>('lat', s.latitude != null ? s.latitude.toString() : '');
+  await LmWidget.saveWidgetData<String>('lon', s.longitude != null ? s.longitude.toString() : '');
   // Direccion legible para el widget. La cache persistida evita llamar a
   // Nominatim en cada refresco: solo sale peticion si el coche se ha movido
   // mas de 300 m desde la ultima resuelta.
   if (s.latitude != null && s.longitude != null) {
     try {
       final dir = await _AddressCache.resolve(s.latitude!, s.longitude!);
-      await HomeWidget.saveWidgetData<String>('carAddress', dir);
+      await LmWidget.saveWidgetData<String>('carAddress', dir);
     } catch (_) {}
   }
   // --- Android Auto: datos extra para sub-pantallas Bateria/Ruedas ---
-  await HomeWidget.saveWidgetData<String>('volt', s.raw['batteryVoltage']?.toString() ?? '');
-  await HomeWidget.saveWidgetData<String>('amp', s.raw['batteryCurrent']?.toString() ?? '');
-  await HomeWidget.saveWidgetData<String>('kw', s.batteryPowerKw?.toStringAsFixed(2) ?? '');
-  await HomeWidget.saveWidgetData<String>('interiorTemp', s.raw['interiorTemp']?.toString() ?? '');
+  await LmWidget.saveWidgetData<String>('volt', s.raw['batteryVoltage']?.toString() ?? '');
+  await LmWidget.saveWidgetData<String>('amp', s.raw['batteryCurrent']?.toString() ?? '');
+  await LmWidget.saveWidgetData<String>('kw', s.batteryPowerKw?.toStringAsFixed(2) ?? '');
+  await LmWidget.saveWidgetData<String>('interiorTemp', s.raw['interiorTemp']?.toString() ?? '');
   // Temp. bateria: el coche NO la reporta siempre (TCU dormido / sin cargar).
   // Si falta, NO se machaca el ultimo valor bueno; se conserva y se guarda la
   // marca de tiempo para que Android Auto muestre la antiguedad del dato.
   final btRaw = s.raw['minBatteryTemp'];
   if (btRaw != null && btRaw.toString().trim().isNotEmpty) {
-    await HomeWidget.saveWidgetData<String>('batteryTemp', btRaw.toString());
-    await HomeWidget.saveWidgetData<String>(
+    await LmWidget.saveWidgetData<String>('batteryTemp', btRaw.toString());
+    await LmWidget.saveWidgetData<String>(
         'batteryTempTs', DateTime.now().millisecondsSinceEpoch.toString());
   }
-  await HomeWidget.saveWidgetData<String>('chargeRemainTime', s.raw['chargeRemainTime']?.toString() ?? '');
-  await HomeWidget.saveWidgetData<String>('tireAlerts', s.tirePressureAlerts.join('|'));
+  await LmWidget.saveWidgetData<String>('chargeRemainTime', s.raw['chargeRemainTime']?.toString() ?? '');
+  await LmWidget.saveWidgetData<String>('tireAlerts', s.tirePressureAlerts.join('|'));
   // Presiones en kPa para la silueta de Android Auto. Hasta ahora solo viajaba
   // tireAlerts (nombres de ruedas en alerta), asi que la pantalla del coche no
   // tenia los numeros y pintaba una barra que en realidad no media nada.
   // Orden fijo: delantera izq, delantera der, trasera izq, trasera der.
   // Vacio = sin lectura; NO se manda 0, que se confundiria con una presion.
-  await HomeWidget.saveWidgetData<String>(
+  await LmWidget.saveWidgetData<String>(
       'tireKpa',
       [s.leftFrontTireKpa, s.rightFrontTireKpa, s.leftRearTireKpa, s.rightRearTireKpa]
           .map((v) => v?.toString() ?? '')
           .join('|'));
-  await HomeWidget.saveWidgetData<String>(
+  await LmWidget.saveWidgetData<String>(
       'tireState',
       ['leftFrontTirePressureState', 'rightFrontTirePressureState',
        'leftRearTirePressureState', 'rightRearTirePressureState']
@@ -1890,11 +1890,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
   try {
     final all = await RoutineStore.load();
     final enc = all.map((r) => r.id + '::' + r.name).join('\n');
-    await HomeWidget.saveWidgetData<String>('routines_all', enc);
+    await LmWidget.saveWidgetData<String>('routines_all', enc);
   } catch (_) {}
   // --- Android Auto: idioma (headless, sin BuildContext) ---
   final _isEs = Platform.localeName.toLowerCase().startsWith('es');
-  await HomeWidget.saveWidgetData<String>('lang', _isEs ? 'es' : 'en');
+  await LmWidget.saveWidgetData<String>('lang', _isEs ? 'es' : 'en');
   // --- Android Auto: consumo del CICLO actual (desde ultima recarga) ---
   try {
     var pts = await _readPermanentTripsMain();
@@ -1915,7 +1915,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       final cycleKmDriven = cyclePts.isNotEmpty
           ? (cyclePts.last.km - cyclePts.first.km)
           : 0;
-      await HomeWidget.saveWidgetData<String>('cycle_km', cycleKmDriven.toString());
+      await LmWidget.saveWidgetData<String>('cycle_km', cycleKmDriven.toString());
       // Barras por dia (solo si el ciclo abarca >1 dia).
       // Se descartan puntos con timestamp futuro (imposibles: datos corruptos
       // que hacian aparecer fechas que aun no han llegado, p.ej. agosto en julio).
@@ -1963,7 +1963,7 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       }
       recent7.sort((a, b) => a.ts.compareTo(b.ts));
       final avg7 = TripPointStore.averageConsumptionPercentPer100km(recent7);
-      await HomeWidget.saveWidgetData<String>(
+      await LmWidget.saveWidgetData<String>(
           'avg7_kwh100',
           avg7 == null ? '' : (avg7 / 100.0 * gBatteryKwh).toStringAsFixed(1));
       // Motor de agregado diario (daily_stats.dart). Todavia NO alimenta la
@@ -2024,18 +2024,18 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
               dayParts[i] + ':' + (eurDia[k] ?? '') + ':' + (kmDia[k] ?? '');
         }
         final tot = await buildCarTotals(precios: _preciosCache);
-        await HomeWidget.saveWidgetData<String>('tot_7d', tot.d7);
-        await HomeWidget.saveWidgetData<String>('tot_mes', tot.mes);
-        await HomeWidget.saveWidgetData<String>('tot_ano', tot.ano);
+        await LmWidget.saveWidgetData<String>('tot_7d', tot.d7);
+        await LmWidget.saveWidgetData<String>('tot_mes', tot.mes);
+        await LmWidget.saveWidgetData<String>('tot_ano', tot.ano);
         // buildCarSeries va en su PROPIO try con log: metida en el try mudo de
         // arriba, cualquier excepcion suya desaparecia sin dejar rastro y las
         // tres claves simplemente no se escribian. Asi es imposible saber por
         // que el selector del coche no tenia datos.
         try {
           final ser = await buildCarSeries(precios: _preciosCache);
-          await HomeWidget.saveWidgetData<String>('hist_dias', ser.dias);
-          await HomeWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
-          await HomeWidget.saveWidgetData<String>('hist_meses', ser.meses);
+          await LmWidget.saveWidgetData<String>('hist_dias', ser.dias);
+          await LmWidget.saveWidgetData<String>('hist_semanas', ser.semanas);
+          await LmWidget.saveWidgetData<String>('hist_meses', ser.meses);
           await CarLogBridge.log('SERIES dias=' + ser.dias.length.toString() +
               ' sem=' + ser.semanas.length.toString() +
               ' mes=' + ser.meses.length.toString());
@@ -2049,35 +2049,35 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
       } catch (e) {
         await CarLogBridge.log('TOTALES FALLO: ' + e.toString());
       }
-      await HomeWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
+      await LmWidget.saveWidgetData<String>('cycle_days', dayParts.join(','));
       // El lado Kotlin llevaba 430 y 15,6 escritos a mano, asi que Android Auto
       // seguia mostrando el objetivo del B10 aunque el perfil fuera otro coche.
-      await HomeWidget.saveWidgetData<String>(
+      await LmWidget.saveWidgetData<String>(
           'max_range_km', gMaxRangeKm.round().toString());
-      await HomeWidget.saveWidgetData<String>('bat_kwh', gBatteryKwh.toString());
-      await HomeWidget.saveWidgetData<String>('tyre_size', gTyreSize);
-      await HomeWidget.saveWidgetData<String>('tyre_size_r', gTyreSizeR);
-      await HomeWidget.saveWidgetData<String>(
+      await LmWidget.saveWidgetData<String>('bat_kwh', gBatteryKwh.toString());
+      await LmWidget.saveWidgetData<String>('tyre_size', gTyreSize);
+      await LmWidget.saveWidgetData<String>('tyre_size_r', gTyreSizeR);
+      await LmWidget.saveWidgetData<String>(
           'tyre_bar_r', gTyreBarR > 0 ? gTyreBarR.toString() : '');
-      await HomeWidget.saveWidgetData<String>(
+      await LmWidget.saveWidgetData<String>(
           'tyre_bar', gTyreBar > 0 ? gTyreBar.toString() : '');
-      await HomeWidget.saveWidgetData<String>('bat_chem', gChemistry);
-      await HomeWidget.saveWidgetData<String>('bat_dc_kw', gDcKw.toString());
-      await HomeWidget.saveWidgetData<String>('bat_ac_kw', gAcKw.toString());
+      await LmWidget.saveWidgetData<String>('bat_chem', gChemistry);
+      await LmWidget.saveWidgetData<String>('bat_dc_kw', gDcKw.toString());
+      await LmWidget.saveWidgetData<String>('bat_ac_kw', gAcKw.toString());
       // Limite de carga y horario ya vienen en config.3 del propio payload,
       // sin peticion aparte. Se reenvian para la pantalla del coche.
       try {
         final cfg = (s.raw['config'] as Map?)?['3'] as Map?;
         if (cfg != null) {
-          await HomeWidget.saveWidgetData<String>(
+          await LmWidget.saveWidgetData<String>(
               'charge_limit', cfg['percent']?.toString() ?? '');
-          await HomeWidget.saveWidgetData<String>(
+          await LmWidget.saveWidgetData<String>(
               'charge_window',
               (cfg['beginTime']?.toString() ?? '') + '-' +
                   (cfg['endTime']?.toString() ?? ''));
         }
       } catch (_) {}
-      await HomeWidget.saveWidgetData<String>('target_kwh100',
+      await LmWidget.saveWidgetData<String>('target_kwh100',
           (gBatteryKwh / gMaxRangeKm * 100.0).toStringAsFixed(1));
       if (avgPct != null) {
         final kwh100 = avgPct / 100.0 * gBatteryKwh;
@@ -2085,11 +2085,11 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         // medio sale optimista y daria autonomias imposibles (>430).
         final estRangeRaw = kwh100 > 0 ? (gBatteryKwh / kwh100 * 100).round() : 0;
         final estRange = estRangeRaw > gMaxRangeKm.round() ? gMaxRangeKm.round() : estRangeRaw;
-        await HomeWidget.saveWidgetData<String>('cycle_kwh100', kwh100.toStringAsFixed(1));
-        await HomeWidget.saveWidgetData<String>('cycle_est_range', estRange.toString());
+        await LmWidget.saveWidgetData<String>('cycle_kwh100', kwh100.toStringAsFixed(1));
+        await LmWidget.saveWidgetData<String>('cycle_est_range', estRange.toString());
       } else {
-        await HomeWidget.saveWidgetData<String>('cycle_kwh100', '');
-        await HomeWidget.saveWidgetData<String>('cycle_est_range', '');
+        await LmWidget.saveWidgetData<String>('cycle_kwh100', '');
+        await LmWidget.saveWidgetData<String>('cycle_est_range', '');
       }
     }
   } catch (_) {}
@@ -2110,22 +2110,22 @@ Future<void> _pushToHomeWidget(VehicleStatus s) async {
         extras['chartText'] =
             ct.isEmpty ? coste.widget : ct + '\n' + coste.widget;
       }
-      await HomeWidget.saveWidgetData<String>('cost_row', coste.car);
+      await LmWidget.saveWidgetData<String>('cost_row', coste.car);
     } catch (_) {}
     for (final entry in extras.entries) {
-      await HomeWidget.saveWidgetData<String>(entry.key, entry.value);
+      await LmWidget.saveWidgetData<String>(entry.key, entry.value);
     }
   } catch (_) {
     // El grafico nunca debe romper el refresco del widget
   }
   try {
     final favs = await RoutineStore.favorites();
-    await HomeWidget.saveWidgetData<String>('fav1_id', favs.isNotEmpty ? favs[0].id : '');
-    await HomeWidget.saveWidgetData<String>('fav1_name', favs.isNotEmpty ? favs[0].name : '');
-    await HomeWidget.saveWidgetData<String>('fav2_id', favs.length > 1 ? favs[1].id : '');
-    await HomeWidget.saveWidgetData<String>('fav2_name', favs.length > 1 ? favs[1].name : '');
+    await LmWidget.saveWidgetData<String>('fav1_id', favs.isNotEmpty ? favs[0].id : '');
+    await LmWidget.saveWidgetData<String>('fav1_name', favs.isNotEmpty ? favs[0].name : '');
+    await LmWidget.saveWidgetData<String>('fav2_id', favs.length > 1 ? favs[1].id : '');
+    await LmWidget.saveWidgetData<String>('fav2_name', favs.length > 1 ? favs[1].name : '');
   } catch (_) {}
-  await HomeWidget.updateWidget(androidName: 'BatteryWidgetProvider');
+  await LmWidget.updateWidget(androidName: 'BatteryWidgetProvider');
 }
 
 extension _TimeOfDayFormat on TimeOfDay {

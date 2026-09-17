@@ -383,7 +383,10 @@ Future<String> importHistoryBackup() async {
         nuevasCargas.toString() +
         ' cargas' +
         (repes > 0 ? ' (' + repes.toString() + ' ya estaban, omitidos)' : '');
-  } catch (_) {
-    return 'Backup no valido';
+  } catch (e) {
+    // El detalle del error va en el mensaje: en iOS cualquier fallo de
+    // file_selector salia como "Backup no valido" y era imposible de
+    // diagnosticar (v158).
+    return 'Error al importar: ' + e.toString();
   }
 }

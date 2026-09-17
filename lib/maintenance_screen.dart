@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:home_widget/home_widget.dart';
+import 'widget_bridge.dart';
 
 import 'maintenance.dart';
 import 'maintenance_ticket_screen.dart';
@@ -27,7 +27,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     var odo = 0;
     try {
       odo = int.tryParse(
-              (await HomeWidget.getWidgetData<String>('odometro')) ?? '') ??
+              (await LmWidget.getWidgetData<String>('odometro')) ?? '') ??
           0;
     } catch (_) {}
     final st = await Mantenimiento.estado(odo);
