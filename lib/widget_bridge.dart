@@ -1,43 +1,87 @@
-// widget_bridge.dart - Fachada de home_widget que no-op en iOS (v158).
+// widget_bridge.dart - Fachada de home_widget (v158: no-op en iOS;
+// v161: iOS activo con la extension LmBatteryWidget).
 //
-// Los widgets (QuickWidgetProvider, BatteryWidgetProvider) solo existen en
-// Android: no hay extension de widget para iOS. Pero home_widget, en iOS,
-// exige setAppGroupId() con un App Group REAL (entitlement de Apple
-// configurado en Xcode) y, sin el, TODA llamada lanza
-// PlatformException(-7, AppGroupId not set). La primera de ellas iba sin
-// try/catch (_pushToHomeWidget, dato 'soc') y el error acababa de cartel
-// amarillo en el dashboard.
+// Android: QuickWidgetProvider y BatteryWidgetProvider leen SharedPreferences
+// via home_widget. iOS: la extension WidgetKit LmBatteryWidget lee el
+// UserDefaults del App Group compartido; home_widget exige setAppGroupId()
+// con un App Group REAL (entitlement com.apple.security.application-groups
+// en Runner.entitlements y en la extension, configurado por
+// tool/ios_add_widget_target.rb). Sin el, TODA llamada lanza
+// PlatformException(-7, AppGroupId not set) — el cartel amarillo original
+// del dashboard vino de ahi.
 //
-// Solucion: ningun fichero toca HomeWidget directamente; todo pasa por
-// LmWidget, que en iOS no hace nada (getWidgetData devuelve null y los
-// llamantes ya tienen sus fallbacks; widgetClicked es un stream vacio).
-// Si algun dia se crea la extension de widget para iOS, solo hay que
-// cambiar este fichero.
-//
-// OJO: los try/catch que ya rodeaban estas llamadas en los llamantes se
-// mantienen; esta fachada solo anade la puerta de plataforma, no traga
-// errores nuevos.
+// Defensa en profundidad: aun con la extension creada, si el App Group no
+// esta registrado en la cuenta de Apple del desarrollador (p. ej. build sin
+// firmar o grupo no dado de alta en el portal), setAppGroupId y las
+// escrituras fallan. Esta fachada traga SOLO esos fallos de widget en iOS
+// (log por consola y a seguir): el widget es un extra, nunca debe romper la
+// app. En Android se mantiene el comportamiento original sin tragar nada.
 
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
 class LmWidget {
-  static Future<T?> getWidgetData<T>(String key) => Platform.isAndroid
-      ? HomeWidget.getWidgetData<T>(key)
-      : Future<T?>.value(null);
+  // Mismo App Group en Runner.entitlements, LmBatteryWidget.entitlements,
+  // el UserDefaults(suiteName:) del widget Swift y aqui.
+  static const String _kIosAppGroup = 'group.com.txurtxil.lpb10';
+  // Debe coincidir con el `kind:` del StaticConfiguration del widget Swift.
+  static const String _kIosWidgetName = 'LmBatteryWidget';
+  static bool _grupoIosListo = false;
+
+  static Future<bool> _asegurarGrupoIos() async {
+    if (_grupoIosListo) return true;
+    try {
+      await HomeWidget.setAppGroupId(_kIosAppGroup);
+      _grupoIosListo = true;
+      return true;
+    } catch (e) {
+      debugPrint('LmWidget: App Group iOS no disponible ($e)');
+      return false;
+    }
+  }
+
+  static Future<T?> getWidgetData<T>(String key) async {
+    if (Platform.isAndroid) return HomeWidget.getWidgetData<T>(key);
+    if (Platform.isIOS && await _asegurarGrupoIos()) {
+      try {
+        return await HomeWidget.getWidgetData<T>(key);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
 
   static Future<void> saveWidgetData<T>(String key, T? value) async {
-    if (Platform.isAndroid) await HomeWidget.saveWidgetData<T>(key, value);
+    if (Platform.isAndroid) {
+      await HomeWidget.saveWidgetData<T>(key, value);
+      return;
+    }
+    if (Platform.isIOS && await _asegurarGrupoIos()) {
+      try {
+        await HomeWidget.saveWidgetData<T>(key, value);
+      } catch (_) {}
+    }
   }
 
   static Future<void> updateWidget({String? androidName}) async {
     if (Platform.isAndroid) {
       await HomeWidget.updateWidget(androidName: androidName);
+      return;
+    }
+    if (Platform.isIOS && await _asegurarGrupoIos()) {
+      try {
+        await HomeWidget.updateWidget(iOSName: _kIosWidgetName);
+      } catch (_) {}
     }
   }
 
+  // De aqui para abajo sigue siendo solo Android: la extension iOS no tiene
+  // interactividad (botones) en esta version; el toque abre la app via
+  // widgetURL y el esquema lmb10:// declarado en Runner/Info.plist.
   static Future<Uri?> initiallyLaunchedFromHomeWidget() => Platform.isAndroid
       ? HomeWidget.initiallyLaunchedFromHomeWidget()
       : Future<Uri?>.value(null);
