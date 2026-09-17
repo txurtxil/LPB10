@@ -49,7 +49,16 @@ if widget.nil?
     embed = project.new(Xcodeproj::Project::Object::PBXCopyFilesBuildPhase)
     embed.name = 'Embed App Extensions'
     embed.symbol_dst_subfolder_spec = :plug_ins
-    runner.build_phases << embed
+    # ANTES de "Thin Binary" (script de Flutter), nunca al final: la fase de
+    # copia escribe en Runner.app y Thin Binary tambien; si el embed queda
+    # detras, Xcode detecta un ciclo y el build falla ("Cycle inside Runner",
+    # error real del workflow build-ios.yml el 17/09/2026).
+    idx = runner.build_phases.index { |ph| ph.respond_to?(:name) && ph.name == 'Thin Binary' }
+    if idx
+      runner.build_phases.insert(idx, embed)
+    else
+      runner.build_phases << embed
+    end
   end
   bf = embed.add_file_reference(widget.product_reference)
   bf.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
