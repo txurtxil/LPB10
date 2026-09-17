@@ -65,6 +65,16 @@
         <a class="btn btn-primary" href="#instalar"><span data-i18n="hero.cta1">Conviértete en tester</span></a>
         <a class="btn btn-ghost" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener"><span data-i18n="hero.cta2">Descargar APK</span></a>
       </div>
+      <div class="store-badges reveal-line">
+        <a class="store-badge" href="#instalar" aria-label="Android">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22a11.66 11.66 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 7 15.25zm10 0a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 17 15.25z"/></svg>
+          <span class="sb-text"><span class="sb-top" data-i18n="badge.android.top">Disponible para</span><span class="sb-bot">Android</span></span>
+        </a>
+        <a class="store-badge" href="#instalar-ios" aria-label="iOS">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <span class="sb-text"><span class="sb-top" data-i18n="badge.ios.top">Compatible con</span><span class="sb-bot">iOS</span></span>
+        </a>
+      </div>
       <p class="hero-note mono"><span id="heroVer">v3.60.151+301</span><span data-i18n="hero.note"> · gratis · sin anuncios · desarrollada sobre un B10 real</span></p>
     </div>
     <div class="hero-phone" aria-hidden="true">
@@ -240,6 +250,24 @@
       </div>
       <a class="btn btn-outline" href="https://github.com/txurtxil/LPB10/releases/latest" target="_blank" rel="noopener"><span data-i18n="inst.alt.cta">APK en GitHub</span></a>
     </div>
+
+    <div class="ios-channel reveal" id="instalar-ios">
+      <div class="ios-head">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        <h4 data-i18n="inst.ios.t">¿Tienes iPhone? LMB10 también funciona en iOS</h4>
+      </div>
+      <p data-i18n="inst.ios.d">Cada release publica también el IPA. Como la app no está en la App Store, se instala por sideloading — suena raro, pero son diez minutos una sola vez:</p>
+      <ol class="ios-steps">
+        <li data-i18n="inst.ios.s1"><b>Descarga el IPA</b> de la última release en GitHub (archivo <span class="mono">lmb10-…-unsigned.ipa</span>).</li>
+        <li data-i18n="inst.ios.s2"><b>Instala AltStore o SideStore</b> (gratis) en tu iPhone y firma el IPA con tu propio Apple ID — la app queda firmada a tu nombre, nadie más toca tus datos.</li>
+        <li data-i18n="inst.ios.s3"><b>Confía en tu certificado</b>: Ajustes → General → VPN y gestión de dispositivos → confiar en tu Apple ID.</li>
+        <li data-i18n="inst.ios.s4"><b>Abre LMB10 e importa tu certificado</b> de Leapmotor, igual que en Android. Con Apple ID gratuito la firma dura 7 días: AltStore la renueva solo conectando el iPhone a la misma Wi-Fi que el ordenador.</li>
+      </ol>
+      <div class="ios-foot">
+        <a class="btn btn-outline" href="https://github.com/txurtxil/LPB10/releases/latest" target="_blank" rel="noopener"><span data-i18n="inst.ios.cta">IPA en GitHub</span></a>
+        <p class="fine ios-credit" data-i18n="inst.ios.credit">🙏 Guía de instalación en iOS gracias a <b>@kbs23</b></p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -311,6 +339,18 @@
     <a class="btn btn-coffee reveal" href="https://ko-fi.com/txurtxil" target="_blank" rel="noopener">
       <span data-i18n="coffee.cta">☕ ko-fi.com/txurtxil</span>
     </a>
+  </div>
+</section>
+
+<!-- ══════════ DEDICATORIA TEA ══════════ -->
+<section class="tea" id="tea">
+  <div class="tea-inner reveal">
+    <div class="tea-text">
+      <p class="label mono" data-i18n="tea.label">DEDICATORIA</p>
+      <h2 class="h2" data-i18n="tea.title">Cada pieza encaja a su manera.</h2>
+      <p class="lead" data-i18n="tea.text">LMB10 es un proyecto personal, hecho en casa y sin más ánimo que el de compartir. Va dedicado con cariño a las personas con autismo (TEA) y a sus familias — las piezas del puzzle recuerdan que cada quien encaja a su manera, y que todas son necesarias.</p>
+      <p class="fine tea-sign" data-i18n="tea.sign">— SurferRule</p>
+    </div>
   </div>
 </section>
 

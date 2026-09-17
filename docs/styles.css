@@ -321,3 +321,57 @@ section{padding:clamp(80px,10vw,140px) 0}
   *,*::before,*::after{transition:none!important;animation:none!important}
   .reveal,.reveal-line,.hero-title .w span,.shot img{opacity:1!important;transform:none!important;filter:none!important}
 }
+
+/* ═══ Store badges (hero) ═══ */
+.store-badges{display:flex;gap:14px;margin-top:26px;flex-wrap:wrap}
+.store-badge{
+  display:inline-flex;align-items:center;gap:12px;
+  border:1px solid var(--line-d);border-radius:14px;padding:10px 18px 10px 14px;
+  color:var(--txt-d);background:rgba(228,229,249,.04);
+  transition:border-color .3s,background .3s,transform .3s var(--ease);
+}
+.store-badge:hover{border-color:var(--violet);background:rgba(157,140,255,.10);transform:translateY(-2px)}
+.store-badge svg{color:var(--violet);flex-shrink:0}
+.sb-text{display:flex;flex-direction:column;line-height:1.15;text-align:left}
+.sb-top{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-d2)}
+.sb-bot{font-family:var(--font-d);font-weight:700;font-size:1.12rem}
+
+/* ═══ iOS channel ═══ */
+.ios-channel{
+  margin-top:20px;border:1px solid var(--line-l);border-radius:18px;
+  padding:clamp(22px,2.8vw,36px);
+  background:linear-gradient(120deg,rgba(91,75,196,.10),transparent 55%);
+}
+.ios-head{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.ios-head svg{color:var(--violet-deep);flex-shrink:0}
+.ios-head h4{font-family:var(--font-d);font-size:1.2rem}
+.ios-channel>p{color:var(--txt-l2);font-size:.95rem;max-width:76ch}
+.ios-steps{margin:18px 0 0;padding-left:0;list-style:none;counter-reset:ios}
+.ios-steps li{
+  counter-increment:ios;position:relative;padding:14px 0 14px 52px;
+  border-top:1px solid var(--line-l);color:var(--txt-l2);font-size:.94rem;
+}
+.ios-steps li:first-child{border-top:0}
+.ios-steps li::before{
+  content:counter(ios,decimal-leading-zero);
+  position:absolute;left:0;top:12px;
+  font-family:var(--font-m);font-size:1.1rem;color:var(--violet-deep);
+}
+.ios-steps b{color:var(--txt-l)}
+.ios-foot{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:20px}
+.ios-credit{color:var(--txt-l2)}
+
+/* ═══ Dedicatoria TEA ═══ */
+.tea{position:relative;overflow:hidden;background:var(--ink);border-top:1px solid var(--line-d)}
+.tea-inner{
+  position:relative;min-height:clamp(420px,56vw,640px);
+  display:flex;align-items:center;
+  background:url(assets/tea.png) right center/cover no-repeat;
+}
+.tea-text{position:relative;z-index:1;max-width:560px;padding:clamp(60px,9vw,120px) clamp(20px,6vw,90px)}
+.tea-text .lead{color:var(--txt-d2);margin-top:18px}
+.tea-sign{margin-top:26px;color:var(--violet);font-family:var(--font-m);letter-spacing:.04em}
+@media(max-width:760px){
+  .tea-inner{background-position:70% center}
+  .tea-text{max-width:100%;background:linear-gradient(180deg,rgba(7,4,12,.85),rgba(7,4,12,.6) 65%,rgba(7,4,12,.15))}
+}
