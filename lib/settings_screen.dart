@@ -17,6 +17,7 @@ import 'trip_list_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
+import 'ios_drive_detector.dart';
 import 'main.dart' show modoSoloLectura, setModoSoloLectura;
 
 const _storage = FlutterSecureStorage();
@@ -41,6 +42,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _showMap = true;
   bool _hasCert = false;
+  bool _iosDrive = false;
   bool _loading = true;
 
   @override
@@ -52,7 +54,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final v = await loadShowMapSetting();
     final c = await hasClientCert();
-    setState(() { _showMap = v; _hasCert = c; _loading = false; });
+    final d = Platform.isIOS ? await IosDriveDetector.estaActivo() : false;
+    setState(() { _showMap = v; _hasCert = c; _iosDrive = d; _loading = false; });
+  }
+
+  Future<void> _cambiarIosDrive(bool v) async {
+    if (v) {
+      final ok = await IosDriveDetector.activar();
+      if (!ok) {
+        if (mounted) {
+          final es = Localizations.localeOf(context).languageCode == 'es';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(es
+                  ? 'Permiso de ubicacion denegado. Activalo en Ajustes de iOS > LMB10 > Ubicacion.'
+                  : 'Location permission denied. Enable it in iOS Settings > LMB10 > Location.')));
+        }
+        return;
+      }
+    } else {
+      await IosDriveDetector.desactivar();
+    }
+    if (mounted) setState(() => _iosDrive = v);
   }
 
   @override
@@ -172,18 +194,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       MaterialPageRoute(builder: (_) => const CarLogScreen())),
                 ),
                 const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.bluetooth_outlined),
-                  title: Text(Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Bluetooth del coche'
-                      : 'Car Bluetooth'),
-                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Elige que dispositivos activan la deteccion de conduccion'
-                      : 'Choose which devices trigger drive detection'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CarBtScreen())),
-                ),
+                // iOS no permite escuchar las conexiones Bluetooth del
+                // sistema (v160): alla la deteccion va por ubicacion y el
+                // selector BT no sirve de nada, asi que se sustituye.
+                if (Platform.isIOS)
+                  SwitchListTile(
+                    secondary: const Icon(Icons.navigation_outlined),
+                    title: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Deteccion de conduccion (ubicacion)'
+                        : 'Drive detection (location)'),
+                    subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'iOS no permite usar el Bluetooth: se detecta al moverte. No deslices la app fuera; la pastilla azul de ubicacion quedara visible'
+                        : 'iOS cannot use Bluetooth: detection works by movement. Do not swipe the app away; the blue location pill will stay visible'),
+                    value: _iosDrive,
+                    onChanged: _cambiarIosDrive,
+                  )
+                else
+                  ListTile(
+                    leading: const Icon(Icons.bluetooth_outlined),
+                    title: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Bluetooth del coche'
+                        : 'Car Bluetooth'),
+                    subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Elige que dispositivos activan la deteccion de conduccion'
+                        : 'Choose which devices trigger drive detection'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const CarBtScreen())),
+                  ),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.backup_outlined),

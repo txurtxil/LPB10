@@ -24,6 +24,7 @@ import 'guard_mode_screen.dart';
 import 'sentry/sentry_screen.dart';
 import 'sentry/sentry_background.dart';
 import 'sentry/sentry_autoarm.dart';
+import 'ios_drive_detector.dart';
 import 'routines/routines_screen.dart';
 import 'routines/routines_background.dart';
 import 'routines/routine_engine.dart';
@@ -866,6 +867,13 @@ void main() async {
       unawaited(carQuickAction(cmd));
     }
   });
+  // Deteccion de conduccion en iOS (v160): no hay evento BT del sistema,
+  // asi que se usa un stream de ubicacion de bajo consumo que continua en
+  // segundo plano. Solo arranca si el usuario lo activo en Ajustes.
+  if (Platform.isIOS) {
+    IosDriveDetector.onSondeo = refreshVehicleDataInBackground;
+    unawaited(IosDriveDetector.arrancarSiActivo());
+  }
   runApp(const LPB10App());
 }
 
