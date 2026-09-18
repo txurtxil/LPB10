@@ -24,6 +24,97 @@ const String kOperpwdAesKey = 'f1cf0c025baec0e2';
 const String kOperpwdAesIv = '6b6a1fe94e133fd7';
 
 // ============================================================
+// Nombres de las abilities del vehicle list (ability IDs).
+// Mapeo tomado de markoceri/leapmotor-api (models.py, enum VehicleAbility),
+// cruzado con el analisis de la APK oficial 1.15.3 (18/09/2026).
+// Las que interesan a la investigacion BLE-KEY: 16, 30, 49 y 53.
+// ============================================================
+const Map<int, String> kAbilityNames = {
+  1: 'BASE',
+  2: 'STATUS_DATA',
+  3: 'TRUNK',
+  4: 'AUTOPARK',
+  5: 'GPS',
+  6: 'AC_ON',
+  7: 'BATTERY_DETAIL',
+  8: 'AC_CYCLE',
+  9: 'AC_PRESET',
+  10: 'LOCK_UNLOCK',
+  11: 'FIND_CAR',
+  12: 'WINDOWS_C10',
+  13: 'CHARGE_RELATED_1',
+  14: 'SEAT_HEATING',
+  15: 'STEERING_WHEEL',
+  16: 'BLE_KEY',
+  17: 'CLIMATE_ADVANCED',
+  18: 'WINDSHIELD_DEFROST',
+  19: 'REAR_HEAT',
+  20: 'WINDOWS_T03_ALT',
+  21: 'FRONT_SEAT_HEAT',
+  22: 'REAR_SEAT_HEAT',
+  23: 'SCREEN_SAVER',
+  24: 'TRUNK_SPECIAL',
+  25: 'CYCLIC_CHARGE',
+  26: 'CHARGE_REPEAT_WEEKLY',
+  27: 'CAR_TPMS',
+  28: 'WINDSHIELD_DEFROST_TRIGGER',
+  29: 'DRIVER_COPILOT',
+  30: 'GPS_SHARING',
+  31: 'MILEAGE_ENERGY',
+  32: 'CALENDAR_SYNC',
+  34: 'SPEED_LIMIT',
+  35: 'CHARGE_LIMIT',
+  36: 'WINDOWS_T03',
+  37: 'AIR_CYCLE',
+  38: 'PREPARE',
+  40: 'FUEL_HEATING',
+  42: 'DRIVER_SEAT_VENTILATION',
+  43: 'PASSENGER_SEAT_VENTILATION',
+  45: 'MOBILE_CONTROL',
+  46: 'ON3_STRAIGHT_CALL',
+  47: 'CYCLIC_CHARGE_TRIGGER',
+  48: 'UNLOCK_CHARGE_GUN',
+  49: 'PARKING_PHOTO',
+  50: 'SENTINEL',
+  51: 'WEEKLY_CHARGE_REPEAT',
+  52: 'NAVIGATION',
+  53: 'BLE_KEY_RESTART',
+};
+
+// Abilities que la sonda BLE-KEY marca como pistas.
+const Set<int> kAbilityPistas = {16, 30, 49, 53};
+
+/// Informe legible de la lista `abilities` del vehicle list.
+/// Funcion pura (testeable sin red). Acepta la lista cruda del JSON, que
+/// puede traer ints o strings, o cualquier otra cosa (entonces lo dice).
+String abilitiesReport(dynamic abilities) {
+  final buf = StringBuffer();
+  if (abilities is! List || abilities.isEmpty) {
+    buf.writeln('abilities: ausente o vacia (' + abilities.toString() + ')');
+    return buf.toString();
+  }
+  final ids = <int>[];
+  for (final a in abilities) {
+    final id = a is num ? a.toInt() : int.tryParse(a.toString());
+    if (id != null) ids.add(id);
+  }
+  ids.sort();
+  buf.writeln('abilities (' + ids.length.toString() + '):');
+  for (final id in ids) {
+    final nombre = kAbilityNames[id] ?? 'DESCONOCIDA';
+    final pista = kAbilityPistas.contains(id) ? '   <== PISTA BLE-KEY' : '';
+    buf.writeln('  ' + id.toString() + ' = ' + nombre + pista);
+  }
+  buf.writeln('');
+  for (final p in const [16, 30, 49, 53]) {
+    buf.writeln((ids.contains(p) ? '[SI] ' : '[NO] ') +
+        p.toString() + ' ' + (kAbilityNames[p] ?? '') +
+        (ids.contains(p) ? ' declarada' : ' NO declarada'));
+  }
+  return buf.toString();
+}
+
+// ============================================================
 // SM4 (tablas y claves de ronda fijas, de leapmotor_api/crypto.py)
 // ============================================================
 const List<int> _sm4Sbox = [
@@ -1547,6 +1638,124 @@ class LeapmotorApiClient {
     } catch (e) {
       buf.writeln('### 4. getAppointment cmdId=392 -> EXCEPCION: ' + e.toString());
     }
+
+    return buf.toString();
+  });
+
+  // ============================================================
+  // SONDA: llave Bluetooth (BLE-KEY) v1.
+  //
+  // Origen: analisis estatico de la APK oficial 1.15.3 (18/09/2026). La app
+  // oficial tiene llave digital BLE (desbloqueo por proximidad, bloqueo al
+  // alejarse) y el ecosistema open source documenta el cmdId 430 =
+  // BLE_KEY_RESTART (reinicio del modulo de llave BT del coche), que ESTA en
+  // la rightList de la cuenta compartida del dueno.
+  //
+  // Esta sonda es SOLO LECTURA. No ejecuta el 430: lo que busca es decidir si
+  // merece la pena el boton "Reiniciar llave BT" en la siguiente release:
+  //   1. vehicle/list: vuelca las abilities del coche y marca 16 (BLE_KEY),
+  //      30 (GPS_SHARING), 49 (PARKING_PHOTO) y 53 (BLE_KEY_RESTART); vuelca
+  //      la rightList si el coche esta en sharedcars y mira si esta el 430.
+  //   2. getAppointment cmdId=430: intento de CONSULTA (igual que la consulta
+  //      392 de FOTA resulto ser solo lectura). Si responde code 0 hay camino;
+  //      code 40 = sin derechos en esta cuenta; otro code = no existe consulta.
+  // ============================================================
+  Future<String> probeBleKeyRaw(String vin) => withTokenRetry(() async {
+    if (_accountClient == null) throw Exception('Not logged in');
+    final buf = StringBuffer();
+    buf.writeln('SONDA BLE-KEY v1 - llave Bluetooth del coche (solo lectura)');
+    buf.writeln('Hora local: ' + DateTime.now().toIso8601String());
+    buf.writeln('');
+
+    // 1. abilities + rightList del vehicle list.
+    try {
+      final headers = _signedHeaders()..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/list'),
+        headers: headers,
+        body: '',
+      );
+      buf.writeln('### 1. vehicle/list -> HTTP ' + r.statusCode.toString());
+      dynamic body;
+      try {
+        body = json.decode(r.body);
+      } catch (_) {
+        body = null;
+      }
+      final data = body is Map ? body['data'] : null;
+      final propios = data is Map ? (data['bindcars'] as List? ?? const []) : const [];
+      final compartidos = data is Map ? (data['sharedcars'] as List? ?? const []) : const [];
+      buf.writeln('bindcars: ' + propios.length.toString() +
+          '  |  sharedcars: ' + compartidos.length.toString());
+      final coches = <dynamic>[...propios, ...compartidos];
+      dynamic coche;
+      for (final c in coches) {
+        if (c is Map && c['vin']?.toString() == vin) { coche = c; break; }
+      }
+      coche ??= coches.isNotEmpty && coches.first is Map ? coches.first : null;
+      if (coche is Map) {
+        final v = coche;
+        final esCompartido = compartidos.contains(v);
+        buf.writeln('coche inspeccionado: ' + (v['vin']?.toString() ?? '?') +
+            (esCompartido ? '  (COMPARTIDO)' : '  (PROPIETARIO)'));
+        buf.writeln('');
+        buf.writeln(abilitiesReport(v['abilities']));
+        final derechos = v['rightList'];
+        if (derechos is List) {
+          buf.writeln('rightList (' + derechos.length.toString() + '): ' + derechos.toString());
+          buf.writeln(derechos.contains(430) || derechos.contains('430')
+              ? '>>> 430 (BLE_KEY_RESTART) PRESENTE en la rightList: el boton de reinicio deberia funcionar en esta cuenta.'
+              : '>>> 430 NO esta en la rightList: el reinicio solo iria con la cuenta propietaria.');
+        } else {
+          buf.writeln('sin rightList (cuenta propietaria: todos los derechos implicitos, 430 incluido).');
+        }
+      } else {
+        var cuerpo = r.body;
+        if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
+        buf.writeln('estructura inesperada, cuerpo crudo:');
+        buf.writeln(cuerpo);
+      }
+    } catch (e) {
+      buf.writeln('### 1. vehicle/list -> EXCEPCION: ' + e.toString());
+    }
+    buf.writeln('');
+
+    // 2. getAppointment cmdId=430 como intento de consulta de solo lectura.
+    //    Nadie ha probado si 430 tiene consulta asociada; la respuesta real
+    //    decide (code 0 / code 40 sin derechos / otro = no existe).
+    try {
+      final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '430'})..addAll(_authHeaders());
+      final r = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
+        headers: headers,
+        body: 'vin=${Uri.encodeComponent(vin)}&cmdId=430',
+      );
+      buf.writeln('### 2. getAppointment cmdId=430 (intento de consulta BLE-KEY) -> HTTP ' + r.statusCode.toString());
+      var cuerpo = r.body;
+      if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
+      buf.writeln(cuerpo);
+      dynamic body;
+      try {
+        body = json.decode(r.body);
+      } catch (_) {
+        body = null;
+      }
+      if (body is Map) {
+        final code = body['code'] ?? body['result'];
+        if (code == 0) {
+          buf.writeln('>>> code 0: el 430 responde en esta cuenta. Luz verde para el boton de reinicio de la llave BT.');
+        } else if (code == 40) {
+          buf.writeln('>>> code 40: sin derechos en esta cuenta. Probar con la cuenta propietaria.');
+        } else {
+          buf.writeln('>>> code ' + code.toString() + ': el 430 no tiene consulta asociada (normal). El boton se probaria a ciegas con la sonda de ejecucion.');
+        }
+      }
+    } catch (e) {
+      buf.writeln('### 2. getAppointment cmdId=430 -> EXCEPCION: ' + e.toString());
+    }
+    buf.writeln('');
+    buf.writeln('Leyenda abilities: 16=BLE_KEY (llave bluetooth), 30=GPS_SHARING (posicion en tiempo real), '
+        '49=PARKING_PHOTO (foto de aparcamiento), 53=BLE_KEY_RESTART (reinicio del modulo, cmdId 430).');
 
     return buf.toString();
   });

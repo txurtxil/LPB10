@@ -3453,6 +3453,20 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
     }
   }
 
+  Future<void> _probeBleKey() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Sondeando abilities del vehiculo y derechos BLE-KEY (430)...';
+    });
+    try {
+      final raw = await widget.client.probeBleKeyRaw(widget.vehicle.vin);
+      setState(() { _text = raw; _loading = false; });
+    } catch (e) {
+      setState(() { _text = 'Error en la sonda BLE-KEY:\n\n$e'; _loading = false; });
+    }
+  }
+
   void _saveSnapshot() {
     if (_current == null) return;
     setState(() {
@@ -3565,6 +3579,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: FOTA (mensajes y version)'
                     : 'Probe: FOTA (messages and version)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeBleKey,
+                icon: const Icon(Icons.bluetooth_searching, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: llave Bluetooth (BLE-KEY)'
+                    : 'Probe: Bluetooth key (BLE-KEY)'),
               ),
             ),
           ),
