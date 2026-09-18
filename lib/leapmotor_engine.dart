@@ -73,12 +73,33 @@ const Map<int, String> kAbilityNames = {
   45: 'MOBILE_CONTROL',
   46: 'ON3_STRAIGHT_CALL',
   47: 'CYCLIC_CHARGE_TRIGGER',
-  48: 'UNLOCK_CHARGE_GUN',
+  // 48 y 53: conflicto documentado. leapmotor-api los etiqueta
+  // UNLOCK_CHARGE_GUN=48 y BLE_KEY_RESTART=53, pero kerniger/leapmotor-ha y
+  // leapmotor-mate demostraron EMPIRICAMENTE (T03 sin 53: boton desbloquear
+  // cable inerte y oculto en la app oficial; B10 con 53: funciona) que
+  // 53 = UNLOCK_CHARGE_GUN. El 48 queda sin verificar (en T03 y B10 van
+  // siempre juntos, no hay dump publico que los separe). La etiqueta
+  // BLE_KEY_RESTART de leapmotor-api para la ability 53 era un error: el
+  // reinicio de la llave BT es el cmdId 430 (verificado en el B10, v165),
+  // que es del tier de comandos/rights, no de abilities.
+  48: 'UNLOCK_CHARGE_GUN_ALT',
   49: 'PARKING_PHOTO',
   50: 'SENTINEL',
   51: 'WEEKLY_CHARGE_REPEAT',
   52: 'NAVIGATION',
-  53: 'BLE_KEY_RESTART',
+  53: 'UNLOCK_CHARGE_GUN',
+  // 57/59/60/69/70: solo las declara el B10 (plataforma LEAP 3.5), ausentes
+  // en los volcados publicos del T03. Nadie las ha identificado (18/09/2026).
+  // Deducciones: una es casi seguro el centinela (el B10 tiene centinela
+  // funcional pero NO declara 50 SENTINEL: lo re-declara con codigo nuevo) y
+  // otra probablemente V2L (vehicle-to-load, ausente en el T03).
+  // 61: comun al T03 y al B10, significado desconocido.
+  57: 'B10_NUEVA_57',
+  59: 'B10_NUEVA_59',
+  60: 'B10_NUEVA_60',
+  61: 'COMUN_61',
+  69: 'B10_NUEVA_69',
+  70: 'B10_NUEVA_70',
 };
 
 // Abilities que la sonda BLE-KEY marca como pistas.
@@ -1770,7 +1791,9 @@ class LeapmotorApiClient {
     }
     buf.writeln('');
     buf.writeln('Leyenda abilities: 16=BLE_KEY (llave bluetooth), 30=GPS_SHARING (posicion en tiempo real), '
-        '49=PARKING_PHOTO (foto de aparcamiento), 53=BLE_KEY_RESTART (reinicio del modulo, cmdId 430).');
+        '49=PARKING_PHOTO (foto de aparcamiento), 53=UNLOCK_CHARGE_GUN (desbloquear cable de carga; corregido en v168: '
+        'la etiqueta BLE_KEY_RESTART de leapmotor-api era un error, el reinicio de la llave BT es el cmdId 430). '
+        '57/59/60/69/70 = funciones nuevas del B10 sin identificar (candidatas: centinela, V2L).');
 
     return buf.toString();
   });

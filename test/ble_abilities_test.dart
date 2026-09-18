@@ -12,7 +12,7 @@ void main() {
     test('decodifica ids conocidos con su nombre', () {
       final out = abilitiesReport([16, 53, 10]);
       expect(out, contains('16 = BLE_KEY'));
-      expect(out, contains('53 = BLE_KEY_RESTART'));
+      expect(out, contains('53 = UNLOCK_CHARGE_GUN'));
       expect(out, contains('10 = LOCK_UNLOCK'));
       expect(out, contains('abilities (3):'));
     });
@@ -40,14 +40,14 @@ void main() {
       expect(out, contains('[SI] 16 BLE_KEY declarada'));
       expect(out, contains('[SI] 30 GPS_SHARING declarada'));
       expect(out, contains('[NO] 49 PARKING_PHOTO NO declarada'));
-      expect(out, contains('[NO] 53 BLE_KEY_RESTART NO declarada'));
+      expect(out, contains('[NO] 53 UNLOCK_CHARGE_GUN NO declarada'));
     });
 
     test('ordena los ids de menor a mayor', () {
       final out = abilitiesReport([53, 5, 16]);
       final i5 = out.indexOf('5 = GPS');
       final i16 = out.indexOf('16 = BLE_KEY');
-      final i53 = out.indexOf('53 = BLE_KEY_RESTART');
+      final i53 = out.indexOf('53 = UNLOCK_CHARGE_GUN');
       expect(i5, lessThan(i16));
       expect(i16, lessThan(i53));
     });
@@ -58,7 +58,7 @@ void main() {
       expect(kAbilityNames[16], 'BLE_KEY');
       expect(kAbilityNames[30], 'GPS_SHARING');
       expect(kAbilityNames[49], 'PARKING_PHOTO');
-      expect(kAbilityNames[53], 'BLE_KEY_RESTART');
+      expect(kAbilityNames[53], 'UNLOCK_CHARGE_GUN');
     });
   });
 
