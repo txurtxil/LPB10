@@ -1,22 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'car_bt_bridge.dart';
+import 'leapmotor_engine.dart';
 
 /// Deja al usuario marcar que dispositivos Bluetooth emparejados son el
 /// coche (normalmente dos: TCU/manos-libres y audio). Sin nada marcado,
 /// CarBtReceiver.kt sigue reaccionando a cualquier Bluetooth (comportamiento
 /// antiguo), asi que esta pantalla es opcional, no obligatoria.
 class CarBtScreen extends StatefulWidget {
-  const CarBtScreen({super.key});
+  /// Opcionales: habilitan la seccion "Llave Bluetooth del coche"
+  /// (reinicio del modulo BLE-KEY, cmdId 430, confirmado en el B10 en v164).
+  final LeapmotorApiClient? client;
+  final Vehicle? vehicle;
+  const CarBtScreen({super.key, this.client, this.vehicle});
 
   @override
   State<CarBtScreen> createState() => _CarBtScreenState();
 }
 
 class _CarBtScreenState extends State<CarBtScreen> {
+  static const _pinKey = 'lm_pin_v1';
+  static const _storage = FlutterSecureStorage();
+
   List<CarBtDevice> _paired = [];
   Set<String> _seleccion = {};
   bool _loading = true;
   bool _guardado = false;
+  bool _restartingBleKey = false;
+  String? _bleKeyMsg;
 
   @override
   void initState() {
@@ -39,6 +50,75 @@ class _CarBtScreenState extends State<CarBtScreen> {
     await CarBtBridge.setCarMacs(_seleccion);
     if (!mounted) return;
     setState(() => _guardado = true);
+  }
+
+  Future<String?> _pedirPin(bool es) async {
+    final guardado = await _storage.read(key: _pinKey) ?? '';
+    if (guardado.isNotEmpty) return guardado;
+    if (!mounted) return null;
+    final ctrl = TextEditingController();
+    final resultado = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(es ? 'PIN del vehiculo' : 'Vehicle PIN'),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'PIN'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(es ? 'Cancelar' : 'Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: Text(es ? 'Aceptar' : 'OK')),
+        ],
+      ),
+    );
+    return (resultado != null && resultado.isNotEmpty) ? resultado : null;
+  }
+
+  Future<void> _reiniciarLlaveBle() async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final client = widget.client;
+    final vehicle = widget.vehicle;
+    if (client == null || vehicle == null) return;
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(es ? 'Reiniciar llave Bluetooth' : 'Restart Bluetooth key'),
+        content: Text(es
+            ? 'Reinicia el modulo de llave Bluetooth DEL COCHE (no del movil). Usalo cuando la llave BT de la app oficial deje de responder. El coche puede tardar ~1 minuto en volver a aceptar conexiones Bluetooth.'
+            : 'Restarts the CAR\'s Bluetooth key module (not the phone\'s). Use it when the official app\'s BT key stops responding. The car may take ~1 minute to accept Bluetooth connections again.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(es ? 'Cancelar' : 'Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(es ? 'Reiniciar' : 'Restart')),
+        ],
+      ),
+    );
+    if (confirma != true || !mounted) return;
+    final pin = await _pedirPin(es);
+    if (pin == null || !mounted) return;
+    setState(() {
+      _restartingBleKey = true;
+      _bleKeyMsg = null;
+    });
+    try {
+      await client.bleKeyRestart(vehicle.vin, pin);
+      setState(() => _bleKeyMsg = es
+          ? 'Reinicio enviado y confirmado por el coche. Espera ~1 minuto antes de usar la llave BT.'
+          : 'Restart sent and confirmed by the car. Wait ~1 minute before using the BT key.');
+    } catch (e) {
+      setState(() => _bleKeyMsg = (es ? 'Error: ' : 'Error: ') + e.toString());
+    } finally {
+      if (mounted) setState(() => _restartingBleKey = false);
+    }
   }
 
   @override
@@ -97,6 +177,48 @@ class _CarBtScreenState extends State<CarBtScreen> {
                       }).toList(),
                     ),
                   ),
+                if (widget.client != null && widget.vehicle != null) ...[
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Text(
+                      es ? 'Llave Bluetooth del coche' : 'Car Bluetooth key',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Text(
+                      es
+                          ? 'Si la llave BT de la app oficial deja de responder, reinicia aqui el modulo del coche (requiere PIN).'
+                          : 'If the official app\'s BT key stops responding, restart the car\'s module here (PIN required).',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ),
+                  if (_restartingBleKey)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: LinearProgressIndicator(),
+                    ),
+                  if (_bleKeyMsg != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                      child: Text(_bleKeyMsg!, style: const TextStyle(fontSize: 13)),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _restartingBleKey ? null : _reiniciarLlaveBle,
+                        icon: const Icon(Icons.bluetooth_disabled, size: 18),
+                        label: Text(es
+                            ? 'Reiniciar llave Bluetooth del coche'
+                            : 'Restart car Bluetooth key'),
+                      ),
+                    ),
+                  ),
+                ],
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: SizedBox(

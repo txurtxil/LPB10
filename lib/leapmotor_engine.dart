@@ -638,6 +638,11 @@ const String kCmdChargePlan = '190';
 const String kCmdUnlockCharger = '192';
 const String kCmdSunshade = '240';
 const String kCmdWindows = '230';
+// cmdId 430 = BLE_KEY_RESTART: reinicia el modulo de llave Bluetooth del
+// coche. Documentado en markoceri/leapmotor-api y confirmado en el B10 real
+// (sonda BLE-KEY v164: ability 53 declarada, getAppointment 430 code 0).
+// Util cuando la llave BT de la app oficial deja de responder.
+const String kCmdBleKeyRestart = '430';
 
 /// Datos de sesión exportables para persistir el login (evita re-login completo).
 class SessionData {
@@ -1195,6 +1200,8 @@ class LeapmotorApiClient {
       _remoteControlWithPin(vin: vin, cmdId: kCmdSentryMode, cmdContent: '{"value":"1"}', pin: pin, actionLabel: 'sentry_mode_on');
   Future<void> sentryModeOff(String vin, String pin) =>
       _remoteControlWithPin(vin: vin, cmdId: kCmdSentryMode, cmdContent: '{"value":"0"}', pin: pin, actionLabel: 'sentry_mode_off');
+  Future<void> bleKeyRestart(String vin, String pin) =>
+      _remoteControlWithPin(vin: vin, cmdId: kCmdBleKeyRestart, cmdContent: '{"value":"restart"}', pin: pin, actionLabel: 'ble_key_restart');
   Future<void> unlockCharger(String vin, String pin) => _remoteControlWithPin(
       vin: vin, cmdId: kCmdUnlockCharger, cmdContent: '{"operation":"unlock"}', pin: pin, actionLabel: 'unlock_charger');
   Future<void> steeringWheelHeatOn(String vin, String pin) => _remoteControlWithPin(

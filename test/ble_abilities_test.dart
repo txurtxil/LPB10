@@ -61,4 +61,10 @@ void main() {
       expect(kAbilityNames[53], 'BLE_KEY_RESTART');
     });
   });
+
+  group('kCmdBleKeyRestart (v165)', () {
+    test('es el cmdId 430 documentado en leapmotor-api y confirmado en el B10', () {
+      expect(kCmdBleKeyRestart, '430');
+    });
+  });
 }

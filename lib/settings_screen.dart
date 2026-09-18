@@ -220,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : 'Choose which devices trigger drive detection'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const CarBtScreen())),
+                        MaterialPageRoute(builder: (_) => CarBtScreen(client: widget.client, vehicle: widget.vehicle))),
                   ),
                 const Divider(),
                 ListTile(
