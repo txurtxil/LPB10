@@ -254,6 +254,38 @@
       }
     }
   },
+  "realRangeKwhLabel": "Equivalent to {kwh} kWh per 100 km",
+  "@realRangeKwhLabel": {
+    "placeholders": {
+      "kwh": {
+        "type": "String"
+      }
+    }
+  },
+  "realRangeFullLabel": "With a full battery: {km} km of real range",
+  "@realRangeFullLabel": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "realRangeBasisRecent": "Calculated from your last 30 days ({km} km driven)",
+  "@realRangeBasisRecent": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "realRangeBasisAll": "Calculated from your full history ({km} km driven)",
+  "@realRangeBasisAll": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
   "estimatedRangeLabel": "Estimated range (based on your real consumption): {km} km",
   "@estimatedRangeLabel": {
     "placeholders": {

@@ -535,6 +535,26 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String realRangeKwhLabel(String kwh) {
+    return 'Equivalent to $kwh kWh per 100 km';
+  }
+
+  @override
+  String realRangeFullLabel(int km) {
+    return 'With a full battery: $km km of real range';
+  }
+
+  @override
+  String realRangeBasisRecent(int km) {
+    return 'Calculated from your last 30 days ($km km driven)';
+  }
+
+  @override
+  String realRangeBasisAll(int km) {
+    return 'Calculated from your full history ($km km driven)';
+  }
+
+  @override
   String estimatedRangeLabel(int km) {
     return 'Estimated range (based on your real consumption): $km km';
   }

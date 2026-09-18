@@ -1076,6 +1076,30 @@ abstract class AppLocalizations {
   /// **'Consumo medio: {percent}% cada 100 km'**
   String avgConsumptionLabel(String percent);
 
+  /// No description provided for @realRangeKwhLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Equivale a {kwh} kWh cada 100 km'**
+  String realRangeKwhLabel(String kwh);
+
+  /// No description provided for @realRangeFullLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Con la bateria al 100%: {km} km reales'**
+  String realRangeFullLabel(int km);
+
+  /// No description provided for @realRangeBasisRecent.
+  ///
+  /// In es, this message translates to:
+  /// **'Calculado con tus ultimos 30 dias ({km} km recorridos)'**
+  String realRangeBasisRecent(int km);
+
+  /// No description provided for @realRangeBasisAll.
+  ///
+  /// In es, this message translates to:
+  /// **'Calculado con todo tu historial ({km} km recorridos)'**
+  String realRangeBasisAll(int km);
+
   /// No description provided for @estimatedRangeLabel.
   ///
   /// In es, this message translates to:

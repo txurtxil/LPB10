@@ -38,6 +38,7 @@ import 'backup_helper.dart';
 import 'ticket_screen.dart';
 import 'efficiency_coach.dart';
 import 'widget_chart.dart';
+import 'real_range.dart';
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -2523,7 +2524,7 @@ class ConsumptionCard extends StatefulWidget {
 }
 
 class _ConsumptionCardState extends State<ConsumptionCard> {
-  double? _avgPercentPer100km;
+  RealRangeEstimate? _est;
   int _pointCount = 0;
 
   @override
@@ -2539,20 +2540,20 @@ class _ConsumptionCardState extends State<ConsumptionCard> {
   }
 
   Future<void> _load() async {
-    final points = await TripPointStore.load();
-    final avg = TripPointStore.averageConsumptionPercentPer100km(points);
-    if (mounted) setState(() { _avgPercentPer100km = avg; _pointCount = points.length; });
+    // Agregado diario (1 linea por dia), NO trips.jsonl crudo: esta tarjeta
+    // se recalcula con cada refresco de estado y parsear el historico entero
+    // cada vez no era viable (motivo por el que existe daily_stats).
+    final days = await DailyStats.load();
+    final est = computeRealRange(days, widget.currentSoc);
+    final pts = puntosDe(days);
+    if (mounted) setState(() { _est = est; _pointCount = pts; });
   }
 
   @override
   Widget build(BuildContext context) {
     const bg = Color(0xFFBFE0FA);
     const textColor = Color(0xFF0D3B66);
-
-    int? estimatedRange;
-    if (_avgPercentPer100km != null && _avgPercentPer100km! > 0 && widget.currentSoc != null) {
-      estimatedRange = ((widget.currentSoc! / _avgPercentPer100km!) * 100).round();
-    }
+    final est = _est;
 
     return Container(
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
@@ -2562,25 +2563,37 @@ class _ConsumptionCardState extends State<ConsumptionCard> {
         children: [
           Text(AppLocalizations.of(context)!.consumptionCardTitle, style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 15)),
           const SizedBox(height: 8),
-          if (_avgPercentPer100km == null)
+          if (est == null)
             Text(
-              _pointCount < 2
+              _pointCount < 20
                   ? AppLocalizations.of(context)!.collectingDataMsg(_pointCount)
                   : AppLocalizations.of(context)!.notEnoughDataMsg,
               style: const TextStyle(color: textColor, fontSize: 12),
             )
           else ...[
-            Text(AppLocalizations.of(context)!.avgConsumptionLabel(_avgPercentPer100km!.toStringAsFixed(1)), style: const TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.of(context)!.avgConsumptionLabel(est.pctPer100km.toStringAsFixed(1)), style: const TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text(AppLocalizations.of(context)!.realRangeKwhLabel(est.kwh100.toStringAsFixed(1)), style: const TextStyle(color: textColor, fontSize: 12)),
             const SizedBox(height: 4),
-            if (estimatedRange != null)
-              Text(AppLocalizations.of(context)!.estimatedRangeLabel(estimatedRange!), style: const TextStyle(color: textColor, fontSize: 12)),
+            if (widget.currentSoc != null)
+              Text(AppLocalizations.of(context)!.estimatedRangeLabel(est.rangeNowKm), style: const TextStyle(color: textColor, fontSize: 12)),
+            Text(AppLocalizations.of(context)!.realRangeFullLabel(est.rangeFullKm), style: const TextStyle(color: textColor, fontSize: 12)),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                est.ventana30d
+                    ? AppLocalizations.of(context)!.realRangeBasisRecent(est.kmBase.round())
+                    : AppLocalizations.of(context)!.realRangeBasisAll(est.kmBase.round()),
+                style: const TextStyle(color: textColor, fontSize: 11, fontStyle: FontStyle.italic),
+              ),
+            ),
             if (widget.reportedRange != null)
               Text(AppLocalizations.of(context)!.reportedRangeLabel(widget.reportedRange!), style: const TextStyle(color: textColor, fontSize: 12)),
-            if (estimatedRange != null && widget.reportedRange != null)
+            if (widget.reportedRange != null && widget.currentSoc != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  estimatedRange! < widget.reportedRange!
+                  est.rangeNowKm < widget.reportedRange!
                       ? AppLocalizations.of(context)!.worseEfficiencyMsg
                       : AppLocalizations.of(context)!.betterEfficiencyMsg,
                   style: const TextStyle(color: textColor, fontSize: 11, fontStyle: FontStyle.italic),

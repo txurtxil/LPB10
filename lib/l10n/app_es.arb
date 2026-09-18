@@ -254,6 +254,38 @@
       }
     }
   },
+  "realRangeKwhLabel": "Equivale a {kwh} kWh cada 100 km",
+  "@realRangeKwhLabel": {
+    "placeholders": {
+      "kwh": {
+        "type": "String"
+      }
+    }
+  },
+  "realRangeFullLabel": "Con la bateria al 100%: {km} km reales",
+  "@realRangeFullLabel": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "realRangeBasisRecent": "Calculado con tus ultimos 30 dias ({km} km recorridos)",
+  "@realRangeBasisRecent": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "realRangeBasisAll": "Calculado con todo tu historial ({km} km recorridos)",
+  "@realRangeBasisAll": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
   "estimatedRangeLabel": "Autonomia estimada (segun tu consumo real): {km} km",
   "@estimatedRangeLabel": {
     "placeholders": {
