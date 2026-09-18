@@ -3453,6 +3453,20 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
     }
   }
 
+  Future<void> _probeDerechos() async {
+    setState(() {
+      _loading = true;
+      _showingDiff = false;
+      _text = 'Sondeando cmdIds sin documentar (161/280/340/440/460)...';
+    });
+    try {
+      final raw = await widget.client.probeDerechosRaw(widget.vehicle.vin);
+      setState(() { _text = raw; _loading = false; });
+    } catch (e) {
+      setState(() { _text = 'Error en la sonda de derechos:\n\n$e'; _loading = false; });
+    }
+  }
+
   Future<void> _probeBleKey() async {
     setState(() {
       _loading = true;
@@ -3592,6 +3606,19 @@ class _DebugStatusScreenState extends State<DebugStatusScreen> {
                 label: Text(Localizations.localeOf(context).languageCode == 'es'
                     ? 'Sonda: llave Bluetooth (BLE-KEY)'
                     : 'Probe: Bluetooth key (BLE-KEY)'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _probeDerechos,
+                icon: const Icon(Icons.key_outlined, size: 18),
+                label: Text(Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Sonda: derechos sin documentar (5 cmdIds)'
+                    : 'Probe: undocumented rights (5 cmdIds)'),
               ),
             ),
           ),

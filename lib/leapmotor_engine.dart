@@ -1768,6 +1768,47 @@ class LeapmotorApiClient {
   });
 
   // ============================================================
+  // SONDA: derechos sin documentar (cmdIds 161/280/340/440/460).
+  //
+  // La rightList de la comparticion incluye estos cinco derechos que NADIE
+  // del ecosistema open source tiene identificados (contexto §4). La sonda
+  // BLE-KEY de v164 demostro que getAppointment es una consulta de SOLO
+  // LECTURA que responde code 0 aunque el comando no tenga programacion
+  // (430), code 40 si faltan derechos (392 en la secundaria) y otro code si
+  // el cmdId no existe. Eso la convierte en el detector perfecto: para cada
+  // cmdId desconocido, getAppointment dice si el coche lo reconoce, sin
+  // ejecutar nada. La respuesta decide los siguientes pasos.
+  // ============================================================
+  Future<String> probeDerechosRaw(String vin) => withTokenRetry(() async {
+    if (_accountClient == null) throw Exception('Not logged in');
+    final buf = StringBuffer();
+    buf.writeln('SONDA DERECHOS v1 - cmdIds sin documentar (solo lectura, getAppointment)');
+    buf.writeln('Hora local: ' + DateTime.now().toIso8601String());
+    buf.writeln('');
+    buf.writeln('Interpretacion: code 0 = el cmdId existe y hay derechos; '
+        'code 40 = existe pero sin derechos en esta cuenta; otro = no existe consulta.');
+    buf.writeln('');
+    for (final cmd in ['161', '280', '340', '440', '460']) {
+      try {
+        final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': cmd})..addAll(_authHeaders());
+        final r = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
+          headers: headers,
+          body: 'vin=${Uri.encodeComponent(vin)}&cmdId=$cmd',
+        );
+        var cuerpo = r.body;
+        if (cuerpo.length > 600) cuerpo = cuerpo.substring(0, 600) + '...(recortado)';
+        buf.writeln('### cmdId ' + cmd + ' -> HTTP ' + r.statusCode.toString());
+        buf.writeln(cuerpo);
+      } catch (e) {
+        buf.writeln('### cmdId ' + cmd + ' -> EXCEPCION: ' + e.toString());
+      }
+      buf.writeln('');
+    }
+    return buf.toString();
+  });
+
+  // ============================================================
   // SONDA: historial real de cargas desde la nube.
   //
   // Endpoint /carownerservice/charge/daily/detail/page. Es el UNICO de toda la
