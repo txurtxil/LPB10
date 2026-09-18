@@ -71,6 +71,8 @@
   "actionAcOff": "Turn off climate",
   "actionSteeringHeatOn": "Steering wheel heat ON",
   "actionSteeringHeatOff": "Steering wheel heat OFF",
+  "actionMirrorHeatOn": "Mirror heat ON",
+  "actionMirrorHeatOff": "Mirror heat OFF",
   "actionSunshadeOpen": "Open sunshade",
   "actionSunshadeClose": "Close sunshade",
   "actionWindowsOpen": "Open windows",

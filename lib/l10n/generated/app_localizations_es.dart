@@ -224,6 +224,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get actionSteeringHeatOff => 'Calef. volante OFF';
 
   @override
+  String get actionMirrorHeatOn => 'Retrovisores calef. ON';
+
+  @override
+  String get actionMirrorHeatOff => 'Retrovisores calef. OFF';
+
+  @override
   String get actionSunshadeOpen => 'Persiana abrir';
 
   @override

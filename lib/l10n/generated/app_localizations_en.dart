@@ -223,6 +223,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionSteeringHeatOff => 'Steering wheel heat OFF';
 
   @override
+  String get actionMirrorHeatOn => 'Mirror heat ON';
+
+  @override
+  String get actionMirrorHeatOff => 'Mirror heat OFF';
+
+  @override
   String get actionSunshadeOpen => 'Open sunshade';
 
   @override

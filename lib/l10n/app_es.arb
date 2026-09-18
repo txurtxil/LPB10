@@ -71,6 +71,8 @@
   "actionAcOff": "Apagar clima",
   "actionSteeringHeatOn": "Calef. volante ON",
   "actionSteeringHeatOff": "Calef. volante OFF",
+  "actionMirrorHeatOn": "Retrovisores calef. ON",
+  "actionMirrorHeatOff": "Retrovisores calef. OFF",
   "actionSunshadeOpen": "Persiana abrir",
   "actionSunshadeClose": "Persiana cerrar",
   "actionWindowsOpen": "Ventanillas abrir",

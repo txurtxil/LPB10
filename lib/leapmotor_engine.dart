@@ -643,6 +643,8 @@ const String kCmdWindows = '230';
 // (sonda BLE-KEY v164: ability 53 declarada, getAppointment 430 code 0).
 // Util cuando la llave BT de la app oficial deja de responder.
 const String kCmdBleKeyRestart = '430';
+// cmdId 440 = REARVIEW_MIRROR_HEAT (calefaccion de retrovisores).
+const String kCmdMirrorHeat = '440';
 
 /// Datos de sesión exportables para persistir el login (evita re-login completo).
 class SessionData {
@@ -1202,6 +1204,12 @@ class LeapmotorApiClient {
       _remoteControlWithPin(vin: vin, cmdId: kCmdSentryMode, cmdContent: '{"value":"0"}', pin: pin, actionLabel: 'sentry_mode_off');
   Future<void> bleKeyRestart(String vin, String pin) =>
       _remoteControlWithPin(vin: vin, cmdId: kCmdBleKeyRestart, cmdContent: '{"value":"restart"}', pin: pin, actionLabel: 'ble_key_restart');
+  // Retrovisores calefactados (cmdId 440, {"value":"on"/"off"}). Identificado
+  // gracias a la sonda de derechos v166: code 0 en la cuenta del dueno.
+  Future<void> mirrorHeatOn(String vin, String pin) =>
+      _remoteControlWithPin(vin: vin, cmdId: kCmdMirrorHeat, cmdContent: '{"value":"on"}', pin: pin, actionLabel: 'mirror_heat_on');
+  Future<void> mirrorHeatOff(String vin, String pin) =>
+      _remoteControlWithPin(vin: vin, cmdId: kCmdMirrorHeat, cmdContent: '{"value":"off"}', pin: pin, actionLabel: 'mirror_heat_off');
   Future<void> unlockCharger(String vin, String pin) => _remoteControlWithPin(
       vin: vin, cmdId: kCmdUnlockCharger, cmdContent: '{"operation":"unlock"}', pin: pin, actionLabel: 'unlock_charger');
   Future<void> steeringWheelHeatOn(String vin, String pin) => _remoteControlWithPin(

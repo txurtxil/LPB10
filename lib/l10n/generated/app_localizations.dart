@@ -524,6 +524,18 @@ abstract class AppLocalizations {
   /// **'Calef. volante OFF'**
   String get actionSteeringHeatOff;
 
+  /// No description provided for @actionMirrorHeatOn.
+  ///
+  /// In es, this message translates to:
+  /// **'Retrovisores calef. ON'**
+  String get actionMirrorHeatOn;
+
+  /// No description provided for @actionMirrorHeatOff.
+  ///
+  /// In es, this message translates to:
+  /// **'Retrovisores calef. OFF'**
+  String get actionMirrorHeatOff;
+
   /// No description provided for @actionSunshadeOpen.
   ///
   /// In es, this message translates to:

@@ -3919,6 +3919,8 @@ class _ControlsScreenState extends State<ControlsScreen> {
             _actionGrid([
               _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOn, Icons.back_hand, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOn, () => c.steeringWheelHeatOn(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOff, Icons.back_hand_outlined, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOff, () => c.steeringWheelHeatOff(vin, pin))),
+              _ActionBtn(AppLocalizations.of(context)!.actionMirrorHeatOn, Icons.airline_seat_recline_extra, () => _run(AppLocalizations.of(context)!.actionMirrorHeatOn, () => c.mirrorHeatOn(vin, pin))),
+              _ActionBtn(AppLocalizations.of(context)!.actionMirrorHeatOff, Icons.airline_seat_recline_normal, () => _run(AppLocalizations.of(context)!.actionMirrorHeatOff, () => c.mirrorHeatOff(vin, pin))),
             ]),
             _sectionTitle(AppLocalizations.of(context)!.sectionSunshadeWindows),
             _actionGrid([
