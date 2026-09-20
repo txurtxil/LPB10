@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'trip_rebuild.dart';
 import 'route_map_screen.dart';
 import 'trip_export.dart';
+import 'habitual_routes_screen.dart';
 
 const _cBlue = Color(0xFF0D3B66);
 const _cGood = Color(0xFF2A9D8F);
@@ -86,6 +87,12 @@ class _TripListScreenState extends State<TripListScreen> {
         backgroundColor: _cBlue,
         title: Text(es ? 'Ultimas rutas' : 'Recent trips'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.alt_route),
+            tooltip: es ? 'Rutas habituales' : 'Habitual routes',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const HabitualRoutesScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: es ? 'Exportar rutas a PDF' : 'Export trips to PDF',
