@@ -646,6 +646,17 @@ class LeapmotorApiException implements Exception {
   String toString() => 'API Error $statusCode: $message';
 }
 
+/// True si el error es de sesion/token y merece un refresco + reintento.
+///
+/// El servidor NO siempre escribe 'token' en el mensaje: el codigo 17 es su
+/// "sesion invalida / token caducado" generico (visto en produccion
+/// 18/09/2026: el mensaje no contenia 'token', con lo que withTokenRetry
+/// nunca disparaba el refresco y el usuario tenia que cerrar y abrir la app
+/// a mano). A partir de ese reporte el codigo 17 se trata siempre como
+/// error de token.
+bool esErrorDeToken(LeapmotorApiException e) =>
+    e.statusCode == 17 || e.message.toLowerCase().contains('token');
+
 const String kCmdLock = '110';
 const String kCmdTrunk = '130';
 const String kCmdFindCar = '120';
@@ -820,7 +831,7 @@ class LeapmotorApiClient {
     try {
       return await action();
     } on LeapmotorApiException catch (e) {
-      if (!e.message.toLowerCase().contains('token')) rethrow;
+      if (!esErrorDeToken(e)) rethrow;
       await tokenRefresh();
       return await action();
     }
