@@ -657,6 +657,18 @@ class LeapmotorApiException implements Exception {
 bool esErrorDeToken(LeapmotorApiException e) =>
     e.statusCode == 17 || e.message.toLowerCase().contains('token');
 
+/// True si ante este fallo hay que BORRAR la sesion guardada.
+///
+/// Regla (v172): solo se borra cuando el servidor confirma que la sesion
+/// esta muerta (error de token tras el reintento con refresh). Un corte de
+/// red, un timeout o un 500 en el arranque NO borran nada: la sesion sigue
+/// siendo valida y el proximo arranque entra solo. Antes de la v172,
+/// cualquier excepcion en el auto-login borraba la sesion entera y el
+/// usuario tenia que meter usuario+contrasena+PIN cada pocas horas
+/// (reporte real 21/09/2026).
+bool debeBorrarSesion(Object error) =>
+    error is LeapmotorApiException && esErrorDeToken(error);
+
 const String kCmdLock = '110';
 const String kCmdTrunk = '130';
 const String kCmdFindCar = '120';

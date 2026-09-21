@@ -948,8 +948,14 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => DashboardScreen(client: client, vehicle: vehicle, pin: pin)),
       );
-    } catch (_) {
-      await _storage.delete(key: _sessionKey);
+    } catch (e) {
+      // v172: NO borrar la sesion ante cualquier error. Solo se borra si el
+      // servidor confirma que esta muerta (error de token tras reintento);
+      // un corte de red o un 500 en el arranque no invalidan nada y el
+      // proximo arranque debe poder entrar solo.
+      if (debeBorrarSesion(e)) {
+        await _storage.delete(key: _sessionKey);
+      }
       _goToLogin();
     }
   }
