@@ -77,6 +77,32 @@ Future<bool> modoSoloLectura() async =>
 Future<void> setModoSoloLectura(bool v) =>
     _storage.write(key: _kSoloLectura, value: v ? '1' : '0');
 
+/// Crea un cliente con la sesion restaurada y los callbacks anti-carrera
+/// del refreshToken cableados (v174): si el refresh rota el refreshToken se
+/// guarda al instante, y si el refresh falla porque OTRO proceso de la app
+/// ya lo roto (carrera), se recarga la sesion guardada y se reintenta.
+Future<LeapmotorApiClient> crearClienteConSesion(SessionData session) async {
+  final staticClient = await createStaticClient();
+  final client = LeapmotorApiClient(staticClient);
+  await client.restoreSession(session);
+  client.onSesionRefrescada = (s) async {
+    try {
+      await _storage.write(key: _sessionKey, value: json.encode(s.toMap()));
+    } catch (_) {}
+  };
+  client.onRecargarSesion = () async {
+    try {
+      final raw = await _storage.read(key: _sessionKey);
+      if (raw == null) return null;
+      return SessionData.fromMap(
+          Map<String, String>.from(json.decode(raw) as Map));
+    } catch (_) {
+      return null;
+    }
+  };
+  return client;
+}
+
 
 /// Logica compartida de refresco: restaura sesion, consulta estado, actualiza
 /// historiales locales y empuja datos al widget. La usan tanto el Dashboard
@@ -88,9 +114,7 @@ Future<void> refreshVehicleDataInBackground() async {
   final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
   final session = SessionData.fromMap(sessionMap);
 
-  final staticClient = await createStaticClient();
-  final client = LeapmotorApiClient(staticClient);
-  await client.restoreSession(session);
+  final client = await crearClienteConSesion(session);
 
   final vehicles = await client.getVehicleList();
   if (vehicles.isEmpty) return;
@@ -339,9 +363,7 @@ Future<String> carRunRoutineById(String id) async {
   try {
     final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
     final session = SessionData.fromMap(sessionMap);
-    final staticClient = await createStaticClient();
-    final client = LeapmotorApiClient(staticClient);
-    await client.restoreSession(session);
+    final client = await crearClienteConSesion(session);
     final engine = RoutineEngine(client: client, vin: vin, pin: pin);
     final res = await engine.run(target);
     // Devuelve "done/total" para que el coche muestre "2 de 3" en vez de "hecho" a ciegas
@@ -394,9 +416,7 @@ Future<VehicleStatus?> quickStatus() async {
   try {
     final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
     final session = SessionData.fromMap(sessionMap);
-    final staticClient = await createStaticClient();
-    final c = LeapmotorApiClient(staticClient);
-    await c.restoreSession(session);
+    final c = await crearClienteConSesion(session);
     await c.getVehicleList();
     return await c.getVehicleStatus(vin);
   } catch (e) {
@@ -426,9 +446,7 @@ Future<bool> carQuickAction(String action) async {
   try {
     final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
     final session = SessionData.fromMap(sessionMap);
-    final staticClient = await createStaticClient();
-    final c = LeapmotorApiClient(staticClient);
-    await c.restoreSession(session);
+    final c = await crearClienteConSesion(session);
     switch (action) {
       case 'lock':          await c.lockVehicle(vin, pin); break;
       case 'unlock':        await c.unlockVehicle(vin, pin); break;
@@ -938,9 +956,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final sessionMap = Map<String, String>.from(json.decode(raw) as Map);
       final session = SessionData.fromMap(sessionMap);
 
-      final staticClient = await createStaticClient();
-      final client = LeapmotorApiClient(staticClient);
-      await client.restoreSession(session);
+      final client = await crearClienteConSesion(session);
 
       final vehicles = await client.getVehicleList();
       if (vehicles.isEmpty) throw Exception('Sin vehiculos');

@@ -719,6 +719,21 @@ class LeapmotorApiClient {
   final IOClient staticClient;
   IOClient? _accountClient;
 
+  /// Callbacks anti-carrera del refreshToken (v174).
+  ///
+  /// La app tiene varios actores con la misma sesion (primer plano cada 90 s,
+  /// WorkManager cada 15 min, widget). Cuando el token caduca, DOS pueden
+  /// refrescar a la vez: el servidor ROTA el refreshToken en cada refresh, y
+  /// el segundo en llegar recibe un 17 'Token generation error' por usar un
+  /// refreshToken ya quemado (reporte real 22/09/2026).
+  ///
+  /// [onSesionRefrescada]: se llama tras CADA refresh con exito para
+  /// persistir la sesion al instante (con el refreshToken nuevo).
+  /// [onRecargarSesion]: si el refresh falla con error de token, se pide la
+  /// sesion guardada (el otro proceso ya la roto) y se reintenta con ella.
+  Future<void> Function(SessionData sesion)? onSesionRefrescada;
+  Future<SessionData?> Function()? onRecargarSesion;
+
   String? userId;
   String? token;
   String? refreshToken;
@@ -844,7 +859,34 @@ class LeapmotorApiClient {
       return await action();
     } on LeapmotorApiException catch (e) {
       if (!esErrorDeToken(e)) rethrow;
-      await tokenRefresh();
+      try {
+        await tokenRefresh();
+        // El refresh ROTA el refreshToken: se persiste al instante para que
+        // ningun otro actor de la app use el viejo y se coma un 17.
+        final cb = onSesionRefrescada;
+        if (cb != null) {
+          try {
+            await cb(exportSession());
+          } catch (_) {}
+        }
+      } on LeapmotorApiException catch (refreshError) {
+        // Carrera: otro proceso ya refresco y roto el refreshToken; el
+        // nuestro esta quemado. Se recarga la sesion guardada (si cambio) y
+        // se reintenta la accion con ella una vez.
+        final rl = onRecargarSesion;
+        if (rl != null) {
+          try {
+            final s = await rl();
+            if (s != null &&
+                s.refreshToken.isNotEmpty &&
+                s.refreshToken != refreshToken) {
+              await restoreSession(s);
+              return await action();
+            }
+          } catch (_) {}
+        }
+        throw refreshError;
+      }
       return await action();
     }
   }
