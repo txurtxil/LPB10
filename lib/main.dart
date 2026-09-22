@@ -911,6 +911,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _tryRestore() async {
+    // v173: rastro de arranque con version, para fechar los carlogs.
+    try {
+      await CarLogBridge.log('ARRANQUE v' + AboutScreen.kDisplayVersion);
+    } catch (_) {}
     if (!await welcomeAccepted()) {
       if (!mounted) return;
       await Navigator.of(context).push(MaterialPageRoute(
@@ -927,6 +931,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final raw = await _storage.read(key: _sessionKey);
       if (raw == null) {
+        await CarLogBridge.log('AUTOLOGIN: sin sesion guardada, a login');
         _goToLogin();
         return;
       }
@@ -953,7 +958,17 @@ class _SplashScreenState extends State<SplashScreen> {
       // servidor confirma que esta muerta (error de token tras reintento);
       // un corte de red o un 500 en el arranque no invalidan nada y el
       // proximo arranque debe poder entrar solo.
-      if (debeBorrarSesion(e)) {
+      // v173: el fallo se registra en el carlog. Hasta ahora el deslogueo
+      // era silencioso y no dejaba rastro del motivo (reporte 22/09/2026).
+      final borrar = debeBorrarSesion(e);
+      try {
+        await CarLogBridge.log('AUTOLOGIN FALLO (' +
+            e.runtimeType.toString() +
+            '): ' +
+            e.toString() +
+            (borrar ? ' -> SESION BORRADA' : ' -> sesion conservada'));
+      } catch (_) {}
+      if (borrar) {
         await _storage.delete(key: _sessionKey);
       }
       _goToLogin();
