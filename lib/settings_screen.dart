@@ -18,7 +18,8 @@ import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'ios_drive_detector.dart';
-import 'main.dart' show modoSoloLectura, setModoSoloLectura;
+import 'main.dart' show modoSoloLectura, setModoSoloLectura, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar;
+import 'package:geolocator/geolocator.dart';
 
 const _storage = FlutterSecureStorage();
 const showMapKey = 'lm_show_map_v1';
@@ -43,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showMap = true;
   bool _hasCert = false;
   bool _iosDrive = false;
+  bool _geoHome = false;
   bool _loading = true;
 
   @override
@@ -55,7 +57,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final v = await loadShowMapSetting();
     final c = await hasClientCert();
     final d = Platform.isIOS ? await IosDriveDetector.estaActivo() : false;
-    setState(() { _showMap = v; _hasCert = c; _iosDrive = d; _loading = false; });
+    final g = await geoHomeActivo();
+    setState(() { _showMap = v; _hasCert = c; _iosDrive = d; _geoHome = g; _loading = false; });
+  }
+
+  /// Activa la geocerca guardando la posicion actual como "casa". Pide el
+  /// permiso de ubicacion AQUI, en primer plano (el chequeo en segundo plano
+  /// nunca puede pedirlo). Si el permiso o el GPS fallan, no se activa.
+  Future<void> _cambiarGeoHome(bool v) async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    if (!v) {
+      await geoHomeDesactivar();
+      if (mounted) setState(() => _geoHome = false);
+      return;
+    }
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+    }
+    if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(es
+                ? 'Permiso de ubicacion denegado. Hace falta para saber cuando llegas a casa.'
+                : 'Location permission denied. It is needed to know when you arrive home.')));
+      }
+      return;
+    }
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(timeLimit: Duration(seconds: 10)));
+      await geoHomeGuardar(pos.latitude, pos.longitude);
+      if (mounted) {
+        setState(() => _geoHome = true);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(es
+                ? 'Casa guardada aqui (radio 300 m). Para cambiarla, desactiva y activa estando en el nuevo sitio.'
+                : 'Home saved here (300 m radius). To change it, toggle off and on from the new place.')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(es
+                ? 'No se pudo leer el GPS. Intentalo en un sitio con cobertura.'
+                : 'Could not read the GPS. Try somewhere with coverage.')));
+      }
+    }
   }
 
   Future<void> _cambiarIosDrive(bool v) async {
@@ -93,6 +140,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _showMap = v);
                     await _storage.write(key: showMapKey, value: v ? '1' : '0');
                   },
+                ),
+                const Divider(),
+                SwitchListTile(
+                  value: _geoHome,
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Recordatorio al llegar a casa'
+                      : 'Reminder when arriving home'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Si llegas a casa con bateria baja (30% o menos) y el coche sin enchufar, te avisa. Usa el GPS del telefono, no el del coche. Al activarlo guarda TU posicion actual como "casa".'
+                      : 'If you arrive home with low battery (30% or less) and the car unplugged, it warns you. Uses the phone GPS, not the car. Enabling it saves YOUR current position as "home".'),
+                  onChanged: _cambiarGeoHome,
                 ),
                 const Divider(),
                 ListTile(

@@ -39,6 +39,7 @@ import 'ticket_screen.dart';
 import 'efficiency_coach.dart';
 import 'widget_chart.dart';
 import 'real_range.dart';
+import 'geo_reminder.dart';
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -101,6 +102,84 @@ Future<LeapmotorApiClient> crearClienteConSesion(SessionData session) async {
     }
   };
   return client;
+}
+
+// -- Geocerca "casa" (N1) --------------------------------------------------
+// La configuracion es solo lat/lon: si la clave existe, la funcion esta
+// activa. Radio y umbral fijos por ahora (300 m, 30 %); si se pide, se
+// haran configurables en otra release.
+const _geoHomeKey = 'lm_geo_home_v1';
+const _geoHomeInsideKey = 'lm_geo_home_inside_v1';
+const double kGeoHomeRadiusM = 300.0;
+const double kGeoHomeSocUmbral = 30.0;
+
+Future<bool> geoHomeActivo() async =>
+    await _storage.read(key: _geoHomeKey) != null;
+
+Future<void> geoHomeGuardar(double lat, double lon) =>
+    _storage.write(key: _geoHomeKey, value: json.encode({'lat': lat, 'lon': lon}));
+
+Future<void> geoHomeDesactivar() async {
+  await _storage.delete(key: _geoHomeKey);
+  await _storage.delete(key: _geoHomeInsideKey);
+}
+
+/// N1: si el telefono entra en la geocerca de casa y el coche esta bajo de
+/// bateria sin enchufar, notifica. La decision pura esta en geo_reminder.dart;
+/// aqui solo hay IO (posicion, storage, notificacion). NUNCA pide permisos:
+/// puede correr en segundo plano; sin permiso queda inerte.
+Future<void> _geoHomeCheck(
+    FlutterLocalNotificationsPlugin plugin, VehicleStatus status, double? soc) async {
+  final raw = await _storage.read(key: _geoHomeKey);
+  if (raw == null) return;
+  double? lat, lon;
+  try {
+    final home = Map<String, dynamic>.from(json.decode(raw) as Map);
+    lat = (home['lat'] as num?)?.toDouble();
+    lon = (home['lon'] as num?)?.toDouble();
+  } catch (_) {}
+  if (lat == null || lon == null) return;
+
+  final perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied ||
+      perm == LocationPermission.deniedForever) return;
+
+  // La ultima posicion conocida vale si es reciente; si no, una lectura
+  // activa con limite de 8 s (sin ella, un cuelgue del GPS bloquearia el
+  // ciclo de sondeo entero).
+  Position? pos;
+  try {
+    pos = await Geolocator.getLastKnownPosition();
+  } catch (_) {}
+  final vieja = pos == null ||
+      DateTime.now().difference(pos.timestamp).inMinutes > 30;
+  if (vieja) {
+    try {
+      pos = await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(timeLimit: Duration(seconds: 8)));
+    } catch (_) {
+      pos = null;
+    }
+  }
+  final distM = pos == null
+      ? null
+      : Geolocator.distanceBetween(pos.latitude, pos.longitude, lat, lon);
+
+  final estabaDentro = (await _storage.read(key: _geoHomeInsideKey)) == '1';
+  final d = evalGeoHome(
+    distM: distM,
+    radiusM: kGeoHomeRadiusM,
+    soc: soc,
+    enchufado: status.isPluggedIn,
+    socUmbral: kGeoHomeSocUmbral,
+    estabaDentro: estabaDentro,
+  );
+  await _storage.write(key: _geoHomeInsideKey, value: d.dentro ? '1' : '0');
+  if (d.avisar) {
+    await _showNotification(plugin, 1005, 'Llegaste a casa',
+        'Tu Leapmotor esta al ${soc?.toStringAsFixed(0) ?? '--'}% y no esta enchufado. Recuerda conectarlo.');
+  }
 }
 
 
@@ -601,6 +680,15 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   } else {
     unlockedSinceTs = null;
     unlockReminderSent = false;
+  }
+
+  // -- 5) Llegada a casa con bateria baja y sin enchufar (geocerca, N1) --
+  // Aislado en su propio try: un fallo de GPS no debe tumbar el resto de
+  // notificaciones ni el guardado de estado de mas abajo.
+  try {
+    await _geoHomeCheck(plugin, status, soc);
+  } catch (e) {
+    await CarLogBridge.log('geoHomeCheck FALLO: ' + e.toString());
   }
 
   await _storage.write(key: _notifStateKey, value: json.encode({
