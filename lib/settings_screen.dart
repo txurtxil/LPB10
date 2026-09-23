@@ -18,7 +18,7 @@ import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'ios_drive_detector.dart';
-import 'main.dart' show modoSoloLectura, setModoSoloLectura, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar;
+import 'main.dart' show modoSoloLectura, setModoSoloLectura, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
 import 'package:geolocator/geolocator.dart';
 
 const _storage = FlutterSecureStorage();
@@ -45,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasCert = false;
   bool _iosDrive = false;
   bool _geoHome = false;
+  bool _pvpcAlert = true;
   bool _loading = true;
 
   @override
@@ -58,7 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final c = await hasClientCert();
     final d = Platform.isIOS ? await IosDriveDetector.estaActivo() : false;
     final g = await geoHomeActivo();
-    setState(() { _showMap = v; _hasCert = c; _iosDrive = d; _geoHome = g; _loading = false; });
+    final pa = await pvpcAlertActivo();
+    setState(() { _showMap = v; _hasCert = c; _iosDrive = d; _geoHome = g; _pvpcAlert = pa; _loading = false; });
   }
 
   /// Activa la geocerca guardando la posicion actual como "casa". Pide el
@@ -151,6 +153,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'Si llegas a casa con bateria baja (30% o menos) y el coche sin enchufar, te avisa. Usa el GPS del telefono, no el del coche. Al activarlo guarda TU posicion actual como "casa".'
                       : 'If you arrive home with low battery (30% or less) and the car unplugged, it warns you. Uses the phone GPS, not the car. Enabling it saves YOUR current position as "home".'),
                   onChanged: _cambiarGeoHome,
+                ),
+                const Divider(),
+                SwitchListTile(
+                  value: _pvpcAlert,
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Aviso de carga barata (PVPC)'
+                      : 'Cheap charging alert (PVPC)'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Cuando salen los precios de manana (~20:15), si el coche esta enchufado, no cargando y por debajo del 80%, te avisa con la franja mas barata para programar la carga.'
+                      : 'When tomorrow\'s prices are published (~20:15), if the car is plugged in, not charging and below 80%, it alerts you with the cheapest window to schedule charging.'),
+                  onChanged: (v) async {
+                    await setPvpcAlert(v);
+                    if (mounted) setState(() => _pvpcAlert = v);
+                  },
                 ),
                 const Divider(),
                 ListTile(

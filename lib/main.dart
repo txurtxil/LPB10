@@ -40,6 +40,7 @@ import 'efficiency_coach.dart';
 import 'widget_chart.dart';
 import 'real_range.dart';
 import 'geo_reminder.dart';
+import 'pvpc_alert.dart';
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -180,6 +181,53 @@ Future<void> _geoHomeCheck(
     await _showNotification(plugin, 1005, 'Llegaste a casa',
         'Tu Leapmotor esta al ${soc?.toStringAsFixed(0) ?? '--'}% y no esta enchufado. Recuerda conectarlo.');
   }
+}
+
+// -- Aviso de carga barata de manana (N2) ----------------------------------
+// Los precios PVPC de manana salen ~20:15 (REData). Si el coche esta
+// enchufado, no cargando ya y con bateria por debajo del umbral, avisa con
+// la ventana contigua mas barata. La decision pura esta en pvpc_alert.dart;
+// aqui solo hay IO (precios, storage, notificacion). Todo el chequeo vive
+// tras try/catch en checkAndNotifyStateChanges: un fallo de red con REE no
+// debe tumbar el ciclo.
+
+const _kPvpcAlertOn = 'lm_pvpc_alert_on_v1';
+const _kPvpcAlertLast = 'lm_pvpc_alert_last_v1';
+const double _kPvpcAlertSocUmbral = 80.0;
+const int _kPvpcAlertHoras = 3;
+
+/// Activado por defecto ('1' o ausente); el toggle de Ajustes lo desactiva.
+Future<bool> pvpcAlertActivo() async =>
+    await _storage.read(key: _kPvpcAlertOn) != '0';
+
+Future<void> setPvpcAlert(bool v) =>
+    _storage.write(key: _kPvpcAlertOn, value: v ? '1' : '0');
+
+Future<void> _pvpcAlertCheck(
+    FlutterLocalNotificationsPlugin plugin, VehicleStatus status, double? soc) async {
+  if (!await pvpcAlertActivo()) return;
+  final manana = DateTime.now().add(const Duration(days: 1));
+  final clave = '${manana.year.toString().padLeft(4, '0')}-'
+      '${manana.month.toString().padLeft(2, '0')}-'
+      '${manana.day.toString().padLeft(2, '0')}';
+  final diaM = await Pvpc.dia(manana);
+  final d = evalPvpcAlert(
+    fechaManana: clave,
+    horasManana: diaM?.horas,
+    soc: soc,
+    enchufado: status.isPluggedIn,
+    cargando: status.isCharging,
+    yaAvisada: await _storage.read(key: _kPvpcAlertLast),
+    dtoPct: await Pvpc.descuento(),
+    socUmbral: _kPvpcAlertSocUmbral,
+    duracionHoras: _kPvpcAlertHoras,
+  );
+  if (d == null) return;
+  await _storage.write(key: _kPvpcAlertLast, value: d.fecha);
+  await _showNotification(plugin, 1006, 'Carga barata manana',
+      'De ${formatoHoraPvpc(d.horaIni)} a ${formatoHoraPvpc(d.horaFin)} a '
+      '${d.precioMedio.toStringAsFixed(4)} EUR/kWh de media. '
+      'Tu Leapmotor esta al ${soc?.toStringAsFixed(0) ?? '--'}%: toca programar la carga.');
 }
 
 
@@ -689,6 +737,15 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
     await _geoHomeCheck(plugin, status, soc);
   } catch (e) {
     await CarLogBridge.log('geoHomeCheck FALLO: ' + e.toString());
+  }
+
+  // -- 6) Aviso de carga barata de manana (PVPC, N2) --
+  // Aislado en su propio try: pedir los precios de manana toca la red (REE)
+  // y un fallo ahi no debe tumbar el resto de notificaciones.
+  try {
+    await _pvpcAlertCheck(plugin, status, soc);
+  } catch (e) {
+    await CarLogBridge.log('pvpcAlertCheck FALLO: ' + e.toString());
   }
 
   await _storage.write(key: _notifStateKey, value: json.encode({
