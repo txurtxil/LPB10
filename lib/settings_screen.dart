@@ -19,6 +19,7 @@ import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'ios_drive_detector.dart';
 import 'main.dart' show modoSoloLectura, setModoSoloLectura, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
+import 'monthly_report_pdf.dart' show InformesScreen;
 import 'package:geolocator/geolocator.dart';
 
 const _storage = FlutterSecureStorage();
@@ -167,6 +168,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     await setPvpcAlert(v);
                     if (mounted) setState(() => _pvpcAlert = v);
                   },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Informes mensuales (PDF)'
+                      : 'Monthly reports (PDF)'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'El dia 1 de cada mes se genera automaticamente el PDF del mes anterior: km, kWh, euros, CO2 evitado y comparativa. Desde aqui lo ves y lo compartes.'
+                      : 'On the 1st of each month the previous month PDF is generated automatically: km, kWh, cost, CO2 avoided and comparison. View and share it from here.'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const InformesScreen())),
                 ),
                 const Divider(),
                 ListTile(

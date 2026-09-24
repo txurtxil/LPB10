@@ -41,6 +41,7 @@ import 'widget_chart.dart';
 import 'real_range.dart';
 import 'geo_reminder.dart';
 import 'pvpc_alert.dart';
+import 'monthly_report_pdf.dart' show generarInformeSiToca;
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -286,6 +287,19 @@ Future<void> refreshVehicleDataInBackground() async {
     await checkAndNotifyStateChanges(status);
   } catch (e) {
     await CarLogBridge.log('checkAndNotifyStateChanges FALLO: ' + e.toString());
+  }
+  // -- 7) Informe mensual automatico (I1): solo en el ciclo de fondo.
+  // Puede tocar red (REE para precios de cargas del mes) y escribir un PDF:
+  // va en su propio try y DESPUES de los datos importantes del ciclo.
+  try {
+    final mesListo = await generarInformeSiToca();
+    if (mesListo != null) {
+      final pluginInf = await _initNotifications(requestPermission: false);
+      await _showNotification(pluginInf, 1007, 'Informe mensual listo',
+          'Ya tienes el PDF de $mesListo: km, kWh, euros, CO2 evitado y comparativa con el mes anterior. Lo encuentras en Ajustes > Informes mensuales.');
+    }
+  } catch (e) {
+    await CarLogBridge.log('informeMensual FALLO: ' + e.toString());
   }
   // Mismo motivo: un fallo aqui no debe impedir que las rutinas programadas
   // de mas abajo se ejecuten.
