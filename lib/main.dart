@@ -276,7 +276,8 @@ Future<void> refreshVehicleDataInBackground() async {
       await TripPointStore.addPoint(status.totalMileage!, soc,
           lat: status.latitude, lon: status.longitude,
           v: rawNum(status.raw['batteryVoltage']),
-          a: rawNum(status.raw['batteryCurrent']));
+          a: rawNum(status.raw['batteryCurrent']),
+          t: rawNum(status.raw['minBatteryTemp']));
     }
   }
   await _storage.write(key: 'lm_bg_prev_charging_v1', value: status.isCharging ? '1' : '0');
@@ -1363,7 +1364,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await TripPointStore.addPoint(s.totalMileage!, soc,
           lat: s.latitude, lon: s.longitude,
           v: rawNum(s.raw['batteryVoltage']),
-          a: rawNum(s.raw['batteryCurrent']));
+          a: rawNum(s.raw['batteryCurrent']),
+          t: rawNum(s.raw['minBatteryTemp']));
     }
     _previousStatus = s;
   }
@@ -2488,7 +2490,10 @@ class TripPoint {
   /// Tension/corriente de bateria en la lectura (N3, salud de bateria).
   final double? v;
   final double? a;
-  TripPoint({required this.ts, required this.totalMileage, required this.soc, this.lat, this.lon, this.v, this.a});
+
+  /// Temperatura de la bateria en la lectura (N3b, corte por frio).
+  final double? t;
+  TripPoint({required this.ts, required this.totalMileage, required this.soc, this.lat, this.lon, this.v, this.a, this.t});
 
   Map<String, dynamic> toMap() {
     final m = <String, dynamic>{'ts': ts, 'km': totalMileage, 'soc': soc};
@@ -2498,6 +2503,7 @@ class TripPoint {
     }
     if (v != null) m['v'] = v;
     if (a != null) m['a'] = a;
+    if (t != null) m['t'] = t;
     return m;
   }
   factory TripPoint.fromMap(Map<String, dynamic> m) => TripPoint(
@@ -2507,7 +2513,8 @@ class TripPoint {
       lat: (m['lat'] as num?)?.toDouble(),
       lon: (m['lon'] as num?)?.toDouble(),
       v: (m['v'] as num?)?.toDouble(),
-      a: (m['a'] as num?)?.toDouble());
+      a: (m['a'] as num?)?.toDouble(),
+      t: (m['t'] as num?)?.toDouble());
 }
 
 /// Las señales crudas llegan como num o como String según el endpoint.
@@ -2535,13 +2542,13 @@ class TripPointStore {
       (v == null || v.isNaN || v.isInfinite) ? null : v;
 
   static Future<void> addPoint(int totalMileage, double soc,
-      {double? lat, double? lon, double? v, double? a}) async {
+      {double? lat, double? lon, double? v, double? a, double? t}) async {
     final cLat = _cleanCoord(lat);
     final cLon = _cleanCoord(lon);
     final points = await load();
     final nowTs = DateTime.now().millisecondsSinceEpoch;
-    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: cLat, lon: cLon, v: v, a: a));
-    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: cLat, lon: cLon, v: v, a: a);
+    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: cLat, lon: cLon, v: v, a: a, t: t));
+    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: cLat, lon: cLon, v: v, a: a, t: t);
     final trimmed = points.length > _maxPoints ? points.sublist(points.length - _maxPoints) : points;
     try {
       await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
