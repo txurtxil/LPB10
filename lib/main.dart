@@ -45,6 +45,8 @@ import 'monthly_report_pdf.dart' show generarInformeSiToca;
 import 'battery_health_screen.dart' show BatteryHealthScreen;
 import 'charging_costs_screen.dart' show ChargingCostsScreen;
 import 'exterior_temp.dart' show ExteriorTemp;
+import 'telemetry_push.dart' show TelemetryPush;
+import 'telemetry_push_screen.dart' show TelemetryPushScreen;
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -282,6 +284,14 @@ Future<void> refreshVehicleDataInBackground() async {
           a: rawNum(status.raw['batteryCurrent']),
           t: rawNum(status.raw['minBatteryTemp']),
           te: te);
+      // Telemetria saliente (MQTT/webhook del usuario): fire-and-forget,
+      // nunca bloquea el refresco.
+      TelemetryPush.enviar(soc: soc, km: status.totalMileage!,
+          v: rawNum(status.raw['batteryVoltage']),
+          a: rawNum(status.raw['batteryCurrent']),
+          tBat: rawNum(status.raw['minBatteryTemp']), tExt: te,
+          lat: status.latitude, lon: status.longitude,
+          cargando: status.isCharging);
     }
   }
   await _storage.write(key: 'lm_bg_prev_charging_v1', value: status.isCharging ? '1' : '0');
@@ -1372,6 +1382,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           a: rawNum(s.raw['batteryCurrent']),
           t: rawNum(s.raw['minBatteryTemp']),
           te: te);
+      TelemetryPush.enviar(soc: soc, km: s.totalMileage!,
+          v: rawNum(s.raw['batteryVoltage']),
+          a: rawNum(s.raw['batteryCurrent']),
+          tBat: rawNum(s.raw['minBatteryTemp']), tExt: te,
+          lat: s.latitude, lon: s.longitude,
+          cargando: s.isCharging);
     }
     _previousStatus = s;
   }
@@ -1670,6 +1686,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => const MaintenanceScreen()));
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.sensors, size: 18),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Telemetria (MQTT/webhook)'
+                        : 'Telemetry (MQTT/webhook)'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const TelemetryPushScreen())),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
