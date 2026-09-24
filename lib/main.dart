@@ -43,6 +43,7 @@ import 'geo_reminder.dart';
 import 'pvpc_alert.dart';
 import 'monthly_report_pdf.dart' show generarInformeSiToca;
 import 'battery_health_screen.dart' show BatteryHealthScreen;
+import 'charging_costs_screen.dart' show ChargingCostsScreen;
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -1903,6 +1904,16 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
                     child: const Padding(
                       padding: EdgeInsets.all(4),
                       child: Icon(Icons.monitor_heart_outlined, color: textColor, size: 20),
+                    ),
+                  ),
+                  // Costes de carga (sesiones AC/DC/HPC con tarifas, clon
+                  // de LeapMotor Mate) calculados con el historico local.
+                  InkWell(
+                    onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ChargingCostsScreen())),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.euro_outlined, color: textColor, size: 20),
                     ),
                   ),
                   const SizedBox(width: 4),

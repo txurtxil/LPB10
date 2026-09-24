@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 import 'car_log_bridge.dart';
+import 'battery_health.dart' show MuestraBat;
 import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -29,6 +30,31 @@ class HistoryArchive {
   /// Acceso publico de solo lectura (p. ej. la salud de la bateria parsea
   /// trips.jsonl por su cuenta). No crear nada aqui que no sea el directorio.
   static Future<Directory> dir() => _dir();
+
+  /// Lee trips.jsonl completo como muestras de bateria (salud N3 y costes
+  /// de carga comparten esta lectura). Las lineas corruptas se descartan.
+  static Future<List<MuestraBat>> cargarMuestrasBat() async {
+    final d = await _dir();
+    final f = File('${d.path}/trips.jsonl');
+    if (!await f.exists()) return const [];
+    final out = <MuestraBat>[];
+    for (final line in await f.readAsLines()) {
+      final t = line.trim();
+      if (t.isEmpty) continue;
+      try {
+        final m = Map<String, dynamic>.from(json.decode(t) as Map);
+        final ts = m['ts'];
+        final km = m['km'];
+        final soc = m['soc'];
+        if (ts is! int || km is! num || soc is! num) continue;
+        out.add(MuestraBat(ts, km.toInt(), soc.toDouble(),
+            v: (m['v'] as num?)?.toDouble(),
+            a: (m['a'] as num?)?.toDouble(),
+            t: (m['t'] as num?)?.toDouble()));
+      } catch (_) {}
+    }
+    return out;
+  }
 
   static Future<void> appendTrip(int ts, int km, double soc,
       {double? lat, double? lon, double? v, double? a, double? t}) async {

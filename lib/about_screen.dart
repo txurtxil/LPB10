@@ -7,7 +7,7 @@ class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
   // Respaldo si no se puede leer la version real del paquete.
-  static const String kDisplayVersion = '3.60.180';
+  static const String kDisplayVersion = '3.60.181';
 
   /// Version real del paquete instalado (la del build), no una constante
   /// manual que se quedaba desactualizada entre releases.
