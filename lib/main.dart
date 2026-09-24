@@ -1096,7 +1096,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _tryRestore() async {
     // v173: rastro de arranque con version, para fechar los carlogs.
     try {
-      await CarLogBridge.log('ARRANQUE v' + AboutScreen.kDisplayVersion);
+      await CarLogBridge.log('ARRANQUE v' + await AboutScreen.appVersion());
     } catch (_) {}
     if (!await welcomeAccepted()) {
       if (!mounted) return;

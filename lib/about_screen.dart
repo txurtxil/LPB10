@@ -1,12 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'l10n/generated/app_localizations.dart';
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
-  // Version visible de la app. La actualiza release_apk.sh en cada release.
-  static const String kDisplayVersion = '3.60.175';
+  // Respaldo si no se puede leer la version real del paquete.
+  static const String kDisplayVersion = '3.60.179';
+
+  /// Version real del paquete instalado (la del build), no una constante
+  /// manual que se quedaba desactualizada entre releases.
+  static Future<String> appVersion() async {
+    try {
+      final i = await PackageInfo.fromPlatform();
+      if (i.version.isNotEmpty) return i.version;
+    } catch (_) {}
+    return kDisplayVersion;
+  }
+
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  String _version = AboutScreen.kDisplayVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    AboutScreen.appVersion().then((v) {
+      if (mounted) setState(() => _version = v);
+    });
+  }
   static const _releasesUrl = 'https://github.com/txurtxil/LPB10/releases';
   static const _webUrl = 'https://txurtxil.github.io/LPB10/';
   static const _autismUrl = 'https://es.wikipedia.org/wiki/Trastornos_del_espectro_autista';
@@ -24,10 +50,10 @@ class AboutScreen extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
-              children: const [
-                Text('LMB10', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                SizedBox(width: 8),
-                Text('v$kDisplayVersion', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              children: [
+                const Text('LMB10', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Text('v$_version', style: const TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 4),
