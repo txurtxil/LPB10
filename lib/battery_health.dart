@@ -31,7 +31,10 @@ class MuestraBat {
 
   /// Temperatura de la bateria (senal minBatteryTemp), null si no habia.
   final double? t;
-  const MuestraBat(this.ts, this.km, this.soc, {this.v, this.a, this.t});
+
+  /// Temperatura exterior (Open-Meteo), null si no habia. Desde v182.
+  final double? te;
+  const MuestraBat(this.ts, this.km, this.soc, {this.v, this.a, this.t, this.te});
 }
 
 /// Capacidad estimada a partir de UNA carga.

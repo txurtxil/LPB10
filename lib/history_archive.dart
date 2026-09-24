@@ -57,7 +57,7 @@ class HistoryArchive {
   }
 
   static Future<void> appendTrip(int ts, int km, double soc,
-      {double? lat, double? lon, double? v, double? a, double? t}) async {
+      {double? lat, double? lon, double? v, double? a, double? t, double? te}) async {
     try {
       final d = await _dir();
       final f = File('${d.path}/trips.jsonl');
@@ -75,6 +75,9 @@ class HistoryArchive {
       // Temperatura de la bateria (senal minBatteryTemp): desde v180, para
       // el corte por frio de la salud de la bateria (N3b).
       if (t != null) m['t'] = t;
+      // Temperatura exterior (Open-Meteo): desde v182, para la grafica de
+      // consumo segun temperatura (clon Mate).
+      if (te != null) m['te'] = te;
       await f.writeAsString(
           '${json.encode(m)}\n',
           mode: FileMode.append,

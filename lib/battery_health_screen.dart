@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 
 import 'battery_health.dart';
+import 'consumption_temp.dart';
 import 'history_archive.dart';
 import 'widget_chart.dart' show gBatteryKwh;
 
@@ -25,6 +26,7 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
   ResumenSalud _salud = const ResumenSalud();
   List<ParadaPerdida> _paradas = [];
   ResumenDescarga _descarga = const ResumenDescarga();
+  List<PuntoConsumo> _puntosConsumo = [];
   bool _verPctDia = true; // true: %/dia, false: % perdido por parada
 
   @override
@@ -42,6 +44,7 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
       _salud = resumirSalud(estim);
       _paradas = paradas;
       _descarga = resumirDescargaPasiva(paradas);
+      _puntosConsumo = consumoVsTemp(m);
       _cargando = false;
     });
   }
@@ -216,10 +219,112 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                   ),
                 ],
+                const SizedBox(height: 16),
+                Text(es ? 'Consumo segun temperatura' : 'Consumption vs temperature',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _puntosConsumo.length < 3
+                        ? Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              es
+                                  ? 'Cada punto es un tramo de conduccion: consumo (% de bateria por 100 km) frente a la temperatura. La temperatura exterior llega de Open-Meteo desde la v3.60.182; cuando haya tramos suficientes veras aqui la curva de tu coche (en frio consume mas).'
+                                  : 'Each point is a driving leg: consumption (% of battery per 100 km) against temperature. Outdoor temperature comes from Open-Meteo since v3.60.182; once there are enough legs you will see your car curve here (cold costs more).',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 180,
+                            child: CustomPaint(
+                              painter: _ScatterConsumoPainter(
+                                  _puntosConsumo, Theme.of(context).colorScheme.primary),
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                  ),
+                ),
+                if (_puntosConsumo.length >= 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      es
+                          ? '${_puntosConsumo.length} tramos. Eje X: temperatura (C, exterior si la hay; del paquete si no). Eje Y: % de bateria por 100 km.'
+                          : '${_puntosConsumo.length} legs. X axis: temperature (C, outdoor if available, pack otherwise). Y axis: % of battery per 100 km.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                    ),
+                  ),
               ],
             ),
     );
   }
+}
+
+/// Nube de puntos consumo-temperatura con ejes y marcas en los extremos.
+class _ScatterConsumoPainter extends CustomPainter {
+  final List<PuntoConsumo> puntos;
+  final Color color;
+  _ScatterConsumoPainter(this.puntos, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const margenIzq = 34.0, margenAbajo = 20.0, margenArr = 8.0, margenDer = 8.0;
+    final w = size.width - margenIzq - margenDer;
+    final h = size.height - margenArr - margenAbajo;
+    if (w <= 0 || h <= 0) return;
+
+    var minT = puntos.first.temp, maxT = puntos.first.temp;
+    var minC = puntos.first.pct100km, maxC = puntos.first.pct100km;
+    for (final p in puntos) {
+      if (p.temp < minT) minT = p.temp;
+      if (p.temp > maxT) maxT = p.temp;
+      if (p.pct100km < minC) minC = p.pct100km;
+      if (p.pct100km > maxC) maxC = p.pct100km;
+    }
+    if (maxT - minT < 1) { minT -= 0.5; maxT += 0.5; }
+    if (maxC - minC < 1) { minC -= 0.5; maxC += 0.5; }
+
+    final ejes = Paint()
+      ..color = Colors.grey.shade400
+      ..strokeWidth = 1;
+    final origen = Offset(margenIzq, margenArr + h);
+    // ejes
+    canvas.drawLine(origen, Offset(margenIzq, margenArr), ejes);
+    canvas.drawLine(origen, Offset(margenIzq + w, margenArr + h), ejes);
+
+    void etiqueta(String txt, Offset pos) {
+      final tp = TextPainter(
+          text: TextSpan(
+              text: txt, style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      tp.paint(canvas, pos);
+    }
+
+    etiqueta('${minT.toStringAsFixed(0)} C', Offset(margenIzq, margenArr + h + 4));
+    final maxTLbl = '${maxT.toStringAsFixed(0)} C';
+    final tpMax = TextPainter(
+        text: TextSpan(
+            text: maxTLbl, style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
+        textDirection: TextDirection.ltr)
+      ..layout();
+    tpMax.paint(canvas, Offset(margenIzq + w - tpMax.width, margenArr + h + 4));
+    etiqueta(maxC.toStringAsFixed(0), Offset(2, margenArr));
+    etiqueta(minC.toStringAsFixed(0), Offset(2, margenArr + h - 10));
+
+    final puntosPaint = Paint()..color = color.withOpacity(0.65);
+    for (final p in puntos) {
+      final x = margenIzq + (p.temp - minT) / (maxT - minT) * w;
+      final y = margenArr + h - (p.pct100km - minC) / (maxC - minC) * h;
+      canvas.drawCircle(Offset(x, y), 3, puntosPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ScatterConsumoPainter old) => old.puntos != puntos;
 }
 
 /// Barras por parada: %/dia o % perdido, palidas si la caida es ruido.
