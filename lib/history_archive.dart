@@ -26,7 +26,12 @@ class HistoryArchive {
     return d;
   }
 
-  static Future<void> appendTrip(int ts, int km, double soc, {double? lat, double? lon}) async {
+  /// Acceso publico de solo lectura (p. ej. la salud de la bateria parsea
+  /// trips.jsonl por su cuenta). No crear nada aqui que no sea el directorio.
+  static Future<Directory> dir() => _dir();
+
+  static Future<void> appendTrip(int ts, int km, double soc,
+      {double? lat, double? lon, double? v, double? a}) async {
     try {
       final d = await _dir();
       final f = File('${d.path}/trips.jsonl');
@@ -35,6 +40,12 @@ class HistoryArchive {
         m['lat'] = lat;
         m['lon'] = lon;
       }
+      // Tension/corriente de la bateria en la lectura (señales 1177/1178).
+      // Desde v178 se guardan tambien durante la carga: son la materia prima
+      // de la estimacion de capacidad (salud de la bateria, N3). Las lineas
+      // viejas no los traen y se leen como null sin problema.
+      if (v != null && v > 0) m['v'] = v;
+      if (a != null && a != 0) m['a'] = a;
       await f.writeAsString(
           '${json.encode(m)}\n',
           mode: FileMode.append,

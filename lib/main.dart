@@ -42,6 +42,7 @@ import 'real_range.dart';
 import 'geo_reminder.dart';
 import 'pvpc_alert.dart';
 import 'monthly_report_pdf.dart' show generarInformeSiToca;
+import 'battery_health_screen.dart' show BatteryHealthScreen;
 import 'history_archive.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'cert_store.dart';
@@ -268,9 +269,14 @@ Future<void> refreshVehicleDataInBackground() async {
     } else if (wasCharging && !status.isCharging) {
       await ChargeHistoryStore.endSession(soc);
     }
-    if (status.totalMileage != null && !status.isCharging) {
+    // N3: tambien se graba DURANTE la carga (con tension/corriente): son los
+    // datos de la estimacion de capacidad. Los puntos con km constante no
+    // afectan a consumo ni agregados (kmDelta=0 los descarta).
+    if (status.totalMileage != null) {
       await TripPointStore.addPoint(status.totalMileage!, soc,
-          lat: status.latitude, lon: status.longitude);
+          lat: status.latitude, lon: status.longitude,
+          v: rawNum(status.raw['batteryVoltage']),
+          a: rawNum(status.raw['batteryCurrent']));
     }
   }
   await _storage.write(key: 'lm_bg_prev_charging_v1', value: status.isCharging ? '1' : '0');
@@ -1351,9 +1357,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await ChargeHistoryStore.endSession(soc);
     }
 
-    if (s.totalMileage != null && !s.isCharging) {
+    // N3: grabar tambien en carga, con tension/corriente (ver nota en
+    // refreshVehicleDataInBackground).
+    if (s.totalMileage != null) {
       await TripPointStore.addPoint(s.totalMileage!, soc,
-          lat: s.latitude, lon: s.longitude);
+          lat: s.latitude, lon: s.longitude,
+          v: rawNum(s.raw['batteryVoltage']),
+          a: rawNum(s.raw['batteryCurrent']));
     }
     _previousStatus = s;
   }
@@ -1881,7 +1891,22 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(AppLocalizations.of(context)!.tileBattery, style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 15)),
-              Text(_lastUpdatedLabel, style: const TextStyle(color: textColor, fontSize: 11)),
+              Row(
+                children: [
+                  // N3: salud de la bateria (capacidad estimada + descarga
+                  // pasiva) calculada con el historico local.
+                  InkWell(
+                    onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const BatteryHealthScreen())),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.monitor_heart_outlined, color: textColor, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(_lastUpdatedLabel, style: const TextStyle(color: textColor, fontSize: 11)),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -2459,7 +2484,11 @@ class TripPoint {
   final double soc;
   final double? lat;
   final double? lon;
-  TripPoint({required this.ts, required this.totalMileage, required this.soc, this.lat, this.lon});
+
+  /// Tension/corriente de bateria en la lectura (N3, salud de bateria).
+  final double? v;
+  final double? a;
+  TripPoint({required this.ts, required this.totalMileage, required this.soc, this.lat, this.lon, this.v, this.a});
 
   Map<String, dynamic> toMap() {
     final m = <String, dynamic>{'ts': ts, 'km': totalMileage, 'soc': soc};
@@ -2467,6 +2496,8 @@ class TripPoint {
       m['lat'] = lat;
       m['lon'] = lon;
     }
+    if (v != null) m['v'] = v;
+    if (a != null) m['a'] = a;
     return m;
   }
   factory TripPoint.fromMap(Map<String, dynamic> m) => TripPoint(
@@ -2474,7 +2505,16 @@ class TripPoint {
       totalMileage: m['km'] as int,
       soc: (m['soc'] as num).toDouble(),
       lat: (m['lat'] as num?)?.toDouble(),
-      lon: (m['lon'] as num?)?.toDouble());
+      lon: (m['lon'] as num?)?.toDouble(),
+      v: (m['v'] as num?)?.toDouble(),
+      a: (m['a'] as num?)?.toDouble());
+}
+
+/// Las señales crudas llegan como num o como String según el endpoint.
+double? rawNum(dynamic x) {
+  if (x is num) return x.toDouble();
+  if (x is String) return double.tryParse(x);
+  return null;
 }
 
 class TripPointStore {
@@ -2494,13 +2534,14 @@ class TripPointStore {
   static double? _cleanCoord(double? v) =>
       (v == null || v.isNaN || v.isInfinite) ? null : v;
 
-  static Future<void> addPoint(int totalMileage, double soc, {double? lat, double? lon}) async {
+  static Future<void> addPoint(int totalMileage, double soc,
+      {double? lat, double? lon, double? v, double? a}) async {
     final cLat = _cleanCoord(lat);
     final cLon = _cleanCoord(lon);
     final points = await load();
     final nowTs = DateTime.now().millisecondsSinceEpoch;
-    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: cLat, lon: cLon));
-    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: cLat, lon: cLon);
+    points.add(TripPoint(ts: nowTs, totalMileage: totalMileage, soc: soc, lat: cLat, lon: cLon, v: v, a: a));
+    await HistoryArchive.appendTrip(nowTs, totalMileage, soc, lat: cLat, lon: cLon, v: v, a: a);
     final trimmed = points.length > _maxPoints ? points.sublist(points.length - _maxPoints) : points;
     try {
       await _storage.write(key: _key, value: json.encode(trimmed.map((p) => p.toMap()).toList()));
