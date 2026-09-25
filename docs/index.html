@@ -56,17 +56,17 @@
   </div>
   <div class="hero-inner">
     <div class="hero-copy">
-      <p class="kicker reveal-line"><span data-i18n="hero.kicker">APP NO OFICIAL · ANDROID · GPLv3</span></p>
+      <p class="kicker reveal-line"><span data-i18n="hero.kicker">APP NO OFICIAL · ANDROID + iOS · GPLv3</span></p>
       <h1 class="hero-title" aria-label="LMB10">
         <span class="w"><span>L</span></span><span class="w"><span>M</span></span><span class="w"><span>B</span></span><span class="w"><span>1</span></span><span class="w"><span>0</span></span>
       </h1>
-      <p class="hero-sub reveal-line" data-i18n="hero.sub">Tu Leapmotor, bajo tu control. Monitoriza y controla tu coche desde Android con funciones que la app oficial no ofrece.</p>
+      <p class="hero-sub reveal-line" data-i18n="hero.sub">Tu Leapmotor, bajo tu control. Monitoriza y controla tu coche desde tu móvil con funciones que la app oficial no ofrece.</p>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href="#instalar"><span data-i18n="hero.cta1">Conviértete en tester</span></a>
-        <a class="btn btn-ghost" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener"><span data-i18n="hero.cta2">Descargar APK</span></a>
+        <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="hero.cta1">Descargar en Google Play</span></a>
+        <a class="btn btn-ghost" href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener"><span data-i18n="hero.cta2">APK · IPA en GitHub</span></a>
       </div>
       <div class="store-badges reveal-line">
-        <a class="store-badge" href="#instalar" aria-label="Android">
+        <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.txurtxil.lpb10" target="_blank" rel="noopener" aria-label="Android">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22a11.66 11.66 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 7 15.25zm10 0a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 17 15.25z"/></svg>
           <span class="sb-text"><span class="sb-top" data-i18n="badge.android.top">Disponible para</span><span class="sb-bot">Android</span></span>
         </a>
@@ -88,8 +88,8 @@
 </section>
 
 <!-- ══════════ AVISO ANDROID AUTO ══════════ -->
-<div class="notice">
-  <p class="mono" data-i18n="notice">⚠ ANDROID AUTO — temporalmente desactivado por una revisión de políticas de Google Play. Volverá.</p>
+<div class="notice notice-ok">
+  <p class="mono" data-i18n="notice">✓ ANDROID AUTO — ya disponible instalando LMB10 desde Google Play.</p>
 </div>
 
 <!-- ══════════ STATS ══════════ -->
@@ -125,8 +125,8 @@
       <article class="feat reveal">
         <span class="feat-num mono">03</span>
         <div>
-          <h3 data-i18n="feat.3.t">Carga en la ventana más barata</h3>
-          <p data-i18n="feat.3.d">Precios PVPC horarios de REData integrados: la app calcula la ventana contigua más barata de 2 a 8 horas y te la sugiere en el programador de carga. También coste por día, semana y mes en euros.</p>
+          <h3 data-i18n="feat.3.t">Costes de carga reales</h3>
+          <p data-i18n="feat.3.d">Cada sesión AC, DC o HPC con su curva de potencia y su coste en euros según tu tarifa (PVPC horario REData o precio fijo). La app sugiere la ventana contigua más barata de 2 a 8 horas en el programador, y acumula coste por día, semana y mes.</p>
         </div>
       </article>
       <article class="feat reveal">
@@ -148,6 +148,20 @@
         <div>
           <h3 data-i18n="feat.6.t">Tus datos son tuyos</h3>
           <p data-i18n="feat.6.d">Todo se guarda cifrado en tu teléfono; nada va a servidores del desarrollador. Copia de seguridad exportable (JSON + CSV) y copia diaria opcional en tu propio Google Drive.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">07</span>
+        <div>
+          <h3 data-i18n="feat.7.t">Salud de batería e informes PDF</h3>
+          <p data-i18n="feat.7.d">Capacidad estimada de la batería y control de la descarga pasiva con los criterios de Leapmotor Mate. Informes mensuales automáticos en PDF, exportables, con consumos, cargas y costes.</p>
+        </div>
+      </article>
+      <article class="feat reveal">
+        <span class="feat-num mono">08</span>
+        <div>
+          <h3 data-i18n="feat.8.t">Telemetría y consumo vs temperatura</h3>
+          <p data-i18n="feat.8.d">Envío de telemetría por MQTT o webhook a tu propio servidor (Home Assistant, Node-RED…), además de ABRP. Y gráficas de consumo cruzadas con la temperatura exterior de Open-Meteo para entender el invierno.</p>
         </div>
       </article>
     </div>
@@ -201,7 +215,7 @@
           <tr><td data-i18n="c.4">Ubicación GPS y odómetro</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
           <tr><td data-i18n="c.5">Telemetría ABRP</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
           <tr><td data-i18n="c.6">Controles remotos</td><td class="ok">✓</td><td class="warn" data-i18n="c.untested">sin probar</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td>Android Auto</td><td class="pause">⏸</td><td class="unk">?</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td>Android Auto</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td><td class="unk">?</td></tr>
         </tbody>
       </table>
     </div>
@@ -213,33 +227,36 @@
 <section class="install section-light" id="instalar">
   <div class="wrap">
     <p class="label mono reveal" data-i18n="inst.label">04 — INSTALACIÓN</p>
-    <h2 class="h2 reveal" data-i18n="inst.title">Tester en 3 pasos.</h2>
-    <p class="lead reveal" data-i18n="inst.lead">Si alguien te ha mandado el enlace, esto es todo lo que necesitas. Un minuto, sin aprobación.</p>
+    <h2 class="h2 reveal" data-i18n="inst.title">Instálala en 2 pasos.</h2>
+    <p class="lead reveal" data-i18n="inst.lead">LMB10 ya está en producción en Google Play: descarga pública, sin grupos ni esperas. Solo queda importar tu certificado.</p>
 
     <div class="stepper">
       <div class="step reveal">
         <span class="step-num mono">01</span>
         <div class="step-body">
-          <h3 data-i18n="inst.s1.t">Únete al grupo de testers</h3>
-          <p data-i18n="inst.s1.d">Un clic, sin aprobación. El grupo es además el canal de dudas, fallos y sugerencias.</p>
-          <a class="btn btn-dark" href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener"><span data-i18n="inst.s1.cta">groups.google.com/g/lmb10-testers</span></a>
+          <h3 data-i18n="inst.s1.t">Instala desde Google Play</h3>
+          <p data-i18n="inst.s1.d">Descarga pública y oficial desde la ficha de Play — con actualizaciones automáticas y soporte de Android Auto.</p>
+          <a class="btn btn-dark" href="https://play.google.com/store/apps/details?id=com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.s1.cta">Abrir en Google Play</span></a>
         </div>
       </div>
       <div class="step reveal">
         <span class="step-num mono">02</span>
         <div class="step-body">
-          <h3 data-i18n="inst.s2.t">Activa la prueba en Google Play</h3>
-          <p data-i18n="inst.s2.d">Con la misma cuenta de Google, pulsa «Convertirte en tester».</p>
-          <a class="btn btn-dark" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.s2.cta">play.google.com · Convertirte en tester</span></a>
+          <h3 data-i18n="inst.s2.t">Importa tu certificado</h3>
+          <p data-i18n="inst.s2.d">Abre LMB10 y sigue Ajustes → Importar certificado: la nube de Leapmotor exige mTLS con tu propio certificado.</p>
+          <p class="step-cert"><a class="text-link cert-link" href="https://github.com/markoceri/leapmotor-certs" target="_blank" rel="noopener" data-i18n="inst.s2.cert">🔐 Certificados: markoceri/leapmotor-certs — gracias a su autor por el material</a></p>
         </div>
       </div>
-      <div class="step reveal">
-        <span class="step-num mono">03</span>
-        <div class="step-body">
-          <h3 data-i18n="inst.s3.t">Instala e importa tu certificado</h3>
-          <p data-i18n="inst.s3.d">Instala LMB10 desde Play (puede tardar unos minutos en aparecer) y sigue Ajustes → Importar certificado: la nube de Leapmotor exige mTLS con tu propio certificado.</p>
-          <p class="step-cert"><a class="text-link cert-link" href="https://github.com/markoceri/leapmotor-certs" target="_blank" rel="noopener" data-i18n="inst.s3.cert">🔐 Certificados: markoceri/leapmotor-certs — gracias a su autor por el material</a></p>
-        </div>
+    </div>
+
+    <div class="alt-channel beta-channel reveal">
+      <div>
+        <h4 data-i18n="inst.beta.t">¿Quieres probar lo próximo antes que nadie?</h4>
+        <p data-i18n="inst.beta.d">La prueba cerrada de Play va siempre un paso por delante: ahora mismo está en la v3.60.186 mientras la producción pública es la v3.60.179. Únete al grupo de testers y activa la prueba con la misma cuenta de Google.</p>
+      </div>
+      <div class="beta-ctas">
+        <a class="btn btn-outline" href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener"><span data-i18n="inst.beta.cta1">1 · Grupo de testers</span></a>
+        <a class="btn btn-outline" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.beta.cta2">2 · Activar la prueba</span></a>
       </div>
     </div>
 
@@ -317,6 +334,10 @@
   <div class="wrap">
     <p class="label mono reveal" data-i18n="ver.label">06 — VERSIONES</p>
     <h2 class="h2 reveal" data-i18n="ver.title">Un cambio por release, validado en coche real.</h2>
+    <div class="channel-note reveal">
+      <span class="channel-tag mono" data-i18n="ver.prod.tag">PRODUCCIÓN</span>
+      <p data-i18n="ver.prod.d"><b>Google Play:</b> v3.60.179 ya es la versión pública estable. El canal beta (prueba cerrada) va por la <b>v3.60.186</b> — aquí abajo se listan las releases de GitHub, que siguen el canal beta.</p>
+    </div>
     <div class="timeline" id="timeline">
       <p class="mono tl-loading" id="tlLoading" data-i18n="ver.loading">Cargando releases desde GitHub…</p>
       <div class="tl-row reveal"><span class="mono tl-v">v3.60.151</span><p data-i18n="ver.151">Ventana barata PVPC: la app sugiere las horas más baratas en el programador de carga.</p></div>

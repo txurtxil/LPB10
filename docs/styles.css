@@ -313,6 +313,7 @@ section{padding:clamp(80px,10vw,140px) 0}
   .tl-row{grid-template-columns:1fr;gap:4px}
   .foot-grid{grid-template-columns:1fr}
   .hero-ctas .btn{width:100%}
+  .beta-ctas{width:100%;flex-direction:column;align-items:stretch}
 }
 
 /* ═══════════════ REDUCED MOTION ═══════════════ */
@@ -375,3 +376,23 @@ section{padding:clamp(80px,10vw,140px) 0}
   .tea-inner{background-position:70% center}
   .tea-text{max-width:100%;background:linear-gradient(180deg,rgba(7,4,12,.85),rgba(7,4,12,.6) 65%,rgba(7,4,12,.15))}
 }
+
+/* ═══ Aviso OK (Android Auto) ═══ */
+.notice-ok .mono{color:#34d399;opacity:.95}
+
+/* ═══ Tarjeta beta (instalación) ═══ */
+.beta-channel{border-style:solid;border-color:rgba(91,75,196,.45);background:linear-gradient(120deg,rgba(91,75,196,.08),transparent 55%)}
+.beta-ctas{display:flex;gap:12px;flex-wrap:wrap;flex-shrink:0}
+
+/* ═══ Nota de canal (versiones) ═══ */
+.channel-note{
+  margin-top:36px;border:1px solid var(--line-d);border-radius:16px;
+  padding:clamp(18px,2.4vw,26px);display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;
+  background:linear-gradient(120deg,rgba(157,140,255,.08),transparent 60%);
+}
+.channel-tag{
+  flex-shrink:0;font-size:.7rem;letter-spacing:.14em;color:var(--violet);
+  border:1px solid var(--violet);border-radius:999px;padding:.35rem .8rem;margin-top:2px;
+}
+.channel-note p{color:var(--txt-d2);font-size:.95rem;max-width:78ch;flex:1;min-width:260px}
+.channel-note b{color:var(--txt-d)}
