@@ -6,6 +6,16 @@ import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.validation.HostValidator
 
+/**
+ * Servicio Android Auto. Categoria POI (puntos de interes), la unica
+ * abierta a apps de terceros que no sean del fabricante del coche:
+ * Google NO permite mostrar datos del vehiculo (bateria, ruedas,
+ * consumo, acciones) en pantallas de Auto a apps no-OEM.
+ *
+ * Por eso la raiz es directamente la lista de cargadores cercanos
+ * (ChargersScreen -> ChargerDetailScreen -> navegar con Maps).
+ * Las pantallas antiguas con datos del coche se retiraron de esta rama.
+ */
 open class LMB10CarAppService : CarAppService() {
     override fun createHostValidator(): HostValidator =
         if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
@@ -18,23 +28,21 @@ open class LMB10CarAppService : CarAppService() {
 
     override fun onCreate() {
         super.onCreate()
-        // Arranca el motor Dart cuanto antes: tarda 1-2 s y la cola
-        // absorbe cualquier toque anterior a que este listo.
         CarLog.log(this, "SERVICE", this.javaClass.simpleName + " onCreate")
-        CarBridge.start(this)
     }
 
     override fun onCreateSession(): Session = object : Session() {
         override fun onCreateScreen(intent: Intent): Screen {
             CarLog.log(carContext, "SERVICE",
                 "onCreateScreen action=" + intent.action + " data=" + intent.data)
-            return CarMainScreen(carContext)
+            // Raiz POI: sin hub intermedio, entra directo a los cargadores.
+            return ChargersScreen(carContext)
         }
 
         // Cuando el host entrega un intent a una sesion YA VIVA no llama a
-        // onCreateScreen: llama aqui. Si startCarApp(ACTION_NAVIGATE) nos lo
-        // devuelve a nosotros mismos por ser categoria NAVIGATION, la traza
-        // sale por aqui y en ningun otro sitio.
+        // onCreateScreen: llama aqui. Con la categoria POI el host no nos
+        // devuelve los ACTION_NAVIGATE (los resuelve Maps), pero si algun dia
+        // aparece un intent inesperado, la traza sale por aqui.
         override fun onNewIntent(intent: Intent) {
             CarLog.log(carContext, "SERVICE",
                 "onNewIntent action=" + intent.action + " data=" + intent.data)

@@ -58,7 +58,7 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
     private val overpass_mirrors = listOf(
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+        "https://overpass.private.coffee/api/interpreter"
     )
 
     private fun fetch(lat: Double, lon: Double): List<CarCharger> {
