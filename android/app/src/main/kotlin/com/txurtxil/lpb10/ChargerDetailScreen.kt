@@ -170,6 +170,22 @@ class ChargerDetailScreen(
         if (c.info.isNotEmpty()) {
             pane.addRow(Row.Builder().setTitle("Operador").addText(c.info).build())
         }
+        if (c.kw != null) {
+            pane.addRow(
+                Row.Builder()
+                    .setTitle("Potencia")
+                    .addText(String.format("%.0f kW", c.kw))
+                    .build()
+            )
+        }
+        if (c.plazas != null) {
+            pane.addRow(
+                Row.Builder()
+                    .setTitle("Plazas")
+                    .addText(c.plazas.toString())
+                    .build()
+            )
+        }
         pane.addAction(
             Action.Builder()
                 .setTitle("Maps del coche")

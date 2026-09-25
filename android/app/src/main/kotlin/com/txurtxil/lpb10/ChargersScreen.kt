@@ -9,10 +9,12 @@ import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
+import androidx.core.graphics.drawable.IconCompat
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -24,9 +26,20 @@ data class CarCharger(
     val lat: Double,
     val lon: Double,
     val distM: Float,
-    val info: String
+    val info: String,
+    val kw: Double?,
+    val plazas: Int?
 )
 
+/**
+ * Raiz de la app en Android Auto (categoria POI). Lista los cargadores
+ * cercanos segun OpenStreetMap/Overpass. Es la pantalla raiz, no va
+ * empujada desde ningun hub: por eso la cabecera lleva APP_ICON (BACK
+ * aqui cerraria la app) y la accion de recarga va en la franja inferior.
+ *
+ * Politica Google: solo puntos de interes y navegacion delegada. NADA de
+ * datos del vehiculo en Auto (eso es exclusivo del fabricante).
+ */
 class ChargersScreen(carContext: CarContext) : Screen(carContext) {
 
     private var loading = true
@@ -42,7 +55,7 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                 val lat = prefs.getString("lat", "")?.toDoubleOrNull()
                 val lon = prefs.getString("lon", "")?.toDoubleOrNull()
                 if (lat == null || lon == null) {
-                    errorMsg = "Sin posicion del coche. Abre LMB10 en el movil."
+                    errorMsg = "Sin posicion. Abre LMB10 en el movil una vez."
                 } else {
                     chargers = fetch(lat, lon)
                     if (chargers.isEmpty()) errorMsg = "Sin cargadores OSM en 5 km."
@@ -55,18 +68,34 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
         }.start()
     }
 
-    private val overpass_mirrors = listOf(
+    private fun refresh() {
+        loading = true
+        errorMsg = null
+        chargers = emptyList()
+        invalidate()
+        load()
+    }
+
+    private val overpassMirrors = listOf(
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+        "https://overpass.private.coffee/api/interpreter"
     )
+
+    private fun parseKw(tags: JSONObject): Double? {
+        // OSM: maxpower suele ser "50" o "50 kW". Nos quedamos el numero.
+        val raw = tags.optString("maxpower")
+        if (raw.isEmpty()) return null
+        return Regex("[0-9]+([.,][0-9]+)?").find(raw)
+            ?.value?.replace(',', '.')?.toDoubleOrNull()
+    }
 
     private fun fetch(lat: Double, lon: Double): List<CarCharger> {
         val query = "[out:json][timeout:20];node[\"amenity\"=\"charging_station\"](around:5000,$lat,$lon);out body 40;"
         var body: String? = null
         var lastErr: Exception? = null
         // Reintenta en varios espejos: Overpass principal falla a menudo.
-        for (mirror in overpass_mirrors) {
+        for (mirror in overpassMirrors) {
             try {
                 val conn = URL(mirror).openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
@@ -102,51 +131,41 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             val res = FloatArray(1)
             Location.distanceBetween(lat, lon, la, lo, res)
             val info = if (nm.isNotEmpty() && op.isNotEmpty()) op else ""
-            out.add(CarCharger(name, la, lo, res[0], info))
+            val kw = tags?.let { parseKw(it) }
+            val plazas = tags?.optString("capacity")?.toIntOrNull()
+            out.add(CarCharger(name, la, lo, res[0], info, kw, plazas))
         }
         out.sortBy { it.distM }
+        // El host trunca las listas a 6 items en marcha: no mandar mas.
         return out.take(6)
     }
 
-    private fun navigate(c: CarCharger) {
-        // Formato correcto segun la doc oficial de Android Auto: para lanzar
-        // navegacion en el coche hay que usar CarContext.ACTION_NAVIGATE con
-        // un URI "geo:lat,lon" simple (NO Intent.ACTION_VIEW, que solo vale en
-        // el movil). El formato con "?q=lat,lon(nombre)" no lo resuelve bien el
-        // host; el formato geo:lat,lon directo si.
-        // startCarApp(ACTION_NAVIGATE) SOLO admite dos formatos documentados:
-        //   "geo:lat,lon"          -> ir a un punto
-        //   "geo:0,0?q=..."        -> buscar
-        // El hibrido "geo:lat,lon?q=..." NO esta documentado y varios hosts lo
-        // descartan EN SILENCIO (sin excepcion). Por eso no pasaba nada.
-        val uri = Uri.parse("geo:0,0?q=" + c.lat + "," + c.lon + "(" + Uri.encode(c.name) + ")")
-        // Se vuelve al comportamiento de la v3.58.2, que SI abria el mapa:
-        // intent de navegacion simple, sin forzar paquete (forzarlo hacia que
-        // el host ignorara el intent en silencio) y con el URI que llevaba ?q=.
-        try {
-            CarLog.log(carContext, "NAV", "intento " + uri)
-            carContext.startCarApp(Intent(CarContext.ACTION_NAVIGATE, uri))
-            CarLog.log(carContext, "NAV", "startCarApp devuelto SIN excepcion")
-        } catch (e: Exception) {
-            CarLog.log(carContext, "NAV", "fallo: " + e.javaClass.simpleName + " " + e.message)
-            try {
-                val simple = Uri.parse("geo:" + c.lat + "," + c.lon)
-                CarLog.log(carContext, "NAV", "fallback " + simple)
-                carContext.startCarApp(Intent(CarContext.ACTION_NAVIGATE, simple))
-                return
-            } catch (e2: Exception) {
-                CarLog.log(carContext, "NAV", "fallback fallo: " + e2.message)
-            }
-            CarToast.makeText(carContext, "No se pudo abrir la navegacion", CarToast.LENGTH_LONG).show()
-        }
+    private fun chargerIcon(): CarIcon =
+        CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_car_charger)).build()
+
+    private fun refreshAction(): Action =
+        Action.Builder()
+            .setTitle("Actualizar")
+            .setIcon(CarIcon.Builder(
+                IconCompat.createWithResource(carContext, android.R.drawable.ic_popup_sync)).build())
+            .setOnClickListener { refresh() }
+            .build()
+
+    private fun subtitle(c: CarCharger): String {
+        val partes = ArrayList<String>()
+        partes.add(String.format("%.1f km", c.distM / 1000f))
+        if (c.kw != null) partes.add(String.format("%.0f kW", c.kw))
+        if (c.info.isNotEmpty()) partes.add(c.info)
+        if (c.plazas != null) partes.add(c.plazas.toString() + " plazas")
+        return partes.joinToString(" · ")
     }
 
     override fun onGetTemplate(): Template {
         if (loading) {
             return ListTemplate.Builder()
                 .setLoading(true)
-                .setTitle("Cargadores")
-                .setHeaderAction(Action.BACK)
+                .setTitle("Cargadores cerca")
+                .setHeaderAction(Action.APP_ICON)
                 .build()
         }
 
@@ -156,12 +175,11 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             list.setNoItemsMessage(msg)
         } else {
             for (c in chargers) {
-                val km = String.format("%.1f km", c.distM / 1000f)
-                val sub = if (c.info.isNotEmpty()) "$km · ${c.info}" else km
                 list.addItem(
                     Row.Builder()
                         .setTitle(c.name)
-                        .addText(sub)
+                        .addText(subtitle(c))
+                        .setImage(chargerIcon())
                         .setOnClickListener { screenManager.push(ChargerDetailScreen(carContext, c)) }
                         .build()
                 )
@@ -170,8 +188,9 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
 
         return ListTemplate.Builder()
             .setSingleList(list.build())
-            .setTitle("Cargadores")
-            .setHeaderAction(Action.BACK)
+            .setTitle("Cargadores cerca")
+            .setHeaderAction(Action.APP_ICON)
+            .addAction(refreshAction())
             .build()
     }
 }

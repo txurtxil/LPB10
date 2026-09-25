@@ -93,5 +93,23 @@
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
             </intent-filter>
         </receiver>
+        <!-- Android Auto, categoria POI: la unica abierta a apps de terceros
+             que no sean del fabricante (Google no permite mostrar datos del
+             vehiculo en Auto a apps no-OEM). La raiz del servicio es la lista
+             de cargadores cercanos; navegar delega en Google Maps. -->
+        <service
+            android:name=".LMB10CarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
     </application>
 </manifest>
