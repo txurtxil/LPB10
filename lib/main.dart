@@ -1925,32 +1925,9 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(AppLocalizations.of(context)!.tileBattery, style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 15)),
-              Row(
-                children: [
-                  // N3: salud de la bateria (capacidad estimada + descarga
-                  // pasiva) calculada con el historico local.
-                  InkWell(
-                    onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const BatteryHealthScreen())),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.monitor_heart_outlined, color: textColor, size: 20),
-                    ),
-                  ),
-                  // Costes de carga (sesiones AC/DC/HPC con tarifas, clon
-                  // de LeapMotor Mate) calculados con el historico local.
-                  InkWell(
-                    onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ChargingCostsScreen())),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.euro_outlined, color: textColor, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(_lastUpdatedLabel, style: const TextStyle(color: textColor, fontSize: 11)),
-                ],
-              ),
+              // El acceso a Salud y Costes va abajo, en botones grandes
+              // con etiqueta (los iconos sueltos de 20 px no se entendian).
+              Text(_lastUpdatedLabel, style: const TextStyle(color: textColor, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 6),
@@ -1990,6 +1967,45 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
                       );
                     }).toList(),
                   ),
+          ),
+          const SizedBox(height: 8),
+          // Accesos claros a las dos pantallas de bateria (clon Mate):
+          // salud (capacidad, descarga pasiva, consumo-temperatura) y
+          // costes de carga (sesiones AC/DC/HPC con tarifas).
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BatteryHealthScreen())),
+                  icon: const Icon(Icons.monitor_heart_outlined, size: 18),
+                  label: Text(
+                      Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Salud bateria'
+                          : 'Battery health',
+                      style: const TextStyle(fontSize: 12)),
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 8)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ChargingCostsScreen())),
+                  icon: const Icon(Icons.euro_outlined, size: 18),
+                  label: Text(
+                      Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Costes carga'
+                          : 'Charging costs',
+                      style: const TextStyle(fontSize: 12)),
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 8)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           InkWell(
