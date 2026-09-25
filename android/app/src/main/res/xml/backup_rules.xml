@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup del sistema (Android 6-12): Android copia solo los datos
+     de la app a la cuenta de Google del propio usuario y los restaura al
+     reinstalar o cambiar de movil. Sin login, sin OAuth, sin administracion.
+
+     Se excluye el almacenamiento seguro (flutter_secure_storage): va cifrado
+     con una clave del Keystore de ESTE movil, que no viaja en la copia.
+     Restaurado en otro movil seria ilegible y podria romper el arranque.
+     Los secretos (MQTT, tokens) se reconfiguran a mano tras restaurar. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+</full-backup-content>

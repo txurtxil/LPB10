@@ -19,10 +19,17 @@
          no entrega el broadcast en absoluto (no es solo que falte el
          nombre/MAC, como se penso al principio: no llega nada). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- Auto Backup del sistema: copia automatica de los datos de la app en
+         la cuenta de Google del usuario (restaura solo al reinstalar/cambiar
+         de movil, sin OAuth ni gestion). Reglas explicitas en res/xml:
+         se excluye solo el almacenamiento cifrado, que no es restaurable. -->
     <application
         android:label="LMB10"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

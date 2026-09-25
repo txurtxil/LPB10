@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reglas de extraccion de datos (Android 12+): sustituyen a
+     fullBackupContent y cubren tanto la copia en la nube como la
+     transferencia directa movil-a-movil. Misma exclusion que en
+     backup_rules.xml: el almacenamiento seguro cifrado no es
+     restaurable en otro dispositivo. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </device-transfer>
+</data-extraction-rules>
