@@ -11,6 +11,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'battery_report_pdf.dart' show listadoCostesPdf, compartirPdf;
 import 'charging_costs.dart';
 import 'history_archive.dart';
 
@@ -22,6 +23,32 @@ class ChargingCostsScreen extends StatefulWidget {
 
 class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
   bool _cargando = true;
+  bool _exportandoPdf = false;
+
+  /// Genera y comparte el listado PDF de costes de carga.
+  Future<void> _exportarPdf() async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    if (_sesiones.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Aun no hay sesiones de carga registradas'
+              : 'No charging sessions recorded yet')));
+      return;
+    }
+    setState(() => _exportandoPdf = true);
+    try {
+      final f = await listadoCostesPdf(_sesiones, _meses, _tarifasActuales());
+      await compartirPdf(f);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(es ? 'No se pudo generar el PDF' : 'Could not generate the PDF')));
+      }
+    } finally {
+      if (mounted) setState(() => _exportandoPdf = false);
+    }
+  }
+
   List<SesionCarga> _sesiones = [];
   Map<String, MesCarga> _meses = {};
   final _ac = TextEditingController();
@@ -106,7 +133,16 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
     final mes = _meses[claveMes];
     final tarifas = _tarifasActuales();
     return Scaffold(
-      appBar: AppBar(title: Text(es ? 'Costes de carga' : 'Charging costs')),
+      appBar: AppBar(
+        title: Text(es ? 'Costes de carga' : 'Charging costs'),
+        actions: [
+          IconButton(
+            tooltip: es ? 'Exportar listado PDF' : 'Export PDF listing',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: _exportandoPdf ? null : _exportarPdf,
+          ),
+        ],
+      ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(

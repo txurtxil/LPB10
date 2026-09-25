@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 
 import 'battery_health.dart';
+import 'battery_report_pdf.dart' show informeSaludPdf, compartirPdf;
 import 'consumption_temp.dart';
 import 'history_archive.dart';
 import 'widget_chart.dart' show gBatteryKwh;
@@ -28,6 +29,31 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
   ResumenDescarga _descarga = const ResumenDescarga();
   List<PuntoConsumo> _puntosConsumo = [];
   bool _verPctDia = true; // true: %/dia, false: % perdido por parada
+  bool _exportandoPdf = false;
+
+  /// Genera y comparte el informe PDF de salud (mas alla de Mate).
+  Future<void> _exportarPdf() async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    if (_salud.capacidadKwh == null && _paradas.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Aun no hay datos suficientes para un informe'
+              : 'Not enough data for a report yet')));
+      return;
+    }
+    setState(() => _exportandoPdf = true);
+    try {
+      final f = await informeSaludPdf(_salud, _descarga, _puntosConsumo);
+      await compartirPdf(f);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(es ? 'No se pudo generar el PDF' : 'Could not generate the PDF')));
+      }
+    } finally {
+      if (mounted) setState(() => _exportandoPdf = false);
+    }
+  }
 
   @override
   void initState() {
@@ -59,7 +85,16 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
     final es = Localizations.localeOf(context).languageCode == 'es';
     final cap = _salud.capacidadKwh;
     return Scaffold(
-      appBar: AppBar(title: Text(es ? 'Salud de la bateria' : 'Battery health')),
+      appBar: AppBar(
+        title: Text(es ? 'Salud de la bateria' : 'Battery health'),
+        actions: [
+          IconButton(
+            tooltip: es ? 'Exportar informe PDF' : 'Export PDF report',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: _exportandoPdf ? null : _exportarPdf,
+          ),
+        ],
+      ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(

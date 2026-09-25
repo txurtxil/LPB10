@@ -30,6 +30,24 @@ const double kMinKmTramo = 2.0;
 const double kMinPct100 = 2.0;
 const double kMaxPct100 = 45.0;
 
+/// Bandas de temperatura para el resumen (frio / templado / suave / calor).
+const kBandasTemp = ['<5', '5-15', '15-25', '25+'];
+
+/// Consumo medio (%/100 km) por banda de temperatura; null en las bandas
+/// sin tramos. Para el informe PDF y la pantalla.
+Map<String, double?> consumoPorBanda(List<PuntoConsumo> puntos) {
+  final sumas = [0.0, 0.0, 0.0, 0.0];
+  final nums = [0, 0, 0, 0];
+  for (final p in puntos) {
+    final b = p.temp < 5 ? 0 : (p.temp < 15 ? 1 : (p.temp < 25 ? 2 : 3));
+    sumas[b] += p.pct100km;
+    nums[b]++;
+  }
+  return {
+    for (var i = 0; i < 4; i++) kBandasTemp[i]: nums[i] > 0 ? sumas[i] / nums[i] : null,
+  };
+}
+
 /// Extrae los puntos consumo-temperatura de una serie cronologica. Una
 /// subida de SoC (carga o regeneracion fuerte) o km quieto cierran el
 /// tramo en curso.
