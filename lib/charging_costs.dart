@@ -127,6 +127,26 @@ List<SesionCarga> detectarSesiones(List<MuestraBat> m) {
   return out;
 }
 
+/// Puntos (timestamp, kW) de la curva de potencia de una sesion, para la
+/// grafica de detalle. Solo muestras con v y a presentes.
+List<(int, double)> curvaPotencia(List<MuestraBat> m, int iniMs, int finMs) {
+  final out = <(int, double)>[];
+  for (final s in m) {
+    if (s.ts < iniMs || s.ts > finMs) continue;
+    if (s.v == null || s.a == null) continue;
+    out.add((s.ts, (s.v! * s.a!).abs() / 1000.0));
+  }
+  out.sort((a, b) => a.$1.compareTo(b.$1));
+  return out;
+}
+
+/// Eficiencia real de una carga: lo que entro al paquete entre lo que
+/// marco el cargador (%). null si no se anoto el dato del cargador.
+double? eficienciaReal(double kwhPaquete, double? kwhCargador) =>
+    (kwhCargador == null || kwhCargador <= 0)
+        ? null
+        : kwhPaquete / kwhCargador * 100.0;
+
 /// Totales de un mes: energia por tipo y coste (solo de las sesiones cuya
 /// tarifa esta configurada; null si no hubo ninguna con tarifa).
 class MesCarga {

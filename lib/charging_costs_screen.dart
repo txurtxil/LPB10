@@ -12,7 +12,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'battery_report_pdf.dart' show listadoCostesPdf, compartirPdf;
+import 'charge_cost.dart';
 import 'charging_costs.dart';
+import 'battery_health.dart' show MuestraBat;
 import 'history_archive.dart';
 
 class ChargingCostsScreen extends StatefulWidget {
@@ -50,6 +52,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
   }
 
   List<SesionCarga> _sesiones = [];
+  List<MuestraBat> _muestras = const [];
   Map<String, MesCarga> _meses = {};
   final _ac = TextEditingController();
   final _dc = TextEditingController();
@@ -87,6 +90,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
       }
     } catch (_) {}
     final muestras = await HistoryArchive.cargarMuestrasBat();
+    _muestras = muestras;
     final sesiones = detectarSesiones(muestras);
     if (!mounted) return;
     setState(() {
@@ -124,6 +128,155 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
   String _etiquetaTipo(TipoCarga t) => t == TipoCarga.ac
       ? 'AC'
       : (t == TipoCarga.dc ? 'DC' : 'HPC');
+
+  /// Hoja de detalle de una sesion: curva de potencia medida y formulario
+  /// de coste real (lo pagado y los kWh que marco el cargador), que da la
+  /// eficiencia real de la carga.
+  Future<void> _detalleSesion(SesionCarga s) async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final curva = curvaPotencia(_muestras, s.iniMs, s.finMs);
+    final costes = await ChargeCostStore.loadAll();
+    final guardado = costes[s.iniMs];
+    if (!mounted) return;
+    final eurCtrl = TextEditingController(
+        text: guardado?.eur?.toString() ?? '');
+    final kwhCtrl = TextEditingController(
+        text: guardado?.kwhCargador?.toString() ?? '');
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final estimado = costeSesion(s, _tarifasActuales());
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final kwhCargador =
+                double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
+            final eurReal = double.tryParse(eurCtrl.text.replaceAll(',', '.'));
+            final efic = eficienciaReal(s.energiaKwh, kwhCargador);
+            final durMin = (s.finMs - s.iniMs) / 60000.0;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                  16, 0, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${_etiquetaTipo(s.tipo)} · ${_fecha(s.iniMs)}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${s.socIni.toStringAsFixed(0)}>${s.socFin.toStringAsFixed(0)} % · '
+                      '${s.energiaKwh.toStringAsFixed(1)} kWh al paquete · '
+                      'pico ${s.potMaxKw.toStringAsFixed(0)} kW · '
+                      '${durMin.toStringAsFixed(0)} min',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 10),
+                    if (curva.length >= 2) ...[
+                      Text(es ? 'Curva de potencia' : 'Power curve',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 140,
+                        child: CustomPaint(
+                          painter: _CurvaCargaPainter(
+                              curva, Theme.of(ctx).colorScheme.primary),
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    Text(es ? 'Coste real de esta carga' : 'Real cost of this charge',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(
+                      es
+                          ? 'Estimado por tarifa: ${estimado == null ? '--' : '${estimado.toStringAsFixed(2)} EUR'}. Si anotas lo pagado de verdad (y los kWh que marco el cargador), el listado usa el dato real y calcula la eficiencia de la carga.'
+                          : 'Tariff estimate: ${estimado == null ? '--' : '${estimado.toStringAsFixed(2)} EUR'}. If you note what you actually paid (and the kWh the charger reported), the listing uses the real figure and computes charging efficiency.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: eurCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: InputDecoration(
+                              labelText: es ? 'Pagado (EUR)' : 'Paid (EUR)',
+                              isDense: true,
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setSheet(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: kwhCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: InputDecoration(
+                              labelText:
+                                  es ? 'kWh del cargador' : 'Charger kWh',
+                              isDense: true,
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setSheet(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (efic != null)
+                      Text(
+                        es
+                            ? 'Eficiencia real: ${efic.toStringAsFixed(1)} % (${s.energiaKwh.toStringAsFixed(1)} kWh al paquete de ${kwhCargador!.toStringAsFixed(1)} kWh del cargador)'
+                            : 'Real efficiency: ${efic.toStringAsFixed(1)} % (${s.energiaKwh.toStringAsFixed(1)} kWh into the pack out of ${kwhCargador!.toStringAsFixed(1)} kWh from the charger)',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    if (eurReal != null)
+                      Text(
+                        es
+                            ? 'Coste real: ${eurReal.toStringAsFixed(2)} EUR'
+                            : 'Real cost: ${eurReal.toStringAsFixed(2)} EUR',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.tonal(
+                        onPressed: () async {
+                          await ChargeCostStore.put(ChargeCost(
+                            ts: s.iniMs,
+                            eur: eurReal,
+                            kwhCargador: kwhCargador,
+                            tipo: s.tipo == TipoCarga.ac ? 'casa' : 'publica',
+                          ));
+                          if (ctx.mounted) Navigator.of(ctx).pop();
+                        },
+                        child: Text(es ? 'Guardar' : 'Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    eurCtrl.dispose();
+    kwhCtrl.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,6 +402,8 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                               : '${costeSesion(s, tarifas)!.toStringAsFixed(2)} EUR',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
+                        // Detalle: curva de potencia + coste real anotado.
+                        onTap: () => _detalleSesion(s),
                       ),
                     ),
                 ] else ...[
@@ -265,4 +420,77 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
             ),
     );
   }
+}
+
+/// Curva de potencia (kW) de una sesion de carga.
+class _CurvaCargaPainter extends CustomPainter {
+  final List<(int, double)> puntos;
+  final Color color;
+  _CurvaCargaPainter(this.puntos, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const margenIzq = 30.0, margenAbajo = 18.0, margenArr = 8.0, margenDer = 8.0;
+    final w = size.width - margenIzq - margenDer;
+    final h = size.height - margenArr - margenAbajo;
+    if (w <= 0 || h <= 0 || puntos.length < 2) return;
+
+    final t0 = puntos.first.$1, t1 = puntos.last.$1;
+    var maxKw = 0.0;
+    for (final p in puntos) {
+      if (p.$2 > maxKw) maxKw = p.$2;
+    }
+    if (maxKw <= 0) return;
+
+    final ejes = Paint()
+      ..color = Colors.grey.shade400
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(margenIzq, margenArr + h),
+        Offset(margenIzq + w, margenArr + h), ejes);
+    canvas.drawLine(
+        Offset(margenIzq, margenArr), Offset(margenIzq, margenArr + h), ejes);
+
+    void etiqueta(String txt, Offset pos) {
+      final tp = TextPainter(
+          text: TextSpan(
+              text: txt,
+              style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      tp.paint(canvas, pos);
+    }
+
+    etiqueta('${maxKw.toStringAsFixed(0)} kW', Offset(0, margenArr));
+    final durMin = ((t1 - t0) / 60000).round();
+    etiqueta('0', Offset(margenIzq, margenArr + h + 4));
+    etiqueta('$durMin min',
+        Offset(margenIzq + w - 30, margenArr + h + 4));
+
+    final relleno = Path();
+    final linea = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final path = Path();
+    for (var i = 0; i < puntos.length; i++) {
+      final x = margenIzq + (puntos[i].$1 - t0) / (t1 - t0) * w;
+      final y = margenArr + h - puntos[i].$2 / maxKw * h;
+      if (i == 0) {
+        path.moveTo(x, y);
+        relleno.moveTo(x, margenArr + h);
+        relleno.lineTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        relleno.lineTo(x, y);
+      }
+    }
+    relleno.lineTo(margenIzq + w, margenArr + h);
+    relleno.close();
+    canvas.drawPath(
+        relleno, Paint()..color = color.withOpacity(0.15));
+    canvas.drawPath(path, linea);
+  }
+
+  @override
+  bool shouldRepaint(_CurvaCargaPainter old) => old.puntos != puntos;
 }
