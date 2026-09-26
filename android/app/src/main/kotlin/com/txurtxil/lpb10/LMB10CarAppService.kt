@@ -29,6 +29,25 @@ open class LMB10CarAppService : CarAppService() {
     override fun onCreate() {
         super.onCreate()
         CarLog.log(this, "SERVICE", this.javaClass.simpleName + " onCreate")
+        // v3.60.193: sin adb, el carlog es la unica ventana a los fallos en
+        // la unidad real. Toda excepcion no capturada del proceso se anota
+        // aqui (con las primeras lineas de stack) antes de morir.
+        val previo = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { hilo, err ->
+            try {
+                CarLog.log(this, "SERVICE", "EXCEPCION NO CAPTURADA hilo=" +
+                    hilo.name + " " + err.javaClass.simpleName + ": " + err.message)
+                err.stackTrace.take(12).forEach {
+                    CarLog.log(this, "SERVICE", "  en " + it.toString())
+                }
+            } catch (_: Throwable) {
+            }
+            if (previo != null) {
+                previo.uncaughtException(hilo, err)
+            } else {
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
     }
 
     override fun onCreateSession(): Session = object : Session() {

@@ -172,6 +172,31 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     override fun onGetTemplate(): Template {
+        // Diagnostico (v3.60.193): breadcrumb de cada plantilla que se sirve.
+        CarLog.log(carContext, "SERVICE", "getTemplate loading=" + loading +
+            " errorMsg=" + errorMsg + " cargadores=" + chargers.size +
+            " apiLevel=" + carContext.carAppApiLevel)
+        try {
+            return construirTemplate()
+        } catch (t: Throwable) {
+            // Antes, una excepcion aqui (p. ej. setNoItemsMessage en un host
+            // con carApiLevel < 4) mataba la sesion y el host mostraba el
+            // generico "error no esperado". Ahora queda escrito y se sirve
+            // una plantilla de carga siempre valida como red de seguridad.
+            CarLog.log(carContext, "SERVICE", "getTemplate EXCEPCION " +
+                t.javaClass.simpleName + ": " + t.message)
+            t.stackTrace.take(12).forEach {
+                CarLog.log(carContext, "SERVICE", "  en " + it.toString())
+            }
+            return ListTemplate.Builder()
+                .setLoading(true)
+                .setTitle("Cargadores cerca")
+                .setHeaderAction(Action.APP_ICON)
+                .build()
+        }
+    }
+
+    private fun construirTemplate(): Template {
         if (loading) {
             return ListTemplate.Builder()
                 .setLoading(true)
@@ -183,7 +208,15 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
         val list = ItemList.Builder()
         val msg = errorMsg
         if (msg != null) {
-            list.setNoItemsMessage(msg)
+            // setNoItemsMessage exige carApiLevel >= 4 (androidx.car.app
+            // 1.3). La unidad real del B10 negocia un nivel inferior y el
+            // build() lanzaba IllegalArgumentException -> "error no
+            // esperado". En hosts antiguos se muestra el mensaje como fila.
+            if (carContext.carAppApiLevel >= 4) {
+                list.setNoItemsMessage(msg)
+            } else {
+                list.addItem(Row.Builder().setTitle(msg).build())
+            }
         } else {
             for (c in chargers) {
                 list.addItem(
