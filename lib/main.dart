@@ -85,6 +85,18 @@ Future<bool> modoSoloLectura() async =>
 Future<void> setModoSoloLectura(bool v) =>
     _storage.write(key: _kSoloLectura, value: v ? '1' : '0');
 
+const _kConfirmarCmd = 'lm_confirmar_cmd_v1';
+
+/// Confirmacion de comandos remotos (sugerencia de betatesters, v3.60.189):
+/// activada por defecto. Cuando esta activa, los iconos interactivos del
+/// panel piden confirmacion antes de mandar nada al coche; se puede
+/// desactivar desde Ajustes, junto al modo solo lectura.
+Future<bool> confirmarComandos() async =>
+    (await _storage.read(key: _kConfirmarCmd)) != '0';
+
+Future<void> setConfirmarComandos(bool v) =>
+    _storage.write(key: _kConfirmarCmd, value: v ? '1' : '0');
+
 /// Crea un cliente con la sesion restaurada y los callbacks anti-carrera
 /// del refreshToken cableados (v174): si el refresh rota el refreshToken se
 /// guarda al instante, y si el refresh falla porque OTRO proceso de la app
@@ -361,7 +373,7 @@ Future<bool> _drivingFlagActivo() => DriveFlagBridge.isSet();
 // El pragma estaba puesto por error varias lineas mas arriba, encima de
 // kDrivePollTaskName (una constante) en vez de encima de esta funcion. No
 // hace nada sobre una constante. Confirmado el 06/09/2026: en 2h14min de
-// trayecto real, con WorkManager.initialize() registrado y la app en
+// trayecto real, con Workmanager.initialize() registrado y la app en
 // primer plano sin problema, CERO ejecuciones en segundo plano (ni
 // DISPATCH, ni siquiera el ciclo periodico normal de 15 min, que existe
 // desde mucho antes de la fase 2 GPS). El pragma mal puesto es sospechoso
@@ -1027,6 +1039,7 @@ Future<void> widgetActionCallback(Uri? uri) async {
   await aviso('');
 }
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await loadVehicleProfile();
@@ -1494,6 +1507,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return result;
   }
 
+  /// Ejecuta un comando lanzado desde un icono interactivo del panel
+  /// (sugerencia de betatesters, v3.60.189). Respeta el modo solo lectura,
+  /// pide confirmacion si el ajuste "Confirmar comandos remotos" esta activo
+  /// (viene activado por defecto, para que un toque accidental en el panel
+  /// no abra el coche), resuelve el PIN si hace falta y refresca el panel
+  /// al terminar.
+  Future<void> _tileComando(
+    String tituloEs,
+    String tituloEn,
+    Future<void> Function(String pin) comando, {
+    bool marcaCandado = false,
+  }) async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final titulo = es ? tituloEs : tituloEn;
+    if (await modoSoloLectura()) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? '$titulo: modo solo lectura activado'
+              : '$titulo: read-only mode is on')));
+      return;
+    }
+    if (await confirmarComandos()) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(es ? 'Confirmar comando' : 'Confirm command'),
+          content: Text(es ? 'Ejecutar "$titulo"?' : 'Run "$titulo"?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(es ? 'Cancelar' : 'Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(es ? 'Ejecutar' : 'Run')),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+    final pin = await _resolvePin();
+    if (pin == null || pin.isEmpty || !mounted) return;
+    try {
+      if (marcaCandado) await markManualLockAction();
+      await comando(pin);
+      await _loadStatus();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$titulo: $e')));
+    }
+  }
+
   Future<void> _logout() async {
     await _storage.delete(key: _sessionKey);
     await _storage.delete(key: _pinKey);
@@ -1628,7 +1693,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text(_transientError!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
                     ),
                   _CarImageCard(client: widget.client, vehicle: widget.vehicle),
-(_showMap && s.latitude != null && s.longitude != null)
+                  (_showMap && s.latitude != null && s.longitude != null)
                       ? Column(children: [
                           LocationCard(latitude: s.latitude!, longitude: s.longitude!),
                           if (s.preciseSoc != null) _abrpButton(context, s),
@@ -1811,12 +1876,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final tiles = <_TileData>[
       _TileData(Icons.battery_full, '$soc%', t.tileBattery),
       _TileData(Icons.social_distance, '${s.liveRemainingRange ?? '--'} km', t.tileAutonomy),
-      _TileData(s.isLocked ? Icons.lock : Icons.lock_open, s.isLocked ? t.lockedLabel : t.unlockedLabel, t.tileLock),
-      _TileData(Icons.ev_station, _chargeStateLabel(s, t), t.tileChargeState),
+      // Iconos interactivos (v3.60.189, betatesters): el candado abre o
+      // cierra el coche segun su estado, el maletero abre/cierra y el
+      // estado de carga libera el cargador cuando hay algo enchufado.
+      // Todos pasan por _tileComando: modo solo lectura, confirmacion
+      // opcional y PIN.
+      _TileData(
+        s.isLocked ? Icons.lock : Icons.lock_open,
+        s.isLocked ? t.lockedLabel : t.unlockedLabel,
+        t.tileLock,
+        onTap: () => s.isLocked
+            ? _tileComando('Abrir coche', 'Unlock car',
+                (pin) => widget.client.unlockVehicle(widget.vehicle.vin, pin),
+                marcaCandado: true)
+            : _tileComando('Cerrar coche', 'Lock car',
+                (pin) => widget.client.lockVehicle(widget.vehicle.vin, pin),
+                marcaCandado: true),
+      ),
+      _TileData(
+        Icons.ev_station,
+        _chargeStateLabel(s, t),
+        t.tileChargeState,
+        onTap: (s.isCharging || s.isPluggedIn)
+            ? () => _tileComando('Liberar cargador', 'Release charger',
+                (pin) => widget.client.unlockCharger(widget.vehicle.vin, pin))
+            : null,
+      ),
       _TileData(s.isPluggedIn ? Icons.power : Icons.power_off, s.isPluggedIn ? t.connectedLabel : t.disconnectedShortLabel, t.tileChargeCable),
       _TileData(Icons.thermostat, s.batteryThermalRequest == 1 ? t.activeLabel : t.normalLabel, t.tileThermalMgmt),
       _TileData(s.acSwitch == true ? Icons.ac_unit : Icons.ac_unit_outlined, s.acSwitch == true ? t.onLabel : t.offLabel, t.tileClimate),
-      _TileData(s.bbcmBackDoorStatus == true ? Icons.inventory_2 : Icons.inventory_2_outlined, s.bbcmBackDoorStatus == true ? t.openLabel : t.closedLabel, t.tileTrunk),
+      _TileData(
+        s.bbcmBackDoorStatus == true ? Icons.inventory_2 : Icons.inventory_2_outlined,
+        s.bbcmBackDoorStatus == true ? t.openLabel : t.closedLabel,
+        t.tileTrunk,
+        onTap: () => s.bbcmBackDoorStatus == true
+            ? _tileComando('Cerrar maletero', 'Close trunk',
+                (pin) => widget.client.closeTrunk(widget.vehicle.vin, pin))
+            : _tileComando('Abrir maletero', 'Open trunk',
+                (pin) => widget.client.openTrunk(widget.vehicle.vin, pin)),
+      ),
       _TileData(Icons.security, s.sentryMode == 1 ? t.activeShortLabel : t.inactiveLabel, t.tileSentry),
       _TileData(Icons.thermostat_outlined,
           s.minBatteryTemp != null ? '${s.minBatteryTemp} C' : '--', t.tileBatteryTemp),
@@ -3517,7 +3615,12 @@ class _TileData {
   final IconData icon;
   final String value;
   final String label;
-  _TileData(this.icon, this.value, this.label);
+
+  /// Accion opcional al pulsar el icono del panel (v3.60.189). Solo la
+  /// llevan los tiles con un comando natural asociado (cerradura, maletero,
+  /// estado de carga); el resto siguen siendo informativos.
+  final VoidCallback? onTap;
+  _TileData(this.icon, this.value, this.label, {this.onTap});
 }
 
 class _StatTile extends StatelessWidget {
@@ -3526,18 +3629,33 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFF141414), borderRadius: BorderRadius.circular(10)),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(data.icon, size: 22),
-          const SizedBox(height: 6),
-          Text(data.value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          Text(data.label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        ],
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(data.icon, size: 22),
+        const SizedBox(height: 6),
+        Text(data.value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(data.label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
+    );
+    final onTap = data.onTap;
+    if (onTap == null) {
+      return Container(
+        decoration: BoxDecoration(color: const Color(0xFF141414), borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.all(10),
+        child: content,
+      );
+    }
+    // Con accion: Material + InkWell para que el splash del toque sea visible
+    // sobre el fondo oscuro del tile.
+    return Material(
+      color: const Color(0xFF141414),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(padding: const EdgeInsets.all(10), child: content),
       ),
     );
   }

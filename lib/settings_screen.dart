@@ -18,7 +18,7 @@ import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'ios_drive_detector.dart';
-import 'main.dart' show modoSoloLectura, setModoSoloLectura, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
+import 'main.dart' show modoSoloLectura, setModoSoloLectura, confirmarComandos, setConfirmarComandos, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
 import 'monthly_report_pdf.dart' show InformesScreen;
 import 'package:geolocator/geolocator.dart';
 
@@ -206,7 +206,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.route_outlined),
-                  title: const Text('ABRP'),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'ABRP'
+                      : 'ABRP'),
                   subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
                       ? 'Planificador de rutas con tu bateria real'
                       : 'Route planner with your real battery'),
@@ -215,6 +217,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       builder: (_) => const AbrpScreen())),
                 ),
                 _SoloLecturaSwitch(),
+                const Divider(),
+                _ConfirmarCmdSwitch(),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.electric_car_outlined),
@@ -418,6 +422,54 @@ class _SoloLecturaSwitchState extends State<_SoloLecturaSwitch> {
         style: const TextStyle(fontSize: 12),
       ),
       secondary: Icon(_valor ? Icons.visibility_outlined : Icons.lock_open_outlined),
+    );
+  }
+}
+
+/// Confirmacion de comandos remotos (v3.60.189, peticion de betatesters):
+/// activada por defecto. Los iconos interactivos del panel piden un
+/// "¿Ejecutar?" antes de mandar nada al coche; se puede desactivar aqui.
+class _ConfirmarCmdSwitch extends StatefulWidget {
+  @override
+  State<_ConfirmarCmdSwitch> createState() => _ConfirmarCmdSwitchState();
+}
+
+class _ConfirmarCmdSwitchState extends State<_ConfirmarCmdSwitch> {
+  bool _valor = true;
+  bool _cargado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    confirmarComandos().then((v) {
+      if (mounted) setState(() { _valor = v; _cargado = true; });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return SwitchListTile(
+      value: _valor,
+      onChanged: !_cargado
+          ? null
+          : (v) async {
+              await setConfirmarComandos(v);
+              setState(() => _valor = v);
+            },
+      title: Text(es ? 'Confirmar comandos remotos' : 'Confirm remote commands'),
+      subtitle: Text(
+        es
+            ? 'Los iconos del panel (candado, maletero, carga) piden '
+                'confirmacion antes de ejecutar el comando, para evitar '
+                'toques accidentales. Desactivalo para que se ejecuten al '
+                'primer toque.'
+            : 'Panel icons (lock, trunk, charging) ask for confirmation '
+                'before running the command, to avoid accidental taps. '
+                'Turn it off to run them on first tap.',
+        style: const TextStyle(fontSize: 12),
+      ),
+      secondary: Icon(_valor ? Icons.check_circle_outline : Icons.touch_app_outlined),
     );
   }
 }
