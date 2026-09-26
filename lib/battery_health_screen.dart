@@ -98,7 +98,13 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              // Edge-to-edge obligatorio (Android 15+/Flutter 3.27+): el
+              // padding fijo de 16 dejaba el texto final de la pantalla
+              // (leyenda de "Consumo segun temperatura") bajo la barra de
+              // navegacion/gestos del sistema. Se suma el inset inferior
+              // real del sistema (v3.60.189).
+              padding: EdgeInsets.fromLTRB(
+                  16, 16, 16, 16 + MediaQuery.viewPaddingOf(context).bottom),
               children: [
                 Card(
                   child: Padding(
