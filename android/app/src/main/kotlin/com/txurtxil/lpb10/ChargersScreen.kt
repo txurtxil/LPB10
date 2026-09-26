@@ -54,17 +54,27 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                 val prefs = HomeWidgetPlugin.getData(carContext)
                 val lat = prefs.getString("lat", "")?.toDoubleOrNull()
                 val lon = prefs.getString("lon", "")?.toDoubleOrNull()
+                // Diagnostico (v3.60.192): la pantalla raiz no logueaba nada,
+                // asi que el carlog no distinguia "sin posicion" de "sin
+                // cargadores" de "Overpass caido". Ahora cada estado deja rastro.
+                CarLog.log(carContext, "SERVICE", "load posicion lat=" + lat + " lon=" + lon)
                 if (lat == null || lon == null) {
                     errorMsg = "Sin posicion. Abre LMB10 en el movil una vez."
                 } else {
                     chargers = fetch(lat, lon)
                     if (chargers.isEmpty()) errorMsg = "Sin cargadores OSM en 5 km."
                 }
+                CarLog.log(carContext, "SERVICE", "load resultado errorMsg=" + errorMsg + " cargadores=" + chargers.size)
             } catch (e: Exception) {
+                CarLog.log(carContext, "SERVICE", "load excepcion " + e.javaClass.simpleName + ": " + e.message)
                 errorMsg = "No se pudo consultar Overpass."
             }
             loading = false
-            Handler(Looper.getMainLooper()).post { invalidate() }
+            Handler(Looper.getMainLooper()).post {
+                try { invalidate() } catch (t: Throwable) {
+                    CarLog.log(carContext, "SERVICE", "invalidate tras destruir: " + t.javaClass.simpleName)
+                }
+            }
         }.start()
     }
 
@@ -108,6 +118,7 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                 conn.disconnect()
                 if (body != null && body.contains("elements")) break
             } catch (e: Exception) {
+                CarLog.log(carContext, "SERVICE", "overpass fallo " + mirror + ": " + e.javaClass.simpleName)
                 lastErr = e
             }
         }
