@@ -266,8 +266,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'Ultimas rutas'
                       : 'Recent trips'),
                   subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Distancia, duracion y consumo de cada trayecto'
-                      : 'Distance, duration and consumption for each trip'),
+                      ? 'Distancia, duracion, velocidad media y consumo de cada trayecto'
+                      : 'Distance, duration, average speed and consumption for each trip'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const TripListScreen())),

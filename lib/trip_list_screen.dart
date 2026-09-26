@@ -140,12 +140,22 @@ class _TripListScreenState extends State<TripListScreen> {
                     final dur = r.reconstruida
                         ? (es ? 'duracion desconocida' : 'unknown duration')
                         : '${r.aproximada ? "\u2248 " : ""}${_duracion(r.duracion)}';
+
+                    // Velocidad media del recorrido (v3.60.191, peticion de
+                    // betatester): km entre las horas de duracion. Solo con
+                    // duracion conocida: en rutas reconstruidas seria
+                    // enganosa. Con duracion aproximada la cifra va con ~.
+                    final velMedia =
+                        (!r.reconstruida && r.duracion.inMinutes > 0)
+                            ? '  \u00b7  ${r.aproximada ? "\u2248 " : ""}'
+                                '${(r.km / (r.duracion.inMinutes / 60.0)).round()} km/h'
+                            : '';
                     return ListTile(
                       leading: const Icon(Icons.route_outlined, color: _cBlue),
                       title: Text(_fechaHora(r.startTs),
                           style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                       subtitle: Text(
-                        '${r.km.toStringAsFixed(0)} km  \u00b7  $dur  \u00b7  $consumo',
+                        '${r.km.toStringAsFixed(0)} km  \u00b7  $dur  \u00b7  $consumo$velMedia',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12.5,
