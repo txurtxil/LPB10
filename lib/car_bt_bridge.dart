@@ -40,4 +40,30 @@ class CarBtBridge {
       await _channel.invokeMethod('setCarMacs', {'macs': macs.toList()});
     } catch (_) {}
   }
+
+  /// Pide BLUETOOTH_CONNECT en runtime (v3.60.194), en contexto. Devuelve
+  /// true si ya estaba concedido o el usuario acaba de aceptarlo. Antes la
+  /// app nunca lo pedia y el usuario tenia que concederlo a mano desde
+  /// los Ajustes de Android.
+  static Future<bool> ensurePermission() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('ensureBtPermission');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// MACs de los dispositivos emparejados que estan CONECTADOS ahora mismo
+  /// (perfiles manos libres / A2DP: cubre TCU y audio del coche). Para
+  /// auto-marcar el coche sin que el usuario tenga que saber cual es cual.
+  static Future<List<String>> connectedDevices() async {
+    try {
+      final raw =
+          await _channel.invokeMethod<List<dynamic>>('connectedDevices') ?? [];
+      return raw.map((e) => e as String).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }

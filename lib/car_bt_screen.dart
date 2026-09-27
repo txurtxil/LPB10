@@ -26,6 +26,10 @@ class _CarBtScreenState extends State<CarBtScreen> {
   Set<String> _seleccion = {};
   bool _loading = true;
   bool _guardado = false;
+
+  /// v3.60.194: el usuario rechazo "Dispositivos cercanos" tras el pedido
+  /// automatico. Se muestra un estado especifico con boton para reintentar.
+  bool _permisoDenegado = false;
   bool _restartingBleKey = false;
   String? _bleKeyMsg;
 
@@ -36,14 +40,50 @@ class _CarBtScreenState extends State<CarBtScreen> {
   }
 
   Future<void> _load() async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    // v3.60.194: el permiso "Dispositivos cercanos" se pide aqui, en
+    // contexto, la primera vez que hace falta. Antes la app nunca lo pedia
+    // y el usuario tenia que concederlo a mano desde los Ajustes de Android
+    // (con la lista de dispositivos vacia como unica pista).
+    final permiso = await CarBtBridge.ensurePermission();
+    if (!mounted) return;
+    if (!permiso) {
+      setState(() {
+        _loading = false;
+        _permisoDenegado = true;
+      });
+      return;
+    }
+    _permisoDenegado = false;
     final paired = await CarBtBridge.listPaired();
-    final macs = await CarBtBridge.getCarMacs();
+    var macs = await CarBtBridge.getCarMacs();
+    // Auto-deteccion (v3.60.194): si no hay nada marcado todavia, se marcan
+    // automaticamente los emparejados que esten CONECTADOS en este momento
+    // (dentro del coche, el TCU y el audio suelen estar conectados).
+    var autoDetectados = 0;
+    if (macs.isEmpty) {
+      final conectados = await CarBtBridge.connectedDevices();
+      final validos =
+          conectados.where((m) => paired.any((d) => d.mac == m)).toSet();
+      if (validos.isNotEmpty) {
+        macs = validos;
+        await CarBtBridge.setCarMacs(macs);
+        autoDetectados = validos.length;
+      }
+    }
     if (!mounted) return;
     setState(() {
       _paired = paired;
       _seleccion = macs;
       _loading = false;
+      _guardado = autoDetectados > 0;
     });
+    if (autoDetectados > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Detectados $autoDetectados dispositivos del coche: marcados automaticamente.'
+              : 'Detected $autoDetectados car devices: ticked automatically.')));
+    }
   }
 
   Future<void> _guardar() async {
@@ -135,20 +175,54 @@ class _CarBtScreenState extends State<CarBtScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     es
-                        ? 'Marca los dispositivos Bluetooth de tu coche (normalmente dos: manos libres/TCU y audio). Sin ninguno marcado, la app sigue reaccionando a cualquier Bluetooth, incluidos auriculares o el reloj.'
-                        : 'Tick your car\'s Bluetooth devices (usually two: hands-free/TCU and audio). With none ticked, the app keeps reacting to any Bluetooth, headphones or watch included.',
+                        ? 'Marca los dispositivos Bluetooth de tu coche (normalmente dos: manos libres/TCU y audio). Si no hay nada marcado, la app detecta el coche sola: al entrar aqui con el coche conectado, marca automaticamente sus dispositivos. Sin nada marcado ni conectado, reacciona a cualquier Bluetooth (auriculares, reloj...).'
+                        : 'Tick your car\'s Bluetooth devices (usually two: hands-free/TCU and audio). With nothing ticked the app detects the car itself: enter this screen with the car connected and it ticks its devices automatically. With nothing ticked or connected, it reacts to any Bluetooth (headphones, watch...).',
                     style: const TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                 ),
-                if (_paired.isEmpty)
+                if (_permisoDenegado)
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              es
+                                  ? 'Sin el permiso "Dispositivos cercanos" no se pueden listar los dispositivos Bluetooth del coche.'
+                                  : 'Without the "Nearby devices" permission the car Bluetooth devices cannot be listed.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                                onPressed: _load,
+                                child: Text(es
+                                    ? 'Conceder permiso'
+                                    : 'Grant permission')),
+                            const SizedBox(height: 8),
+                            Text(
+                              es
+                                  ? 'Si lo rechazaste con "no volver a preguntar", activalo en Ajustes > Aplicaciones > LMB10 > Permisos.'
+                                  : 'If you picked "don\'t ask again", enable it in Settings > Apps > LMB10 > Permissions.',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_paired.isEmpty)
                   Expanded(
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           es
-                              ? 'No se ha encontrado ningun dispositivo emparejado. Emparejalo primero desde los ajustes de Bluetooth de Android, y concede el permiso "Dispositivos cercanos" a esta app si no lo has hecho.'
-                              : 'No paired device found. Pair it first from Android\'s Bluetooth settings, and grant this app the "Nearby devices" permission if you haven\'t already.',
+                              ? 'No se ha encontrado ningun dispositivo emparejado. Empareja primero el coche desde los ajustes de Bluetooth de Android.'
+                              : 'No paired device found. Pair the car first from Android\'s Bluetooth settings.',
                           textAlign: TextAlign.center,
                         ),
                       ),
