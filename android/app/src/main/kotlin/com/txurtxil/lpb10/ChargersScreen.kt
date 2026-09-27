@@ -48,6 +48,10 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
 
     init { load() }
 
+    /// true cuando la lista que se muestra viene de la copia guardada
+    /// porque la red fallo (v3.60.197). Se avisa en la primera fila.
+    private var desdeCache = false
+
     private fun load() {
         Thread {
             try {
@@ -73,12 +77,41 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                         Thread.sleep(5000)
                         chargers = fetch(lat, lon)
                     }
-                    if (chargers.isEmpty()) errorMsg = "Sin cargadores OSM en 5 km."
+                    if (chargers.isNotEmpty()) {
+                        guardarCache(prefs, chargers)
+                        desdeCache = false
+                    } else {
+                        // v3.60.197: sin red se muestra la ultima lista buena
+                        // guardada. Mejor datos de hace horas que un error.
+                        val cache = cargarCache(prefs)
+                        if (cache != null) {
+                            chargers = cache
+                            desdeCache = true
+                            CarLog.log(carContext, "SERVICE",
+                                "load sin red: cache con " + cache.size + " cargadores")
+                        } else {
+                            errorMsg = "Sin cargadores OSM en 5 km."
+                        }
+                    }
                 }
                 CarLog.log(carContext, "SERVICE", "load resultado errorMsg=" + errorMsg + " cargadores=" + chargers.size)
             } catch (e: Exception) {
                 CarLog.log(carContext, "SERVICE", "load excepcion " + e.javaClass.simpleName + ": " + e.message)
-                errorMsg = "No se pudo consultar Overpass."
+                // v3.60.197: ante un fallo de red, la copia guardada salva la
+                // sesion. Solo sin cache y sin red se muestra el error.
+                try {
+                    val cache = cargarCache(HomeWidgetPlugin.getData(carContext))
+                    if (cache != null) {
+                        chargers = cache
+                        desdeCache = true
+                        CarLog.log(carContext, "SERVICE",
+                            "load excepcion: cache con " + cache.size + " cargadores")
+                    } else {
+                        errorMsg = "No se pudo consultar Overpass."
+                    }
+                } catch (_: Exception) {
+                    errorMsg = "No se pudo consultar Overpass."
+                }
             }
             loading = false
             Handler(Looper.getMainLooper()).post {
@@ -123,8 +156,21 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                 conn.doOutput = true
                 conn.connectTimeout = 10000
                 conn.readTimeout = 20000
+                // v3.60.197: Overpass y los CDN de los espejos rechazan
+                // peticiones sin User-Agent identificable (visto en el B10:
+                // FileNotFoundException x3 = HTTP de error, no caida de red).
+                conn.setRequestProperty("User-Agent",
+                    "LMB10/3.60.197 (app no oficial Leapmotor B10)")
                 conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 OutputStreamWriter(conn.outputStream).use { it.write("data=" + Uri.encode(query)) }
+                // Registrar el codigo HTTP real: antes un 429/403 llegaba
+                // como FileNotFoundException sin detalle y la causa era
+                // invisible en el carlog.
+                val code = conn.responseCode
+                if (code != 200) {
+                    CarLog.log(carContext, "SERVICE", "overpass HTTP " + code + " en " + mirror)
+                    throw java.io.IOException("HTTP " + code)
+                }
                 body = conn.inputStream.bufferedReader().use { it.readText() }
                 conn.disconnect()
                 if (body != null && body.contains("elements")) break
@@ -214,6 +260,11 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
     /// es valido mientras se conduce y en hosts con carApiLevel antiguo.
     private fun construirDegradada(): Template {
         val list = ItemList.Builder()
+        if (desdeCache) {
+            list.addItem(Row.Builder()
+                .setTitle("Datos guardados (sin conexion ahora)")
+                .build())
+        }
         val msg = errorMsg
         if (msg != null) {
             list.addItem(Row.Builder().setTitle(msg).build())
@@ -237,6 +288,46 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             .build()
     }
 
+    /// Copia local de la ultima lista buena (v3.60.197): org.json, ya
+    /// importado para parsear Overpass.
+    private fun guardarCache(prefs: android.content.SharedPreferences, lista: List<CarCharger>) {
+        try {
+            val arr = org.json.JSONArray()
+            for (c in lista) {
+                val o = org.json.JSONObject()
+                o.put("nm", c.name)
+                o.put("la", c.lat)
+                o.put("lo", c.lon)
+                o.put("di", c.distM.toDouble())
+                o.put("in", c.info)
+                if (c.kw != null) o.put("kw", c.kw)
+                if (c.plazas != null) o.put("pl", c.plazas)
+                arr.put(o)
+            }
+            prefs.edit().putString("chargers_cache", arr.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun cargarCache(prefs: android.content.SharedPreferences): List<CarCharger>? {
+        try {
+            val raw = prefs.getString("chargers_cache", null) ?: return null
+            val arr = org.json.JSONArray(raw)
+            val out = ArrayList<CarCharger>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                out.add(CarCharger(
+                    name = o.optString("nm"),
+                    lat = o.optDouble("la"),
+                    lon = o.optDouble("lo"),
+                    distM = o.optDouble("di").toFloat(),
+                    info = o.optString("in"),
+                    kw = if (o.has("kw")) o.optDouble("kw") else null,
+                    plazas = if (o.has("pl")) o.optInt("pl") else null))
+            }
+            return if (out.isEmpty()) null else out
+        } catch (_: Exception) { return null }
+    }
+
     private fun construirTemplate(): Template {
         if (loading) {
             return ListTemplate.Builder()
@@ -247,6 +338,11 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         val list = ItemList.Builder()
+        if (desdeCache) {
+            list.addItem(Row.Builder()
+                .setTitle("Datos guardados (sin conexion ahora)")
+                .build())
+        }
         val msg = errorMsg
         if (msg != null) {
             // setNoItemsMessage exige carApiLevel >= 4 (androidx.car.app
