@@ -9,6 +9,8 @@ import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
+import androidx.car.app.model.ItemList
+import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
@@ -116,6 +118,22 @@ class ChargerDetailScreen(
         private val onRetry: () -> Unit
     ) : Screen(carContext) {
         override fun onGetTemplate(): Template {
+            try {
+                return construirBloqueado()
+            } catch (t: Throwable) {
+                CarLog.log(carContext, "NAV", "locked EXCEPCION " + t.javaClass.simpleName)
+                return Row.Builder().setTitle("Desbloquea el movil y reintenta").build()
+                    .let { row ->
+                        ListTemplate.Builder()
+                            .setSingleList(ItemList.Builder().addItem(row).build())
+                            .setTitle("Movil bloqueado")
+                            .setHeaderAction(Action.BACK)
+                            .build()
+                    }
+            }
+        }
+
+        private fun construirBloqueado(): Template {
             return MessageTemplate.Builder(
                 "El movil esta bloqueado y Android no deja abrir Google Maps " +
                     "hasta desbloquearlo.\n\nDesbloquea la pantalla del movil " +
@@ -141,6 +159,23 @@ class ChargerDetailScreen(
         private val destino: String
     ) : Screen(carContext) {
         override fun onGetTemplate(): Template {
+            try {
+                return construirEnviado()
+            } catch (t: Throwable) {
+                CarLog.log(carContext, "NAV", "enviado EXCEPCION " + t.javaClass.simpleName)
+                return ListTemplate.Builder()
+                    .setSingleList(ItemList.Builder()
+                        .addItem(Row.Builder()
+                            .setTitle("Ruta enviada. Abre Maps en el coche para verla.")
+                            .build())
+                        .build())
+                    .setTitle("Ruta enviada")
+                    .setHeaderAction(Action.BACK)
+                    .build()
+            }
+        }
+
+        private fun construirEnviado(): Template {
             return MessageTemplate.Builder(
                 "Ruta a " + destino + " enviada a Google Maps.\n\n" +
                     "Abre Maps en la pantalla del coche para verla."
@@ -158,6 +193,48 @@ class ChargerDetailScreen(
     }
 
     override fun onGetTemplate(): Template {
+        try {
+            return construir()
+        } catch (t: Throwable) {
+            // PaneTemplate no es valido en conduccion para apps POI: el host
+            // (o la propia libreria) la rechaza y mata la sesion con el
+            // generico "error no esperado" (visto en la unidad real). Se
+            // deja constancia y se sirve una lista simple, valida en marcha.
+            CarLog.log(carContext, "NAV", "detalle EXCEPCION " +
+                t.javaClass.simpleName + ": " + t.message)
+            return construirDegradado()
+        }
+    }
+
+    /// Version conservadora del detalle: lista simple con la misma info y
+    /// solo la navegacion por el host (valida en conduccion). Sin pane.
+    private fun construirDegradado(): Template {
+        val list = ItemList.Builder()
+        list.addItem(Row.Builder()
+            .setTitle("Distancia")
+            .addText(String.format("%.1f km", c.distM / 1000f))
+            .build())
+        if (c.info.isNotEmpty()) {
+            list.addItem(Row.Builder().setTitle("Operador").addText(c.info).build())
+        }
+        if (c.kw != null) {
+            list.addItem(Row.Builder()
+                .setTitle("Potencia")
+                .addText(String.format("%.0f kW", c.kw))
+                .build())
+        }
+        return ListTemplate.Builder()
+            .setSingleList(list.build())
+            .setTitle(c.name)
+            .setHeaderAction(Action.BACK)
+            .addAction(Action.Builder()
+                .setTitle("Maps del coche")
+                .setOnClickListener { viaHost() }
+                .build())
+            .build()
+    }
+
+    private fun construir(): Template {
         val km = String.format("%.1f km", c.distM / 1000f)
         val pane = Pane.Builder()
         pane.addRow(Row.Builder().setTitle("Distancia").addText(km).build())

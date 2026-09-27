@@ -180,20 +180,58 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             return construirTemplate()
         } catch (t: Throwable) {
             // Antes, una excepcion aqui (p. ej. setNoItemsMessage en un host
-            // con carApiLevel < 4) mataba la sesion y el host mostraba el
-            // generico "error no esperado". Ahora queda escrito y se sirve
-            // una plantilla de carga siempre valida como red de seguridad.
+            // con carApiLevel < 4, o iconos personalizados en conduccion)
+            // mataba la sesion y el host mostraba el generico "error no
+            // esperado". Ahora queda escrito y se intenta una version
+            // degradada valida en conduccion y en hosts antiguos; solo si
+            // TAMBIEN falla, plantilla de carga como ultima red.
             CarLog.log(carContext, "SERVICE", "getTemplate EXCEPCION " +
                 t.javaClass.simpleName + ": " + t.message)
             t.stackTrace.take(12).forEach {
                 CarLog.log(carContext, "SERVICE", "  en " + it.toString())
             }
-            return ListTemplate.Builder()
-                .setLoading(true)
-                .setTitle("Cargadores cerca")
-                .setHeaderAction(Action.APP_ICON)
-                .build()
+            return try {
+                construirDegradada()
+            } catch (t2: Throwable) {
+                CarLog.log(carContext, "SERVICE", "degradada EXCEPCION " +
+                    t2.javaClass.simpleName + ": " + t2.message)
+                ListTemplate.Builder()
+                    .setLoading(true)
+                    .setTitle("Cargadores cerca")
+                    .setHeaderAction(Action.APP_ICON)
+                    .build()
+            }
         }
+    }
+
+    /// Plantilla conservadora para conduccion y hosts restrictivos: sin
+    /// iconos personalizados, maximo 6 filas (limite en marcha) y el mensaje
+    /// de error como fila en vez de setNoItemsMessage. Todo lo que hay aqui
+    /// es valido mientras se conduce y en hosts con carApiLevel antiguo.
+    private fun construirDegradada(): Template {
+        val list = ItemList.Builder()
+        val msg = errorMsg
+        if (msg != null) {
+            list.addItem(Row.Builder().setTitle(msg).build())
+        } else {
+            for (c in chargers.take(6)) {
+                list.addItem(
+                    Row.Builder()
+                        .setTitle(c.name)
+                        .addText(subtitle(c))
+                        .setOnClickListener {
+                            screenManager.push(ChargerDetailScreen(carContext, c))
+                        }
+                        .build()
+                )
+            }
+        }
+        return ListTemplate.Builder()
+            .setSingleList(list.build())
+            .setTitle("Cargadores cerca")
+            .setHeaderAction(Action.APP_ICON)
+            .addAction(refreshAction())
+            .build()
     }
 
     private fun construirTemplate(): Template {
