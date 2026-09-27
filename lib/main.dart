@@ -33,6 +33,7 @@ import 'messages_screen.dart';
 import 'charge_schedule_screen.dart';
 import 'settings_screen.dart';
 import 'trip_list_screen.dart';
+import 'informe_consumo_screen.dart';
 import 'send_destination_screen.dart';
 import 'backup_helper.dart';
 import 'ticket_screen.dart';
@@ -1732,6 +1733,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const TripListScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.insights_outlined),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Informe de consumo'
+                        : 'Consumption report'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const InformeConsumoScreen())),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
