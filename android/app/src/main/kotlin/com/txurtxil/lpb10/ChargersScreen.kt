@@ -260,6 +260,12 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
     /// es valido mientras se conduce y en hosts con carApiLevel antiguo.
     private fun construirDegradada(): Template {
         val list = ItemList.Builder()
+        // v3.60.198: busqueda de destinos en la propia pantalla del coche
+        // (categoria POI: buscar y navegar es de lo que SI se permite).
+        list.addItem(Row.Builder()
+            .setTitle("Buscar destino")
+            .setOnClickListener { screenManager.push(AutoSearchScreen(carContext)) }
+            .build())
         if (desdeCache) {
             list.addItem(Row.Builder()
                 .setTitle("Datos guardados (sin conexion ahora)")
