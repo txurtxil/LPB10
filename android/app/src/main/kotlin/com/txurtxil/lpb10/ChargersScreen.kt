@@ -62,6 +62,17 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
                     errorMsg = "Sin posicion. Abre LMB10 en el movil una vez."
                 } else {
                     chargers = fetch(lat, lon)
+                    if (chargers.isEmpty()) {
+                        // v3.60.196: un solo fallo de red no debe quedarse en
+                        // pantalla. Se reintenta una vez tras 5 s: los tres
+                        // espejos pueden fallar juntos si el movil acaba de
+                        // saltar al Wi-Fi del coche, por ejemplo (visto en
+                        // el carlog del B10: FileNotFoundException x3).
+                        CarLog.log(carContext, "SERVICE",
+                            "load sin resultados, reintento en 5 s")
+                        Thread.sleep(5000)
+                        chargers = fetch(lat, lon)
+                    }
                     if (chargers.isEmpty()) errorMsg = "Sin cargadores OSM en 5 km."
                 }
                 CarLog.log(carContext, "SERVICE", "load resultado errorMsg=" + errorMsg + " cargadores=" + chargers.size)
@@ -154,13 +165,6 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
     private fun chargerIcon(): CarIcon =
         CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_car_charger)).build()
 
-    private fun refreshAction(): Action =
-        Action.Builder()
-            .setTitle("Actualizar")
-            .setIcon(CarIcon.Builder(
-                IconCompat.createWithResource(carContext, android.R.drawable.ic_popup_sync)).build())
-            .setOnClickListener { refresh() }
-            .build()
 
     private fun subtitle(c: CarCharger): String {
         val partes = ArrayList<String>()
@@ -230,7 +234,6 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             .setSingleList(list.build())
             .setTitle("Cargadores cerca")
             .setHeaderAction(Action.APP_ICON)
-            .addAction(refreshAction())
             .build()
     }
 
@@ -272,7 +275,6 @@ class ChargersScreen(carContext: CarContext) : Screen(carContext) {
             .setSingleList(list.build())
             .setTitle("Cargadores cerca")
             .setHeaderAction(Action.APP_ICON)
-            .addAction(refreshAction())
             .build()
     }
 }

@@ -209,11 +209,22 @@ class ChargerDetailScreen(
     /// Version conservadora del detalle: lista simple con la misma info y
     /// solo la navegacion por el host (valida en conduccion). Sin pane.
     private fun construirDegradado(): Template {
+        return ListTemplate.Builder()
+            .setSingleList(ItemList.Builder()
+                .addItem(Row.Builder()
+                    .setTitle(c.name)
+                    .addText("Sin detalle disponible ahora")
+                    .build())
+                .build())
+            .setTitle("Cargador")
+            .setHeaderAction(Action.BACK)
+            .build()
+    }
+
+    private fun construir(): Template {
         val list = ItemList.Builder()
-        list.addItem(Row.Builder()
-            .setTitle("Distancia")
-            .addText(String.format("%.1f km", c.distM / 1000f))
-            .build())
+        val km = String.format("%.1f km", c.distM / 1000f)
+        list.addItem(Row.Builder().setTitle("Distancia").addText(km).build())
         if (c.info.isNotEmpty()) {
             list.addItem(Row.Builder().setTitle("Operador").addText(c.info).build())
         }
@@ -223,61 +234,28 @@ class ChargerDetailScreen(
                 .addText(String.format("%.0f kW", c.kw))
                 .build())
         }
+        if (c.plazas != null) {
+            list.addItem(Row.Builder()
+                .setTitle("Plazas")
+                .addText(c.plazas.toString())
+                .build())
+        }
+        // v3.60.196: la navegacion va en FILAS pulsables, no en la barra de
+        // acciones. El host del B10 rechaza acciones de titulo propio
+        // ("Action list exceeded max number of 0 actions with custom
+        // titles", carlog 27/09) y las filas son la interaccion que la
+        // categoria POI permite siempre, parado o en marcha.
+        list.addItem(Row.Builder()
+            .setTitle("Navegar: Maps del coche")
+            .setOnClickListener { viaHost() }
+            .build())
+        list.addItem(Row.Builder()
+            .setTitle("Enviar a Maps del movil")
+            .setOnClickListener { viaPhone() }
+            .build())
         return ListTemplate.Builder()
             .setSingleList(list.build())
             .setTitle(c.name)
             .setHeaderAction(Action.BACK)
-            .addAction(Action.Builder()
-                .setTitle("Maps del coche")
-                .setOnClickListener { viaHost() }
-                .build())
             .build()
-    }
-
-    private fun construir(): Template {
-        val km = String.format("%.1f km", c.distM / 1000f)
-        val pane = Pane.Builder()
-        pane.addRow(Row.Builder().setTitle("Distancia").addText(km).build())
-        pane.addRow(
-            Row.Builder()
-                .setTitle("Coordenadas")
-                .addText(c.lat.toString() + ", " + c.lon.toString())
-                .build()
-        )
-        if (c.info.isNotEmpty()) {
-            pane.addRow(Row.Builder().setTitle("Operador").addText(c.info).build())
-        }
-        if (c.kw != null) {
-            pane.addRow(
-                Row.Builder()
-                    .setTitle("Potencia")
-                    .addText(String.format("%.0f kW", c.kw))
-                    .build()
-            )
-        }
-        if (c.plazas != null) {
-            pane.addRow(
-                Row.Builder()
-                    .setTitle("Plazas")
-                    .addText(c.plazas.toString())
-                    .build()
-            )
-        }
-        pane.addAction(
-            Action.Builder()
-                .setTitle("Maps del coche")
-                .setOnClickListener { viaHost() }
-                .build()
-        )
-        pane.addAction(
-            Action.Builder()
-                .setTitle("Enviar a Maps")
-                .setOnClickListener { viaPhone() }
-                .build()
-        )
-        return PaneTemplate.Builder(pane.build())
-            .setTitle(c.name)
-            .setHeaderAction(Action.BACK)
-            .build()
-    }
-}
+    }}
