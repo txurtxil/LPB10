@@ -26,14 +26,22 @@ const _priceStorage = FlutterSecureStorage();
 const kEnergyPriceKey = 'lm_energy_price_v1';
 
 /// Se guarda como estructura y no como numero suelto, para poder anadir tramos
-/// horarios (valle/llano/punta) mas adelante sin migrar lo ya guardado:
+/// horarios (valle/llano/punta) sin migrar lo ya guardado:
 ///   {"mode":"single","eur_kwh":0.1234}
-///   {"mode":"bands", ...}            <- futuro
+///   {"mode":"pvpc","eur_kwh":0.1234}
+///   {"mode":"bands","eur_kwh":0.1048,"p1":0.20,"p2":0.15,"p3":0.08}
+/// En modo bands, eur_kwh lleva la media semanal ponderada (5 laborables con
+/// 8 h de cada tramo + fin de semana todo valle), para que los consumidores
+/// que solo conocen un precio plano sigan dando una cifra razonable.
 class EnergyPrice {
   final String mode;
   final double eurKwh;
+  final double? p1; // EUR/kWh punta
+  final double? p2; // EUR/kWh llano
+  final double? p3; // EUR/kWh valle
 
-  const EnergyPrice({this.mode = 'single', required this.eurKwh});
+  const EnergyPrice(
+      {this.mode = 'single', required this.eurKwh, this.p1, this.p2, this.p3});
 
   static Future<EnergyPrice?> load() async {
     try {
@@ -42,8 +50,14 @@ class EnergyPrice {
       final m = Map<String, dynamic>.from(json.decode(raw) as Map);
       final v = m['eur_kwh'];
       if (v is! num || v <= 0) return null;
+      double? d(dynamic x) => x is num && x > 0 ? x.toDouble() : null;
       return EnergyPrice(
-          mode: (m['mode'] as String?) ?? 'single', eurKwh: v.toDouble());
+        mode: (m['mode'] as String?) ?? 'single',
+        eurKwh: v.toDouble(),
+        p1: d(m['p1']),
+        p2: d(m['p2']),
+        p3: d(m['p3']),
+      );
     } catch (_) {
       return null;
     }
@@ -52,6 +66,11 @@ class EnergyPrice {
   /// true si el usuario tiene tarifa regulada con precio horario.
   bool get esPvpc => mode == 'pvpc';
 
+  /// true si el usuario tiene tarifa por tramos (2.0TD: punta/llano/valle)
+  /// con los tres precios rellenos.
+  bool get esBandas =>
+      mode == 'bands' && p1 != null && p2 != null && p3 != null;
+
   static Future<void> save(double eurKwh, {bool pvpc = false}) async {
     await _priceStorage.write(
         key: kEnergyPriceKey,
@@ -59,8 +78,67 @@ class EnergyPrice {
             {'mode': pvpc ? 'pvpc' : 'single', 'eur_kwh': eurKwh}));
   }
 
+  static Future<void> saveBands(double p1, double p2, double p3) async {
+    await _priceStorage.write(
+        key: kEnergyPriceKey,
+        value: json.encode({
+          'mode': 'bands',
+          'eur_kwh': mediaSemanalBandas(p1, p2, p3),
+          'p1': p1,
+          'p2': p2,
+          'p3': p3,
+        }));
+  }
+
   static Future<void> clear() async {
     await _priceStorage.delete(key: kEnergyPriceKey);
+  }
+
+  /// Media EUR/kWh de una semana tipo 2.0TD: 5 laborables con 8 h de cada
+  /// tramo y 2 dias de fin de semana enteros en valle.
+  static double mediaSemanalBandas(double p1, double p2, double p3) =>
+      (5 * (8 * p1 + 8 * p2 + 8 * p3) + 48 * p3) / 168.0;
+
+  /// Tramo 2.0TD de una hora local concreta: 1 = punta, 2 = llano, 3 = valle.
+  ///
+  /// Laborables: punta 10-14 y 18-22; llano 8-10, 14-18 y 22-24; valle 0-8.
+  /// Sabados y domingos: valle todo el dia. Los festivos nacionales se
+  /// tratan como laborable: es la aproximacion que cabe sin arrastrar un
+  /// calendario de festivos.
+  static int tramo2_0TD(DateTime t) {
+    if (t.weekday == DateTime.saturday || t.weekday == DateTime.sunday) {
+      return 3;
+    }
+    final h = t.hour;
+    if ((h >= 10 && h < 14) || (h >= 18 && h < 22)) return 1;
+    if (h >= 8) return 2; // 8-10, 14-18 y 22-24
+    return 3; // 0-8
+  }
+
+  /// Precio medio EUR/kWh de un intervalo con tarifa de 3 tramos. La energia
+  /// se reparte por igual entre inicio y fin (misma aproximacion que el
+  /// PVPC): el coche no dice cuantos kWh entraron en cada hora. Devuelve
+  /// null si el intervalo es invalido.
+  static double? precioFranjaBandas(
+      double p1, double p2, double p3, DateTime ini, DateTime fin) {
+    if (!fin.isAfter(ini)) return null;
+    var suma = 0.0;
+    var minutos = 0;
+    var t = ini;
+    while (t.isBefore(fin)) {
+      final finHora = DateTime(t.year, t.month, t.day, t.hour)
+          .add(const Duration(hours: 1));
+      final corte = finHora.isBefore(fin) ? finHora : fin;
+      final m = corte.difference(t).inMinutes;
+      if (m > 0) {
+        final tr = tramo2_0TD(t);
+        suma += (tr == 1 ? p1 : tr == 2 ? p2 : p3) * m;
+        minutos += m;
+      }
+      t = corte;
+    }
+    if (minutos == 0) return null;
+    return suma / minutos;
   }
 }
 
@@ -84,6 +162,8 @@ Future<Map<String, double>> preciosPorDia() async {
     final cfg = await EnergyPrice.load();
     final casa = cfg?.eurKwh;
     final esPvpc = cfg?.esPvpc ?? false;
+    final esBandas = cfg?.esBandas ?? false;
+    final b1 = cfg?.p1, b2 = cfg?.p2, b3 = cfg?.p3;
     final days = await DailyStats.sync();
     if (days.isEmpty) return out;
     final cargas = await ChargeRebuild.fromTrips();
@@ -110,6 +190,20 @@ Future<Map<String, double>> preciosPorDia() async {
         p = await Pvpc.precioFranja(
                 DateTime.fromMillisecondsSinceEpoch(c.startTs),
                 DateTime.fromMillisecondsSinceEpoch(c.endTs!)) ??
+            casa;
+      } else if (esBandas &&
+          b1 != null &&
+          b2 != null &&
+          b3 != null) {
+        // Tarifa de 3 tramos: se cobra el precio medio de la franja 2.0TD
+        // en la que ocurrio la carga. Misma aproximacion que el PVPC: la
+        // energia se reparte de forma uniforme entre inicio y fin.
+        p = EnergyPrice.precioFranjaBandas(
+                b1,
+                b2,
+                b3,
+                DateTime.fromMillisecondsSinceEpoch(c.startTs),
+                DateTime.fromMillisecondsSinceEpoch(c.endTs)) ??
             casa;
       } else {
         p = casa;

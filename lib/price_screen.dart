@@ -22,6 +22,10 @@ class _PriceScreenState extends State<PriceScreen> {
   String? _error;
   bool _guardado = false;
   bool _pvpc = false;
+  bool _bandas = false;
+  final _p1Ctrl = TextEditingController();
+  final _p2Ctrl = TextEditingController();
+  final _p3Ctrl = TextEditingController();
   final _dtoCtrl = TextEditingController();
   final _ventIniCtrl = TextEditingController();
   final _ventFinCtrl = TextEditingController();
@@ -58,6 +62,12 @@ class _PriceScreenState extends State<PriceScreen> {
     if (p != null && mounted) {
       _ctrl.text = p.eurKwh.toStringAsFixed(4).replaceAll('.', ',');
       _pvpc = p.esPvpc;
+      _bandas = p.esBandas;
+      if (p.esBandas) {
+        _p1Ctrl.text = p.p1!.toStringAsFixed(4).replaceAll('.', ',');
+        _p2Ctrl.text = p.p2!.toStringAsFixed(4).replaceAll('.', ',');
+        _p3Ctrl.text = p.p3!.toStringAsFixed(4).replaceAll('.', ',');
+      }
       setState(() {});
     }
   }
@@ -65,6 +75,9 @@ class _PriceScreenState extends State<PriceScreen> {
   @override
   void dispose() {
     _ctrl.dispose();
+    _p1Ctrl.dispose();
+    _p2Ctrl.dispose();
+    _p3Ctrl.dispose();
     _dtoCtrl.dispose();
     _ventIniCtrl.dispose();
     _ventFinCtrl.dispose();
@@ -73,20 +86,43 @@ class _PriceScreenState extends State<PriceScreen> {
     super.dispose();
   }
 
+  double? _num(String s) {
+    final t = s.trim().replaceAll(',', '.');
+    if (t.isEmpty) return null;
+    return double.tryParse(t);
+  }
+
   Future<void> _guardar() async {
-    // Coma decimal: en Espana se escribe 0,15 y no 0.15.
-    final txt = _ctrl.text.trim().replaceAll(',', '.');
-    final v = double.tryParse(txt);
-    if (v == null) {
-      setState(() => _error = 'Escribe un numero, por ejemplo 0,15');
-      return;
+    if (_bandas) {
+      final v1 = _num(_p1Ctrl.text);
+      final v2 = _num(_p2Ctrl.text);
+      final v3 = _num(_p3Ctrl.text);
+      if (v1 == null || v2 == null || v3 == null || v1 <= 0 || v2 <= 0 || v3 <= 0) {
+        setState(() => _error =
+            'Escribe los tres precios, por ejemplo 0,20 / 0,15 / 0,08');
+        return;
+      }
+      if (v1 > 2 || v2 > 2 || v3 > 2) {
+        setState(() => _error =
+            'Algun precio no parece real. Suele estar entre 0,05 y 0,60');
+        return;
+      }
+      await EnergyPrice.saveBands(v1, v2, v3);
+    } else {
+      // Coma decimal: en Espana se escribe 0,15 y no 0.15.
+      final txt = _ctrl.text.trim().replaceAll(',', '.');
+      final v = double.tryParse(txt);
+      if (v == null) {
+        setState(() => _error = 'Escribe un numero, por ejemplo 0,15');
+        return;
+      }
+      if (v <= 0 || v > 2) {
+        setState(() => _error =
+            'Ese precio no parece real. Suele estar entre 0,05 y 0,60');
+        return;
+      }
+      await EnergyPrice.save(v, pvpc: _pvpc);
     }
-    if (v <= 0 || v > 2) {
-      setState(() =>
-          _error = 'Ese precio no parece real. Suele estar entre 0,05 y 0,60');
-      return;
-    }
-    await EnergyPrice.save(v, pvpc: _pvpc);
     // El descuento del bono social es del 42,5% y se aplica sobre el total, asi
     // que sin el las cifras salen casi al doble. La API de Red Electrica no
     // sabe nada de ayudas personales, hay que restarlo aparte.
@@ -134,6 +170,7 @@ class _PriceScreenState extends State<PriceScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (!_bandas)
           TextField(
             controller: _ctrl,
             keyboardType:
@@ -180,6 +217,7 @@ class _PriceScreenState extends State<PriceScreen> {
               ),
             ),
           const Divider(height: 32),
+          if (!_bandas)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _pvpc,
@@ -197,6 +235,103 @@ class _PriceScreenState extends State<PriceScreen> {
               style: const TextStyle(fontSize: 12),
             ),
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _bandas,
+            onChanged: (v) => setState(() {
+              _bandas = v;
+              if (v) _pvpc = false;
+              _guardado = false;
+            }),
+            title: Text(es
+                ? 'Tarifa con 3 tramos (2.0TD)'
+                : 'Three-band tariff (2.0TD)'),
+            subtitle: Text(
+              es
+                  ? 'Punta, llano y valle con horarios fijos'
+                  : 'Peak, shoulder and off-peak with fixed schedules',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          if (_bandas) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _p1Ctrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: es ? 'Punta (P1)' : 'Peak (P1)',
+                helperText: es
+                    ? 'Laborables de 10:00 a 14:00 y de 18:00 a 22:00'
+                    : 'Weekdays 10:00-14:00 and 18:00-22:00',
+                hintText: '0,20',
+                errorText: _error,
+                border: const OutlineInputBorder(),
+                suffixText: '\u20AC/kWh',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _p2Ctrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: es ? 'Llano (P2)' : 'Shoulder (P2)',
+                helperText: es
+                    ? 'Laborables de 8:00 a 10:00, de 14:00 a 18:00 y de 22:00 a 24:00'
+                    : 'Weekdays 8:00-10:00, 14:00-18:00 and 22:00-24:00',
+                hintText: '0,15',
+                errorText: _error,
+                border: const OutlineInputBorder(),
+                suffixText: '\u20AC/kWh',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _p3Ctrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: es ? 'Valle (P3)' : 'Off-peak (P3)',
+                helperText: es
+                    ? 'Laborables de 0:00 a 8:00 y todo el fin de semana'
+                    : 'Weekdays 0:00-8:00 and all weekend',
+                hintText: '0,08',
+                errorText: _error,
+                border: const OutlineInputBorder(),
+                suffixText: '\u20AC/kWh',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Text(
+                es
+                    ? 'Cada carga se cobra al precio medio del tramo o tramos por los que paso, segun la hora en que ocurrio.\n\n'
+                        'Es la misma aproximacion que con el PVPC: el coche no informa de cuantos kWh entraron en cada hora, '
+                        'asi que la energia se reparte por igual entre el inicio y el final de la carga.\n\n'
+                        'Sabados y domingos cuentan como valle todo el dia. Los festivos nacionales se tratan como '
+                        'laborable: no se arrastra un calendario.\n\n'
+                        'Las pantallas que no conocen la hora (ticket, informe, widget) usan la media semanal de tus '
+                        'tres precios: 5 laborables con 8 h de cada tramo y el fin de semana entero en valle.'
+                    : 'Each charge is priced at the average of the bands it spans, based on when it happened.\n\n'
+                        'Same approximation as PVPC: the car does not report per-hour kWh, so energy is spread '
+                        'evenly between start and end.\n\n'
+                        'Saturday and Sunday count as off-peak all day. National holidays are treated as weekdays.\n\n'
+                        'Screens without time data (receipt, report, widget) use the weekly average of your three prices.',
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: Theme.of(context).colorScheme.onSurface),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (_pvpc) ...[
             Text(es ? 'Cuando cargas habitualmente' : 'When you usually charge',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -354,10 +489,12 @@ class _PriceScreenState extends State<PriceScreen> {
           ),
           const SizedBox(height: 16),
           _bloque(
-            es ? 'Un solo precio, de momento' : 'A single price, for now',
+            es ? 'Un precio o tres' : 'One price or three',
             es
-                ? 'Ahora mismo se aplica el mismo precio a todo. Si tienes tarifa con tramos horarios (valle, llano y punta) y cargas de madrugada, estaras pagando menos de lo que aqui se calcula: pon el precio del tramo en el que sueles cargar.\n\nLas cargas en cargadores publicos tampoco se distinguen, y suelen costar bastante mas.\n\nAmbas cosas estan previstas para mas adelante.'
-                : 'The same price applies to everything for now. If your tariff has time bands and you charge at night, you are paying less than shown here: enter the price of the band where you usually charge.\n\nPublic charging is not told apart either, and it is usually much more expensive.\n\nBoth are planned for later.',
+                ? 'Con un precio unico, todo se cobra a ese precio. Con los 3 tramos, cada carga se cobra segun la hora en que ocurrio: si cargas de madrugada, pagaras lo que de verdad cuesta.\n\n'
+                    'Las cargas en cargadores publicos se distinguen anotando su coste a mano: toca una carga en el historial y rellena lo que pagaste. Eso ademas permite calcular tus perdidas reales de carga.'
+                : 'With a flat price, everything is charged at that price. With the three bands, each charge is priced by when it happened: charge overnight and you pay what it truly costs.\n\n'
+                    'Public charging is told apart by entering its cost by hand: tap a charge in the history and fill in what you paid. That also enables real charging-loss tracking.',
           ),
           _bloque(
             es ? 'Donde se guarda' : 'Where it is stored',
