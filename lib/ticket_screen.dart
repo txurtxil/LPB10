@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'ticket_printer.dart';
 
 class TicketScreen extends StatefulWidget {
-  const TicketScreen({super.key, this.nickname});
+  const TicketScreen({super.key, this.nickname, this.desde, this.hasta});
   final String? nickname;
+  final DateTime? desde;
+  final DateTime? hasta;
 
   @override
   State<TicketScreen> createState() => _TicketScreenState();
@@ -23,8 +25,10 @@ class _TicketScreenState extends State<TicketScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _to = now;
-    _from = now.subtract(const Duration(days: 6));
+    // v3.60.201: el informe de consumo puede pedir el ticket ya filtrado
+    // con su mismo rango (opcion "Ticket termico").
+    _to = widget.hasta ?? now;
+    _from = widget.desde ?? now.subtract(const Duration(days: 6));
     _rebuild();
   }
 

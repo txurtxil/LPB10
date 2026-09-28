@@ -1661,13 +1661,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )),
           ),
           IconButton(
-            icon: const Icon(Icons.receipt_long),
-            tooltip: Localizations.localeOf(context).languageCode == 'es' ? 'Ticket de eficiencia' : 'Efficiency ticket',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const TicketScreen(),
-            )),
-          ),
-          IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: AppLocalizations.of(context)!.aboutTooltip,
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
