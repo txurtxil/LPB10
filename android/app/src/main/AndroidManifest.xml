@@ -1,6 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- v3.60.203: variante sin Android Auto y sin BLUETOOTH_CONNECT para
-         desbloquear la publicacion (revertible: el codigo sigue en el repo). -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -16,6 +14,11 @@
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Deteccion de conduccion via Bluetooth. Confirmado el 04/09/2026 con
+         datos reales: sin este permiso concedido en ejecucion, Android 12+
+         no entrega el broadcast en absoluto (no es solo que falte el
+         nombre/MAC, como se penso al principio: no llega nada). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <!-- Auto Backup del sistema: copia automatica de los datos de la app en
          la cuenta de Google del usuario (restaura solo al reinstalar/cambiar
          de movil, sin OAuth ni gestion). Reglas explicitas en res/xml:
@@ -90,5 +93,23 @@
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
             </intent-filter>
         </receiver>
+        <!-- Android Auto, categoria POI: la unica abierta a apps de terceros
+             que no sean del fabricante (Google no permite mostrar datos del
+             vehiculo en Auto a apps no-OEM). La raiz del servicio es la lista
+             de cargadores cercanos; navegar delega en Google Maps. -->
+        <service
+            android:name=".LMB10CarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
     </application>
 </manifest>
