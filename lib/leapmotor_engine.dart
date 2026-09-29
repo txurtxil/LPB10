@@ -911,7 +911,17 @@ class LeapmotorApiClient {
       throw LeapmotorApiException(statusCode, '$label returned non-JSON: ${body.substring(0, body.length < 200 ? body.length : 200)}');
     }
     if (statusCode != 200 || data['code'] != 0) {
-      throw LeapmotorApiException((data['code'] as int?) ?? -1, data['message']?.toString() ?? '$label failed');
+      // v3.60.206: si el servidor devuelve un error SIN 'code' (otros
+      // modelos como el T03/B03X responden con un sobre distinto), incluir
+      // el cuerpo crudo en el mensaje: el carlog mostrara exactamente que
+      // devuelve ese modelo y se podra mapear sin ir a ciegas.
+      final code = data['code'] as int?;
+      if (code == null) {
+        final corte =
+            body.substring(0, body.length < 300 ? body.length : 300);
+        throw LeapmotorApiException(-1, '$label sin code: $corte');
+      }
+      throw LeapmotorApiException(code, data['message']?.toString() ?? '$label failed');
     }
     return data;
   }
