@@ -57,6 +57,7 @@ import 'daily_stats.dart';
 import 'energy_cost.dart';
 import 'charge_cost.dart';
 import 'car_log_bridge.dart';
+import 'notif_settings.dart';
 import 'vehicle_profile.dart';
 import 'maintenance.dart';
 import 'abrp.dart';
@@ -326,7 +327,7 @@ Future<void> refreshVehicleDataInBackground() async {
   // Puede tocar red (REE para precios de cargas del mes) y escribir un PDF:
   // va en su propio try y DESPUES de los datos importantes del ciclo.
   try {
-    final mesListo = await generarInformeSiToca();
+    final mesListo = await notifInforme() ? await generarInformeSiToca() : null;
     if (mesListo != null) {
       final pluginInf = await _initNotifications(requestPermission: false);
       await _showNotification(pluginInf, 1007, 'Informe mensual listo',
@@ -723,6 +724,14 @@ Future<void> markManualLockAction() async {
 
 Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   final plugin = await _initNotifications(requestPermission: false);
+  // v3.60.204: cada tipo de aviso se puede apagar desde Ajustes.
+  // Por defecto todo activo; se lee una vez por ciclo.
+  final nBateriaBaja = await notifBateriaBaja();
+  final nCarga = await notifCargaCompleta();
+  final nDesbloqueo = await notifDesbloqueo();
+  final nAbierto = await notifAbierto();
+  final nLlegadaCasa = await notifLlegadaCasa();
+  final nPvpc = await notifPvpc();
 
   Map<String, dynamic> prevState = {};
   final raw = await _storage.read(key: _notifStateKey);
@@ -740,7 +749,7 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   var unlockReminderSent = prevState['unlockReminderSent'] as bool? ?? false;
 
   // -- 1) Bateria baja (con histeresis para no repetir en cada ciclo) --
-  if (soc != null) {
+  if (soc != null && nBateriaBaja) {
     if (soc <= _lowBatteryThreshold && !lowBatteryNotified) {
       await _showNotification(plugin, 1001, 'Bateria baja', 'Tu Leapmotor esta al ${soc.toStringAsFixed(0)}%.');
       lowBatteryNotified = true;
@@ -750,12 +759,12 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   }
 
   // -- 2) Carga completada --
-  if (status.chargeCompleted == true && prevChargeCompleted != true) {
+  if (nCarga && status.chargeCompleted == true && prevChargeCompleted != true) {
     await _showNotification(plugin, 1002, 'Carga completada', 'Tu Leapmotor ha terminado de cargar (${soc?.toStringAsFixed(0) ?? '--'}%).');
   }
 
   // -- 3) Desbloqueo inesperado (no iniciado desde esta app en los ultimos 5 min) --
-  if (prevLocked == true && status.isLocked == false) {
+  if (nDesbloqueo && prevLocked == true && status.isLocked == false) {
     final lastManualRaw = await _storage.read(key: _lastManualUnlockKey);
     final lastManualTs = lastManualRaw != null ? int.tryParse(lastManualRaw) : null;
     final withinGrace = lastManualTs != null && (DateTime.now().millisecondsSinceEpoch - lastManualTs) < 5 * 60 * 1000;
@@ -766,7 +775,7 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
 
   // -- 4) Coche abierto olvidado (aparcado y desbloqueado durante mas de X minutos) --
   final parked = (status.speed ?? 0) <= 0.5;
-  if (!status.isLocked && parked) {
+  if (nAbierto && !status.isLocked && parked) {
     unlockedSinceTs ??= DateTime.now().millisecondsSinceEpoch;
     final elapsedMin = (DateTime.now().millisecondsSinceEpoch - unlockedSinceTs) / 60000;
     if (elapsedMin >= _unlockedReminderMinutes && !unlockReminderSent) {
@@ -782,7 +791,7 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   // Aislado en su propio try: un fallo de GPS no debe tumbar el resto de
   // notificaciones ni el guardado de estado de mas abajo.
   try {
-    await _geoHomeCheck(plugin, status, soc);
+    if (nLlegadaCasa) await _geoHomeCheck(plugin, status, soc);
   } catch (e) {
     await CarLogBridge.log('geoHomeCheck FALLO: ' + e.toString());
   }
@@ -791,7 +800,7 @@ Future<void> checkAndNotifyStateChanges(VehicleStatus status) async {
   // Aislado en su propio try: pedir los precios de manana toca la red (REE)
   // y un fallo ahi no debe tumbar el resto de notificaciones.
   try {
-    await _pvpcAlertCheck(plugin, status, soc);
+    if (nPvpc) await _pvpcAlertCheck(plugin, status, soc);
   } catch (e) {
     await CarLogBridge.log('pvpcAlertCheck FALLO: ' + e.toString());
   }

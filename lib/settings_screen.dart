@@ -18,6 +18,7 @@ import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
 import 'ios_drive_detector.dart';
+import 'notif_settings.dart';
 import 'main.dart' show modoSoloLectura, setModoSoloLectura, confirmarComandos, setConfirmarComandos, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
 import 'monthly_report_pdf.dart' show InformesScreen;
 import 'package:geolocator/geolocator.dart';
@@ -169,6 +170,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (mounted) setState(() => _pvpcAlert = v);
                   },
                 ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Notificaciones'
+                      : 'Notifications'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Elige de que quieres avisos: bateria, carga, desbloqueo, coche abierto, llegada a casa, precios e informes.'
+                      : 'Choose what to be notified about: battery, charging, unlock, car left open, arriving home, prices and reports.'),
+                ),
+                _NotifTile(
+                  lee: notifBateriaBaja, guarda: setNotifBateriaBaja,
+                  tituloEs: 'Bateria baja', tituloEn: 'Low battery',
+                  subEs: 'Avisa cuando el coche baja del 20 %.',
+                  subEn: 'Alerts when the car drops below 20%.'),
+                _NotifTile(
+                  lee: notifCargaCompleta, guarda: setNotifCargaCompleta,
+                  tituloEs: 'Carga completada', tituloEn: 'Charging complete',
+                  subEs: 'Avisa cuando el coche termina de cargar.',
+                  subEn: 'Alerts when the car finishes charging.'),
+                _NotifTile(
+                  lee: notifDesbloqueo, guarda: setNotifDesbloqueo,
+                  tituloEs: 'Desbloqueo inesperado', tituloEn: 'Unexpected unlock',
+                  subEs: 'Avisa si el coche se desbloquea y no fue desde esta app.',
+                  subEn: 'Alerts if the car unlocks and it was not from this app.'),
+                _NotifTile(
+                  lee: notifAbierto, guarda: setNotifAbierto,
+                  tituloEs: 'Coche abierto olvidado', tituloEn: 'Car left unlocked',
+                  subEs: 'Avisa si el coche lleva mas de 15 min abierto y aparcado.',
+                  subEn: 'Alerts if the car is left unlocked and parked over 15 min.'),
+                _NotifTile(
+                  lee: notifLlegadaCasa, guarda: setNotifLlegadaCasa,
+                  tituloEs: 'Llegada a casa', tituloEn: 'Arriving home',
+                  subEs: 'Avisa si llegas a casa con poca bateria y sin enchufar.',
+                  subEn: 'Alerts on arriving home with low battery and unplugged.'),
+                _NotifTile(
+                  lee: notifPvpc, guarda: setNotifPvpc,
+                  tituloEs: 'Carga barata (PVPC)', tituloEn: 'Cheap charging (PVPC)',
+                  subEs: 'Avisa con la franja mas barata para programar la carga.',
+                  subEn: 'Alerts with the cheapest window to schedule charging.'),
+                _NotifTile(
+                  lee: notifInforme, guarda: setNotifInforme,
+                  tituloEs: 'Informe mensual listo', tituloEn: 'Monthly report ready',
+                  subEs: 'Avisa cuando se genera el PDF del mes.',
+                  subEn: 'Alerts when the month PDF is generated.'),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.picture_as_pdf_outlined),
@@ -470,6 +516,56 @@ class _ConfirmarCmdSwitchState extends State<_ConfirmarCmdSwitch> {
         style: const TextStyle(fontSize: 12),
       ),
       secondary: Icon(_valor ? Icons.check_circle_outline : Icons.touch_app_outlined),
+    );
+  }
+}
+
+/// Interruptor de un tipo de notificacion (v3.60.204). Lee el estado con
+/// [lee], lo guarda con [guarda]. Por defecto activo.
+class _NotifTile extends StatefulWidget {
+  final Future<bool> Function() lee;
+  final Future<void> Function(bool) guarda;
+  final String tituloEs, tituloEn, subEs, subEn;
+  const _NotifTile({
+    required this.lee,
+    required this.guarda,
+    required this.tituloEs,
+    required this.tituloEn,
+    required this.subEs,
+    required this.subEn,
+  });
+  @override
+  State<_NotifTile> createState() => _NotifTileState();
+}
+
+class _NotifTileState extends State<_NotifTile> {
+  bool _valor = true;
+  bool _cargado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.lee().then((v) {
+      if (mounted) setState(() { _valor = v; _cargado = true; });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return SwitchListTile(
+      value: _valor,
+      onChanged: !_cargado
+          ? null
+          : (v) async {
+              await widget.guarda(v);
+              if (mounted) setState(() => _valor = v);
+            },
+      title: Text(es ? widget.tituloEs : widget.tituloEn),
+      subtitle: Text(
+        es ? widget.subEs : widget.subEn,
+        style: const TextStyle(fontSize: 12),
+      ),
     );
   }
 }
