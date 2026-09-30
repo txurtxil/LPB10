@@ -500,6 +500,19 @@ class Vehicle {
   String get statusPath =>
       (carType.toLowerCase() == 'b10' || carType.toLowerCase() == 'b11') ? 'c10' : carType.toLowerCase();
 
+  /// v3.60.207: el T03 (y otros modelos) reportan un carType que NO coincide
+  /// con su ruta de estado (un T03 reporta 'a10' y /status/get/a10 es 404:
+  /// visto en el carlog de un usuario). Se prueba una cadena de candidatos
+  /// y se usa la primera que responda; la buena se recuerda por VIN.
+  List<String> get statusPathCandidates {
+    final t = carType.toLowerCase();
+    if (t == 'b10' || t == 'b11') return ['c10'];
+    final list = <String>[t];
+    if (t != 't03') list.add('t03');
+    if (t != 'c10') list.add('c10');
+    return list;
+  }
+
   factory Vehicle.fromDict(Map<String, dynamic> d) => Vehicle(
         vin: d['vin']?.toString() ?? '',
         carType: d['carType']?.toString() ?? '',
@@ -1020,16 +1033,37 @@ class LeapmotorApiClient {
     return _getVehicleStatusReal(vin);
   }
 
+  /// Ruta de estado que funciono por VIN (v3.60.207): evita re-probar
+  /// candidatos en cada ciclo una vez encontrada la buena.
+  static final Map<String, String> _statusPathPorVin = {};
+
   Future<VehicleStatus> _getVehicleStatusReal(String vin) => withTokenRetry(() async {
         final vehicle = _findVehicle(vin);
         final headers = _signedHeaders(vin: vin)..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/status/get/${vehicle.statusPath}'),
-          headers: headers,
-          body: 'vin=${Uri.encodeComponent(vin)}',
-        );
-        final data = _parseBody(response.statusCode, response.body, 'vehicle status');
-        return VehicleStatus.fromRaw((data['data'] as Map<String, dynamic>?) ?? {});
+        final buena = _statusPathPorVin[vin];
+        final candidatos = <String>[
+          if (buena != null) buena,
+          ...vehicle.statusPathCandidates.where((p) => p != buena),
+        ];
+        Object? ultimoError;
+        for (final path in candidatos) {
+          final response = await _accountClient!.post(
+            Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/status/get/$path'),
+            headers: headers,
+            body: 'vin=${Uri.encodeComponent(vin)}',
+          );
+          try {
+            final data = _parseBody(response.statusCode, response.body, 'vehicle status');
+            _statusPathPorVin[vin] = path;
+            return VehicleStatus.fromRaw((data['data'] as Map<String, dynamic>?) ?? {});
+          } catch (e) {
+            ultimoError = e;
+            // 404 = la ruta no existe para este modelo: se prueba la siguiente.
+            // Cualquier otro error se propaga como siempre.
+            if (response.statusCode != 404) rethrow;
+          }
+        }
+        throw ultimoError ?? Exception('sin rutas de estado para ${vehicle.carType}');
       });
 
   /// Consulta el horario/limite de carga actual (cmd_id=190) sin ejecutar ningun comando.
