@@ -42,6 +42,12 @@ const kVehicleProfiles = <VehicleProfile>[
   VehicleProfile('c10_life', 'C10 Life  -  69,9 kWh  -  420 km', 69.9, 420.0, chemistry: 'LFP'),
   VehicleProfile('c10_promax_rwd', 'C10 ProMax RWD  -  81,9 kWh  -  510 km', 81.9, 510.0, chemistry: 'LFP'),
   VehicleProfile('c10_promax_awd', 'C10 ProMax AWD  -  81,9 kWh  -  437 km', 81.9, 437.0, chemistry: 'LFP'),
+  // B03X (A10 global, 2026): dos baterias LFP. Cifras de ficha europea:
+  // 39,8 kWh brutos / ~39 utiles -> 292 km WLTP (DC ~100 kW, 2.5C);
+  // 53,0 kWh brutos / 52 utiles -> 382 km WLTP (DC 133 kW, 2.5C).
+  // AC 11 kW en ambas. El usuario elige segun su version (Pro / Pro Max).
+  VehicleProfile('b03x_pro', 'B03X Pro  ·  39 kWh utiles (39,8 brutos)  ·  292 km', 39.0, 292.0, chemistry: 'LFP', dcKw: 100, acKw: 11),
+  VehicleProfile('b03x_promax', 'B03X Pro Max  ·  52 kWh utiles (53 brutos)  ·  382 km', 52.0, 382.0, chemistry: 'LFP', dcKw: 133, acKw: 11),
   VehicleProfile('custom', 'Otro  ·  a mano', 67.1, 430.0),
 ];
 
