@@ -32,6 +32,7 @@
       <a href="#compatibilidad" data-i18n="nav.compat">Compatibilidad</a>
       <a href="#versiones" data-i18n="nav.versions">Versiones</a>
       <a href="#instalar" data-i18n="nav.install">Instalar</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
       <a href="#comunidad" data-i18n="nav.community">Comunidad</a>
     </nav>
     <span class="razor" aria-hidden="true"></span>
@@ -204,24 +205,24 @@
   <div class="wrap">
     <p class="label mono reveal" data-i18n="compat.label">03 — COMPATIBILIDAD</p>
     <h2 class="h2 reveal" data-i18n="compat.title">Confirmado en coches reales, no en teoría.</h2>
-    <p class="lead reveal" data-i18n="compat.lead">Desarrollada y probada a diario sobre un B10. El login y el protocolo funcionan en toda la gama Leapmotor; el resto crece con cada tester que reporta.</p>
+    <p class="lead reveal" data-i18n="compat.lead">Desarrollada y probada a diario sobre un B10, y confirmada en B11 y en T03/B03X por usuarios reales. El login y el protocolo funcionan en toda la gama Leapmotor; el resto crece con cada persona que reporta.</p>
     <div class="table-wrap reveal">
       <table class="compat-table">
         <thead>
-          <tr><th data-i18n="compat.feat">Función</th><th>B10</th><th>T03</th><th>C10</th><th>B05</th></tr>
+          <tr><th data-i18n="compat.feat">Función</th><th>B10</th><th>B11</th><th>T03 / B03X</th><th>C10</th><th>B05</th></tr>
         </thead>
         <tbody>
-          <tr><td data-i18n="c.1">Batería y autonomía</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td data-i18n="c.2">Presión de neumáticos</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td data-i18n="c.3">Cerradura, maletero y clima</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td data-i18n="c.4">Ubicación GPS y odómetro</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td data-i18n="c.5">Telemetría ABRP</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td data-i18n="c.6">Controles remotos</td><td class="ok">✓</td><td class="warn" data-i18n="c.untested">sin probar</td><td class="unk">?</td><td class="unk">?</td></tr>
-          <tr><td>Android Auto</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.1">Batería y autonomía</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.2">Presión de neumáticos</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.3">Cerradura, maletero y clima</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.4">Ubicación GPS y odómetro</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.5">Telemetría ABRP</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td data-i18n="c.6">Controles remotos</td><td class="ok">✓</td><td class="ok">✓</td><td class="warn" data-i18n="c.untested">sin probar</td><td class="unk">?</td><td class="unk">?</td></tr>
+          <tr><td>Android Auto</td><td class="ok">✓</td><td class="ok">✓</td><td class="unk">?</td><td class="unk">?</td><td class="unk">?</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="fine reveal" data-i18n="compat.note">Los híbridos de autonomía extendida (C10 REEV) no están soportados. ¿Tienes un C10 o un B05? Tu reporte en el grupo de testers completa esta tabla.</p>
+    <p class="fine reveal" data-i18n="compat.note">T03/B03X: soportado desde la v3.60.208 (la app prueba varias rutas de estado y usa la que responde). Matices: la detección de conducción por Bluetooth está limitada en Android 12+ por ahora, y algunas señales exclusivas del B10 pueden no existir en estos modelos. Los híbridos de autonomía extendida (C10 REEV) no están soportados. ¿Tienes un C10 o un B05? Tu reporte completa esta tabla.</p>
   </div>
 </section>
 
@@ -253,12 +254,11 @@
 
     <div class="alt-channel beta-channel reveal">
       <div>
-        <h4 data-i18n="inst.beta.t">¿Quieres probar lo próximo antes que nadie?</h4>
-        <p data-i18n="inst.beta.d">La prueba cerrada de Play va siempre un paso por delante: ahora mismo está en la v3.60.186 mientras la producción pública es la v3.60.179. Únete al grupo de testers y activa la prueba con la misma cuenta de Google.</p>
+        <h4 data-i18n="inst.beta.t">¿Quieres la app completa? Prueba abierta</h4>
+        <p data-i18n="inst.beta.d">La producción es ahora la 3.60.353 «lite» (sin Android Auto ni Bluetooth, temporalmente). La prueba abierta lleva la 3.60.358 completa — entras con un clic, sin grupo ni aprobación, y puedes salir cuando quieras. La antigua prueba cerrada queda congelada.</p>
       </div>
       <div class="beta-ctas">
-        <a class="btn btn-outline" href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener"><span data-i18n="inst.beta.cta1">1 · Grupo de testers</span></a>
-        <a class="btn btn-outline" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.beta.cta2">2 · Activar la prueba</span></a>
+        <a class="btn btn-outline" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener"><span data-i18n="inst.beta.cta1">Unirme a la prueba abierta</span></a>
       </div>
     </div>
 
@@ -290,10 +290,45 @@
   </div>
 </section>
 
+<!-- ══════════ FAQ ══════════ -->
+<section class="faq section-dark" id="faq">
+  <div class="wrap">
+    <p class="label mono reveal" data-i18n="faq.label">05 — FAQ</p>
+    <h2 class="h2 reveal" data-i18n="faq.title">Preguntas frecuentes.</h2>
+
+    <div class="faq-list">
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q1">¿Producción, prueba abierta, prueba cerrada… cuál instalo?</summary>
+        <p data-i18n="faq.a1"><b>Producción</b> (3.60.353 «lite») es la versión pública estable; temporalmente no incluye Android Auto ni Bluetooth. La <b>prueba abierta</b> (3.60.358) lleva la app completa y puede entrar cualquiera. La <b>prueba cerrada</b> queda congelada: se acumularon releases en revisión y todo se migra a la abierta. Si quieres Auto y Bluetooth hoy, únete a la abierta.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q2">¿Cómo entro en la prueba abierta?</summary>
+        <p data-i18n="faq.a2">Abre <a class="text-link cert-link" href="https://play.google.com/apps/testing/com.txurtxil.lpb10" target="_blank" rel="noopener">play.google.com/apps/testing/com.txurtxil.lpb10</a> con tu cuenta de Google y pulsa unirte. En unos minutos, Play te ofrece la actualización a la versión completa. Salir es igual de fácil, desde el mismo enlace.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q3">¿Qué es la versión «lite» de producción?</summary>
+        <p data-i18n="faq.a3">La misma app menos dos cosas: Android Auto y el permiso Bluetooth (ese permiso obliga a una revisión con vídeo en Play que llevaba semanas bloqueando la publicación). Es temporal: cuando Play complete la revisión, producción recibirá la versión completa. Mientras tanto, la completa está en la prueba abierta.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q4">Transparencia: ¿qué NO hace la app?</summary>
+        <p data-i18n="faq.a4">Los widgets de escritorio <b>no abren el coche</b> — son de consulta. Y Android Auto <b>no muestra datos del vehículo</b> (batería, clima, autonomía…): la política de Google no lo permite en apps de terceros, solo puntos de interés y navegación — por eso Auto ofrece «Cargadores cerca» y búsqueda de destinos.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q5">¿Qué coches son compatibles?</summary>
+        <p data-i18n="faq.a5"><b>B10 y B11</b>, completos. <b>T03/B03X</b> desde la v3.60.208, con matices: la detección de conducción por Bluetooth está limitada en Android 12+ y algunas señales exclusivas del B10 pueden no existir. C10 y B05, sin confirmar — tu reporte ayuda. C10 REEV (autonomía extendida) no está soportado.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary data-i18n="faq.q6">¿Puedo enviar la telemetría a mi Home Assistant?</summary>
+        <p data-i18n="faq.a6">Sí: por MQTT o webhook HTTPS, es opt-in y envía una lectura por minuto a tu propio servidor. Guía paso a paso con ejemplos para Home Assistant: <a class="text-link cert-link" href="telemetria.html">telemetría MQTT/webhook →</a></p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════ COMUNIDAD ══════════ -->
 <section class="community section-dark" id="comunidad">
   <div class="wrap">
-    <p class="label mono reveal" data-i18n="com.label">05 — COMUNIDAD</p>
+    <p class="label mono reveal" data-i18n="com.label">06 — COMUNIDAD</p>
     <h2 class="h2 reveal" data-i18n="com.title">El B10, en vídeo y en grupo.</h2>
 
     <div class="videos">
@@ -334,7 +369,7 @@
 <!-- ══════════ VERSIONES ══════════ -->
 <section class="versions section-dark" id="versiones">
   <div class="wrap">
-    <p class="label mono reveal" data-i18n="ver.label">06 — VERSIONES</p>
+    <p class="label mono reveal" data-i18n="ver.label">07 — VERSIONES</p>
     <h2 class="h2 reveal" data-i18n="ver.title">Un cambio por release, validado en coche real.</h2>
     <div class="channel-note reveal">
       <span class="channel-tag mono" data-i18n="ver.prod.tag">PRODUCCIÓN</span>
@@ -356,7 +391,7 @@
 <!-- ══════════ CAFÉ ══════════ -->
 <section class="coffee section-light" id="cafe">
   <div class="wrap coffee-inner">
-    <p class="label mono reveal" data-i18n="coffee.label">07 — APOYAR EL PROYECTO</p>
+    <p class="label mono reveal" data-i18n="coffee.label">08 — APOYAR EL PROYECTO</p>
     <h2 class="h2 coffee-title reveal" data-i18n="coffee.title">Gratis siempre.<br>Si te sirve, invítame a un café.</h2>
     <p class="lead reveal" data-i18n="coffee.lead">Sin anuncios, sin suscripciones, sin más cuentas que las tuyas. El café es totalmente opcional — nunca hace falta para ser tester ni para usar nada.</p>
     <a class="btn btn-coffee reveal" href="https://ko-fi.com/txurtxil" target="_blank" rel="noopener">
@@ -393,6 +428,7 @@
         <a href="https://github.com/txurtxil/LPB10" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/txurtxil/LPB10/releases" target="_blank" rel="noopener" data-i18n="foot.releases">Releases</a>
         <a href="https://groups.google.com/g/lmb10-testers" target="_blank" rel="noopener" data-i18n="foot.group">Grupo de testers</a>
+        <a href="telemetria.html" data-i18n="foot.tele">Telemetría MQTT/webhook</a>
         <a href="privacy.html" data-i18n="foot.privacy">Privacidad</a>
       </div>
       <div class="foot-col">

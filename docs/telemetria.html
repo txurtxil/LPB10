@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LMB10 — Guía: telemetría MQTT / webhook</title>
+<meta name="description" content="Guía de telemetría de LMB10: envía los datos de tu Leapmotor a tu propio servidor por MQTT o webhook, con ejemplos para Home Assistant.">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+.tele-hero{padding-top:clamp(140px,18vw,200px)}
+.tele-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
+.tele-badges span{border:1px solid var(--line-d);border-radius:999px;padding:.5rem 1rem;font-family:var(--font-m);font-size:.78rem;color:var(--txt-d2)}
+.tele-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px}
+.tele-card{border:1px solid var(--line-d);border-radius:18px;padding:clamp(20px,2.6vw,30px)}
+.tele-card h3{font-family:var(--font-d);font-weight:600;font-size:1.15rem;margin-bottom:10px}
+.tele-card p{color:var(--txt-d2);font-size:.94rem}
+.g-steps{margin-top:40px;counter-reset:g;list-style:none;padding:0}
+.g-steps li{counter-increment:g;position:relative;padding:18px 0 18px 58px;border-top:1px solid var(--line-d);color:var(--txt-d2)}
+.g-steps li::before{content:counter(g,decimal-leading-zero);position:absolute;left:0;top:16px;font-family:var(--font-m);font-size:1.2rem;color:var(--violet)}
+.g-steps b{color:var(--txt-d)}
+pre.code{background:var(--ink-2);border:1px solid var(--line-d);border-radius:14px;padding:20px 22px;overflow-x:auto;margin:20px 0 10px}
+pre.code code{font-family:var(--font-m);font-size:.82rem;line-height:1.65;color:var(--lav);white-space:pre}
+.g-note{color:var(--txt-d2);font-size:.85rem;opacity:.85;margin-top:6px}
+.g-sec{padding-top:0}
+.tele-foot{border-top:1px solid var(--line-d);padding:44px 0 60px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+@media(max-width:900px){.tele-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-pill">
+    <a class="nav-brand" href="index.html" aria-label="LMB10">
+      <img src="assets/icon.png" alt="" class="nav-logo">
+      <span class="nav-word">LMB10</span>
+    </a>
+    <span class="razor" aria-hidden="true"></span>
+    <nav class="nav-links" aria-label="Principal">
+      <a href="index.html" data-i18n="t.back">← Volver a la web</a>
+      <a href="index.html#faq" data-i18n="t.faq">FAQ</a>
+    </nav>
+    <button class="lang-toggle" id="langToggle" aria-label="Cambiar idioma">
+      <span data-lang="es">ES</span><i>/</i><span data-lang="en">EN</span>
+    </button>
+    <a class="nav-gh" href="https://github.com/txurtxil/LPB10" target="_blank" rel="noopener" aria-label="GitHub">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ══════════ CABECERA ══════════ -->
+<section class="tele-hero section-dark" id="top">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.label">GUÍA</p>
+    <h1 class="h2" data-i18n="t.title">Telemetría MQTT / webhook: tu coche, en tu servidor.</h1>
+    <p class="lead" data-i18n="t.lead">LMB10 puede publicar el estado de tu Leapmotor en tu propio servidor — por MQTT, por webhook HTTPS, o ambos a la vez. Es opt-in (apagado por defecto), envía una lectura por minuto como máximo, y ningún dato pasa por servidores del desarrollador: va directo de tu móvil a tu casa.</p>
+    <div class="tele-badges">
+      <span data-i18n="t.b1">opt-in · apagado por defecto</span>
+      <span data-i18n="t.b2">1 lectura / minuto</span>
+      <span data-i18n="t.b3">MQTT y/o webhook HTTPS</span>
+      <span data-i18n="t.b4">sin servidores de terceros</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ QUÉ ENVÍA ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s1.label">01 — QUÉ ENVÍA</p>
+    <h2 class="h2" data-i18n="t.s1.title">El estado del coche, en JSON.</h2>
+    <p class="lead" data-i18n="t.s1.lead">Cada lectura es un pequeño JSON con el estado del vehículo en ese momento. Tú decides dónde aterriza.</p>
+    <div class="tele-grid">
+      <div class="tele-card">
+        <h3>MQTT</h3>
+        <p data-i18n="t.s1.c1">La app publica en un topic de tu broker (por ejemplo <span class="mono">lmb10/b10</span>). Ideal con Mosquitto y Home Assistant: sensores nativos, histórico y gráficas sin escribir código de red.</p>
+      </div>
+      <div class="tele-card">
+        <h3>Webhook HTTPS</h3>
+        <p data-i18n="t.s1.c2">La app hace un POST a la URL que indiques — un endpoint de Home Assistant, Node-RED, n8n o cualquier script tuyo. Perfecto si no quieres mantener un broker.</p>
+      </div>
+      <div class="tele-card">
+        <h3 data-i18n="t.s1.c3t">Ritmo y control</h3>
+        <p data-i18n="t.s1.c3">Como mucho una lectura por minuto, solo cuando hay datos nuevos que contar. Se activa y se desactiva con un interruptor en Ajustes, y puedes configurar ambos canales a la vez o solo uno.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CONFIGURACIÓN EN LA APP ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s2.label">02 — EN LA APP</p>
+    <h2 class="h2" data-i18n="t.s2.title">Configuración en cuatro pasos.</h2>
+    <ol class="g-steps">
+      <li data-i18n="t.s2.p1"><b>Abre Ajustes → Telemetría</b> y activa el interruptor. Nada se envía hasta que rellenes al menos un canal.</li>
+      <li data-i18n="t.s2.p2"><b>Para MQTT:</b> host y puerto de tu broker (1883 sin TLS, 8883 con TLS), topic (ej. <span class="mono">lmb10/b10</span>), y usuario/contraseña si el broker los pide — que debería.</li>
+      <li data-i18n="t.s2.p3"><b>Para webhook:</b> la URL HTTPS completa de tu endpoint. Opcionalmente, una cabecera de autorización para que solo tu servidor acepte los POST.</li>
+      <li data-i18n="t.s2.p4"><b>Comprueba el envío de prueba</b> desde la propia pantalla: publica una lectura inmediata para validar que broker o endpoint responden antes de salir de dudas.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════ HOME ASSISTANT + MQTT ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s3.label">03 — HOME ASSISTANT CON MQTT</p>
+    <h2 class="h2" data-i18n="t.s3.title">El camino recomendado.</h2>
+    <ol class="g-steps">
+      <li data-i18n="t.s3.p1"><b>Instala el add-on Mosquitto broker</b> en Home Assistant (Ajustes → Add-ons) y arráncalo. Activa «Start on boot».</li>
+      <li data-i18n="t.s3.p2"><b>Crea un usuario dedicado</b> para LMB10 (Ajustes → Personas → Usuarios → añadir, marca «solo usuario local»). No reutilices tu usuario principal.</li>
+      <li data-i18n="t.s3.p3"><b>En LMB10:</b> host = IP de tu Home Assistant, puerto 1883, topic <span class="mono">lmb10/b10</span>, y ese usuario/contraseña. Si HA y el móvil están en la misma red, ya está; para fuera de casa, expón el broker con TLS (puerto 8883) o una VPN como Tailscale/WireGuard — nunca 1883 abierto a internet.</li>
+      <li data-i18n="t.s3.p4"><b>Declara los sensores</b> en tu <span class="mono">configuration.yaml</span> (o un paquete) y reinicia HA:</li>
+    </ol>
+<pre class="code"><code>mqtt:
+  sensor:
+    - name: "B10 Bateria"
+      state_topic: "lmb10/b10"
+      value_template: "{{ value_json.soc }}"
+      unit_of_measurement: "%"
+      device_class: battery
+
+    - name: "B10 Autonomia"
+      state_topic: "lmb10/b10"
+      value_template: "{{ value_json.range_km }}"
+      unit_of_measurement: "km"
+      icon: mdi:map-marker-distance
+
+    - name: "B10 Cargando"
+      state_topic: "lmb10/b10"
+      value_template: "{{ 'ON' if value_json.charging else 'OFF' }}"
+      icon: mdi:ev-station</code></pre>
+    <p class="g-note" data-i18n="t.s3.note">A partir de ahí: histórico, gráficas, automatizaciones («avísame si baja del 20 %») y lo que quieras. Los nombres de campo exactos los ves en Ajustes → Telemetría de la app.</p>
+  </div>
+</section>
+
+<!-- ══════════ HOME ASSISTANT + WEBHOOK ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s4.label">04 — HOME ASSISTANT CON WEBHOOK</p>
+    <h2 class="h2" data-i18n="t.s4.title">Sin broker: un POST y listo.</h2>
+    <p class="lead" data-i18n="t.s4.lead">Crea una automatización con disparador webhook; HA genera una URL tipo <span class="mono">/api/webhook/lmb10_b10</span>. Pon esa URL completa en la app. Un sensor de plantilla por disparador convierte cada POST en estado:</p>
+<pre class="code"><code>template:
+  - triggers:
+      - trigger: webhook
+        webhook_id: lmb10_b10
+        allowed_methods: [POST]
+    sensor:
+      - name: "B10 Bateria"
+        state: "{{ trigger.json.soc }}"
+        unit_of_measurement: "%"
+        device_class: battery
+      - name: "B10 Autonomia"
+        state: "{{ trigger.json.range_km }}"
+        unit_of_measurement: "km"</code></pre>
+    <p class="g-note" data-i18n="t.s4.note">Sirve igual para Node-RED (nodo «http in») o n8n (nodo Webhook). Recuerda que la URL debe ser alcanzable desde el móvil: red local si estás en casa, o HTTPS público si quieres telemetría fuera.</p>
+  </div>
+</section>
+
+<!-- ══════════ PAYLOAD ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s5.label">05 — EJEMPLO DE LECTURA</p>
+    <h2 class="h2" data-i18n="t.s5.title">Así es un mensaje.</h2>
+<pre class="code"><code>{
+  "soc": 64.8,
+  "range_km": 281,
+  "charging": false,
+  "power_kw": 0.0,
+  "locked": true,
+  "climate_on": false,
+  "odometer_km": 12345,
+  "updated": "2026-09-30T14:32:00Z"
+}</code></pre>
+    <p class="g-note" data-i18n="t.s5.note">Ejemplo ilustrativo: los campos disponibles y sus nombres exactos aparecen en Ajustes → Telemetría de la app, junto al envío de prueba.</p>
+  </div>
+</section>
+
+<!-- ══════════ SEGURIDAD ══════════ -->
+<section class="section-dark g-sec">
+  <div class="wrap">
+    <p class="label mono" data-i18n="t.s6.label">06 — SEGURIDAD</p>
+    <h2 class="h2" data-i18n="t.s6.title">Cuatro reglas sencillas.</h2>
+    <ol class="g-steps">
+      <li data-i18n="t.s6.p1"><b>TLS siempre que salgas de tu red local.</b> En casa, 1883 vale; fuera, 8883 con certificado o una VPN.</li>
+      <li data-i18n="t.s6.p2"><b>Usuario dedicado y contraseña única</b> para LMB10 en tu broker. Si algún día la cambias, solo afecta a esto.</li>
+      <li data-i18n="t.s6.p3"><b>Tus datos no pasan por nadie más.</b> La telemetría viaja directa de tu móvil a tu servidor; el desarrollador no recibe nada, aquí ni en ninguna otra función.</li>
+      <li data-i18n="t.s6.p4"><b>Apágala cuando quieras.</b> El interruptor de Ajustes corta el envío al momento, sin desinstalar nada.</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap tele-foot">
+    <a class="text-link" href="index.html" data-i18n="t.back2">← Volver a lmb10</a>
+    <p class="fine" data-i18n="t.foot">LMB10 · GPLv3 · app no oficial, sin afiliación con Leapmotor</p>
+  </div>
+</footer>
+
+<script src="telemetria.js"></script>
+</body>
+</html>
