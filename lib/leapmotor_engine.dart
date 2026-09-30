@@ -508,8 +508,13 @@ class Vehicle {
     final t = carType.toLowerCase();
     if (t == 'b10' || t == 'b11') return ['c10'];
     final list = <String>[t];
-    if (t != 't03') list.add('t03');
-    if (t != 'c10') list.add('c10');
+    // v3.60.208: mas candidatos para modelos como el T03/B03X (carType
+    // 'a10'). 't03' existe en el servidor pero devolvio code 100 "No data
+    // found" para un VIN de T03: los datos estan en otra ruta aun por
+    // identificar. Cada intento queda registrado en el error final.
+    for (final c in ['t03', 'c10', 'c11', 'b03']) {
+      if (!list.contains(c)) list.add(c);
+    }
     return list;
   }
 
@@ -1046,6 +1051,7 @@ class LeapmotorApiClient {
           ...vehicle.statusPathCandidates.where((p) => p != buena),
         ];
         Object? ultimoError;
+        final intentos = <String>[];
         for (final path in candidatos) {
           final response = await _accountClient!.post(
             Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/status/get/$path'),
@@ -1058,12 +1064,20 @@ class LeapmotorApiClient {
             return VehicleStatus.fromRaw((data['data'] as Map<String, dynamic>?) ?? {});
           } catch (e) {
             ultimoError = e;
-            // 404 = la ruta no existe para este modelo: se prueba la siguiente.
+            // v3.60.208: 404 (ruta inexistente) Y code 100 "No data found"
+            // (ruta valida pero sin datos de este VIN) = probar la siguiente.
             // Cualquier otro error se propaga como siempre.
-            if (response.statusCode != 404) rethrow;
+            final sinDatos =
+                e is LeapmotorApiException && e.statusCode == 100;
+            intentos.add(
+                '$path(${response.statusCode}${sinDatos ? '/code100' : ''})');
+            if (response.statusCode != 404 && !sinDatos) rethrow;
           }
         }
-        throw ultimoError ?? Exception('sin rutas de estado para ${vehicle.carType}');
+        // El listado de intentos viaja al carlog: dice exactamente que
+        // devolvio cada ruta para este modelo.
+        throw Exception(
+            'vehicle status agotado ${vehicle.carType}: ${intentos.join(", ")} | ultimo: $ultimoError');
       });
 
   /// Consulta el horario/limite de carga actual (cmd_id=190) sin ejecutar ningun comando.
