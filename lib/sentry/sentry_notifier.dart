@@ -4,6 +4,8 @@
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../notif_settings.dart';
+
 class SentryNotifier {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -28,6 +30,10 @@ class SentryNotifier {
 
   static Future<void> show(String title, String body,
       {bool critical = false}) async {
+    // v3.60.210: las alertas del Centinela tambien son opt-out (peticion
+    // de betatester). Un solo embudo: todo lo que notifica el Centinela
+    // pasa por aqui.
+    if (!await notifCentinela()) return;
     await _init();
     final details = NotificationDetails(
       android: AndroidNotificationDetails(

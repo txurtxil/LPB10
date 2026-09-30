@@ -13,6 +13,7 @@ class NotifKey {
   static const llegadaCasa = 'lm_notif_home_v1';
   static const pvpc = 'lm_notif_pvpc_v1';
   static const informe = 'lm_notif_informe_v1';
+  static const centinela = 'lm_notif_sentry_v1';
 }
 
 Future<bool> _lee(String k) async => (await _storage.read(key: k)) != '0';
@@ -33,3 +34,5 @@ Future<bool> notifPvpc() => _lee(NotifKey.pvpc);
 Future<void> setNotifPvpc(bool v) => _guarda(NotifKey.pvpc, v);
 Future<bool> notifInforme() => _lee(NotifKey.informe);
 Future<void> setNotifInforme(bool v) => _guarda(NotifKey.informe, v);
+Future<bool> notifCentinela() => _lee(NotifKey.centinela);
+Future<void> setNotifCentinela(bool v) => _guarda(NotifKey.centinela, v);

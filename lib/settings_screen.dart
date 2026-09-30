@@ -215,6 +215,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   tituloEs: 'Informe mensual listo', tituloEn: 'Monthly report ready',
                   subEs: 'Avisa cuando se genera el PDF del mes.',
                   subEn: 'Alerts when the month PDF is generated.'),
+                _NotifTile(
+                  lee: notifCentinela, guarda: setNotifCentinela,
+                  tituloEs: 'Centinela', tituloEn: 'Sentry mode',
+                  subEs: 'Alertas del modo Centinela (armado, desarmado, eventos).',
+                  subEn: 'Sentry mode alerts (armed, disarmed, events).'),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.picture_as_pdf_outlined),
