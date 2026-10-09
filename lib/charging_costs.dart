@@ -101,17 +101,16 @@ List<SesionCarga> detectarSesiones(List<MuestraBat> m) {
           pots.add(potC / 1000.0);
         }
       }
-      // v3.60.211: una sesion de carga debe CARGAR. Con el coche parado,
-      // la gestion termica de la bateria (bomba de calor) cumple el filtro
-      // tecnico (|a| >= 2 A y km constante) durante horas: la energia que
-      // integra es real pero viene del paquete, no de la red, y el SoC
-      // BAJA. Caso real visto en produccion: sesion "16,5 kWh - 12 kW pico -
-      // 59>58 %" clasificada como DC (el pico era la bomba de calor) en un
-      // coche que solo carga en AC en casa. Solo cuenta como carga si el
-      // SoC subio de forma apreciable (mismo criterio que la deteccion en
-      // vivo de la tarjeta de historial).
-      final subioSoc = sesion.last.soc - sesion.first.soc;
-      if (energia >= kMinKwhSesion && subioSoc > 0.3) {
+      // v3.60.212: se muestran TODAS las sesiones con energia apreciable.
+      // El filtro de "SoC debe subir" de la v211 oculto cargas REALES: en
+      // los datos de los testers el SoC registrado durante la carga sale
+      // PLANO ("76>76" con 10,8 kWh), imposible en una carga real, lo que
+      // apunta a un segundo bug en la grabacion de muestras pendiente de
+      // diagnosticar con datos reales. Mientras tanto: lista completa y
+      // clasificacion robusta (percentil 90). Las sesiones con SoC
+      // decreciente (gestion termica del coche parado) pueden seguir
+      // saliendo: limitacion conocida hasta el diagnostico.
+      if (energia >= kMinKwhSesion) {
         // Clasificacion por percentil 90 de la potencia, no por el pico:
         // un pico aislado (arranque de la bomba, regeneracion) no debe
         // cambiar AC por DC. Las cargas reales sostienen su potencia.
