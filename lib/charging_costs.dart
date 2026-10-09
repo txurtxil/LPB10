@@ -88,6 +88,7 @@ List<SesionCarga> detectarSesiones(List<MuestraBat> m) {
     if (sesion.length >= 2) {
       var energia = 0.0;
       var potMax = 0.0;
+      final pots = <double>[];
       for (var i = 1; i < sesion.length; i++) {
         final p = sesion[i - 1], c = sesion[i];
         if (p.v != null && p.a != null && c.v != null && c.a != null) {
@@ -96,9 +97,28 @@ List<SesionCarga> detectarSesiones(List<MuestraBat> m) {
           energia += (potP + potC) / 2.0 / 1000.0 * ((c.ts - p.ts) / 3600000.0);
           if (potP / 1000.0 > potMax) potMax = potP / 1000.0;
           if (potC / 1000.0 > potMax) potMax = potC / 1000.0;
+          pots.add(potP / 1000.0);
+          pots.add(potC / 1000.0);
         }
       }
-      if (energia >= kMinKwhSesion) {
+      // v3.60.211: una sesion de carga debe CARGAR. Con el coche parado,
+      // la gestion termica de la bateria (bomba de calor) cumple el filtro
+      // tecnico (|a| >= 2 A y km constante) durante horas: la energia que
+      // integra es real pero viene del paquete, no de la red, y el SoC
+      // BAJA. Caso real visto en produccion: sesion "16,5 kWh - 12 kW pico -
+      // 59>58 %" clasificada como DC (el pico era la bomba de calor) en un
+      // coche que solo carga en AC en casa. Solo cuenta como carga si el
+      // SoC subio de forma apreciable (mismo criterio que la deteccion en
+      // vivo de la tarjeta de historial).
+      final subioSoc = sesion.last.soc - sesion.first.soc;
+      if (energia >= kMinKwhSesion && subioSoc > 0.3) {
+        // Clasificacion por percentil 90 de la potencia, no por el pico:
+        // un pico aislado (arranque de la bomba, regeneracion) no debe
+        // cambiar AC por DC. Las cargas reales sostienen su potencia.
+        pots.sort();
+        final potP90 = pots.isEmpty
+            ? potMax
+            : pots[((pots.length - 1) * 0.9).round().clamp(0, pots.length - 1)];
         out.add(SesionCarga(
           iniMs: sesion.first.ts,
           finMs: sesion.last.ts,
@@ -106,7 +126,7 @@ List<SesionCarga> detectarSesiones(List<MuestraBat> m) {
           socFin: sesion.last.soc,
           energiaKwh: energia,
           potMaxKw: potMax,
-          tipo: clasificar(potMax),
+          tipo: clasificar(potP90),
         ));
       }
     }
