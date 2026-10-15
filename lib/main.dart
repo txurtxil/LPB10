@@ -79,6 +79,7 @@ String? _routineIdFromUri(Uri? uri) {
 const _sessionKey = 'lm_session_v1';
 const _pinKey = 'lm_pin_v1';
 const _vinKey = 'lm_vin_v1';
+const _fallosTokenKey = 'lm_fallos_token_v1';
 const _kSoloLectura = 'lm_solo_lectura_v1';
 
 Future<bool> modoSoloLectura() async =>
@@ -1162,6 +1163,8 @@ class _SplashScreenState extends State<SplashScreen> {
       final client = await crearClienteConSesion(session);
 
       final vehicles = await client.getVehicleList();
+      // v213: autologin con exito -> resetea el contador de fallos de token.
+      try { await _storage.delete(key: _fallosTokenKey); } catch (_) {}
       if (vehicles.isEmpty) throw Exception('Sin vehiculos');
 
       final savedVin = await _storage.read(key: _vinKey);
@@ -1179,16 +1182,33 @@ class _SplashScreenState extends State<SplashScreen> {
       // proximo arranque debe poder entrar solo.
       // v173: el fallo se registra en el carlog. Hasta ahora el deslogueo
       // era silencioso y no dejaba rastro del motivo (reporte 22/09/2026).
-      final borrar = debeBorrarSesion(e);
+      // v213: el 17 "Token generation error" tambien aparece cuando el
+      // servidor tiene un problema transitorio de generacion de tokens
+      // (madrugada 14->15/10/2026: ~7 h de fallos y la sesion era valida).
+      // Solo se purga la sesion tras 5 fallos consecutivos de token; los
+      // errores de red no cuentan y no tocan el contador.
+      var fallosToken = 0;
+      if (debeBorrarSesion(e)) {
+        fallosToken = (int.tryParse(
+                    await _storage.read(key: _fallosTokenKey) ?? '') ??
+                0) +
+            1;
+        await _storage.write(key: _fallosTokenKey, value: fallosToken.toString());
+      }
+      final borrar = debeBorrarSesionContado(e, fallosToken);
       try {
         await CarLogBridge.log('AUTOLOGIN FALLO (' +
             e.runtimeType.toString() +
             '): ' +
             e.toString() +
-            (borrar ? ' -> SESION BORRADA' : ' -> sesion conservada'));
+            (borrar
+                ? ' -> SESION BORRADA'
+                : ' -> sesion conservada' +
+                    (fallosToken > 0 ? ' (fallo $fallosToken/5 de token)' : '')));
       } catch (_) {}
       if (borrar) {
         await _storage.delete(key: _sessionKey);
+        await _storage.delete(key: _fallosTokenKey);
       }
       _goToLogin();
     }

@@ -39,4 +39,58 @@ void main() {
       expect(debeBorrarSesion('cualquier cosa'), isFalse);
     });
   });
+
+  group('debeBorrarSesionContado', () {
+    test('menos del umbral: la sesion sobrevive', () {
+      // Anoche (14->15/10/2026) el primer fallo 17 borraba la sesion.
+      for (var n = 1; n < 5; n++) {
+        expect(
+            debeBorrarSesionContado(
+                LeapmotorApiException(17, 'Token generation error'), n),
+            isFalse);
+      }
+    });
+
+    test('umbral alcanzado: purga', () {
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(17, 'Token generation error'), 5),
+          isTrue);
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(17, 'Token generation error'), 6),
+          isTrue);
+    });
+
+    test('umbral configurable', () {
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(17, 'Token generation error'), 3,
+              umbral: 3),
+          isTrue);
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(17, 'Token generation error'), 2,
+              umbral: 3),
+          isFalse);
+    });
+
+    test('errores que no son de token nunca purgan', () {
+      expect(debeBorrarSesionContado(const SocketException('no network'), 99),
+          isFalse);
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(500, 'server error'), 99),
+          isFalse);
+      expect(debeBorrarSesionContado(Exception('Sin vehiculos'), 99), isFalse);
+      expect(debeBorrarSesionContado('cualquier cosa', 99), isFalse);
+    });
+
+    test('un exito intermedio (contador a 0) da otra oportunidad', () {
+      expect(
+          debeBorrarSesionContado(
+              LeapmotorApiException(17, 'Token generation error'), 0),
+          isFalse);
+    });
+  });
 }

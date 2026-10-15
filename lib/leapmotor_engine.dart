@@ -687,6 +687,20 @@ bool esErrorDeToken(LeapmotorApiException e) =>
 bool debeBorrarSesion(Object error) =>
     error is LeapmotorApiException && esErrorDeToken(error);
 
+/// Decide si el fallo de autologin purga la sesion, con umbral de fallos
+/// consecutivos de token (v213).
+///
+/// El 17 "Token generation error" NO siempre significa sesion muerta: la
+/// madrugada del 14->15/10/2026 el servidor devolvio ese error durante ~7 h
+/// seguidas (todas las tareas de background fallaron) y al arrancar la app
+/// el autologin borro una sesion que era VALIDA: el re-login manual funciono
+/// a la primera. Con [umbral] fallos consecutivos se da margen a que el
+/// servidor se recupere; el contador lo lleva el llamador y se resetea a 0
+/// en cada autologin con exito. Los errores que no son de token nunca purgan.
+bool debeBorrarSesionContado(Object error, int fallosConsecutivos,
+        {int umbral = 5}) =>
+    debeBorrarSesion(error) && fallosConsecutivos >= umbral;
+
 const String kCmdLock = '110';
 const String kCmdTrunk = '130';
 const String kCmdFindCar = '120';
