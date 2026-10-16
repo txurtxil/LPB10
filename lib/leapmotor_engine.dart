@@ -781,6 +781,78 @@ List<ShareInvitation> parseShareInvitations(dynamic data) {
   return out;
 }
 
+/// Usuario con acceso compartido a un coche de ESTA cuenta (owner-side,
+/// v218). Campos defensivos: la API aun no esta confirmada.
+class SharedUser {
+  final String shareUserId;
+  final String nickName;
+  final String email;
+  final String mobileNumber;
+  final String moduleRights;
+  final int expireTimeMs;
+  const SharedUser({
+    required this.shareUserId,
+    required this.nickName,
+    required this.email,
+    required this.mobileNumber,
+    required this.moduleRights,
+    required this.expireTimeMs,
+  });
+
+  String get displayName => nickName.isNotEmpty
+      ? nickName
+      : (email.isNotEmpty ? email : (mobileNumber.isNotEmpty ? mobileNumber : '?'));
+
+  bool get hasBasic => moduleRights.split(',').contains('100');
+  bool get hasVehicleControl => moduleRights.split(',').contains('200');
+  bool get hasPositioning => moduleRights.split(',').contains('300');
+  bool get hasMileageEnergy => moduleRights.split(',').contains('400');
+}
+
+/// Parser tolerante del listado owner-side (v218).
+List<SharedUser> parseSharedUsers(dynamic data) {
+  if (data is! List) return const [];
+  final out = <SharedUser>[];
+  for (final e in data) {
+    if (e is! Map) continue;
+    final m = Map<String, dynamic>.from(e);
+    out.add(SharedUser(
+      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['userId'] ?? '')
+          .toString(),
+      nickName: (m['nickName'] ?? m['nickname'] ?? '').toString(),
+      email: (m['email'] ?? '').toString(),
+      mobileNumber: (m['mobileNumber'] ?? m['mobile'] ?? '').toString(),
+      moduleRights: (m['moduleRights'] ?? '').toString(),
+      expireTimeMs: _toIntSafe(m['expireTime']),
+    ));
+  }
+  return out;
+}
+
+/// Parametros de invitacion owner-side (v218). Puro y testeable.
+Map<String, String> buildShareInviteParams({
+  required String vin,
+  required String userId,
+  required String invitee,
+  String moduleRights = '100,200,300,400',
+  int durationType = 0,
+}) =>
+    {
+      'carCode': vin,
+      'durationType': '$durationType',
+      'email': invitee,
+      'moduleRights': moduleRights,
+      'userId': userId,
+    };
+
+/// Parametros de revocacion owner-side (v218). Puro y testeable.
+Map<String, String> buildShareRevokeParams({
+  required String vin,
+  required String userId,
+  required String shareUserId,
+}) =>
+    {'carCode': vin, 'shareUserId': shareUserId, 'userId': userId};
+
 DateTime? _epochMsToLocal(dynamic v) {
   final ms = _toIntSafe(v);
   if (ms <= 0) return null;
@@ -1427,6 +1499,75 @@ class LeapmotorApiClient {
         );
         _parseBody(response.statusCode, response.body,
             'respuesta a invitacion de comparticion');
+      });
+
+  /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
+  /// v218). Endpoint CANDIDATO: sharecar/addshare. Los endpoints owner-side
+  /// NO estan documentados (markoceri/leapmotor-api solo cubre el lado
+  /// receptor): el carlog registra la respuesta cruda HTTP, que suele
+  /// revelar el path/campos correctos cuando la API responde 404/400.
+  Future<void> shareCarInvite(String vin, String invitee,
+          {String moduleRights = '100,200,300,400', int durationType = 0}) =>
+      withTokenRetry(() async {
+        final bodyParams = buildShareInviteParams(
+            vin: vin,
+            userId: userId ?? '',
+            invitee: invitee,
+            moduleRights: moduleRights,
+            durationType: durationType);
+        final headers =
+            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/addshare'),
+          headers: headers,
+          body: bodyParams.entries
+              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+              .join('&'),
+        );
+        CarLogBridge.log(
+            'SHARE-OWN addshare HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
+        _parseBody(response.statusCode, response.body, 'invitar a compartir');
+      });
+
+  /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v218).
+  /// Endpoint CANDIDATO: sharecar/getsharelist (ver nota en shareCarInvite).
+  Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
+        final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
+        final headers =
+            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharelist'),
+          headers: headers,
+          body: bodyParams.entries
+              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+              .join('&'),
+        );
+        CarLogBridge.log(
+            'SHARE-OWN getsharelist HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
+        final data =
+            _parseBody(response.statusCode, response.body, 'usuarios con acceso');
+        return parseSharedUsers(data);
+      });
+
+  /// Revoca el acceso de un usuario a un coche de ESTA cuenta (owner-side,
+  /// v218). Endpoint CANDIDATO: sharecar/cancelshare (ver nota en
+  /// shareCarInvite).
+  Future<void> shareCarRevoke(String vin, String shareUserId) =>
+      withTokenRetry(() async {
+        final bodyParams = buildShareRevokeParams(
+            vin: vin, userId: userId ?? '', shareUserId: shareUserId);
+        final headers =
+            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/cancelshare'),
+          headers: headers,
+          body: bodyParams.entries
+              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+              .join('&'),
+        );
+        CarLogBridge.log(
+            'SHARE-OWN cancelshare HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
+        _parseBody(response.statusCode, response.body, 'revocar acceso');
       });
 
 

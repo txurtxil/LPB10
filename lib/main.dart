@@ -66,6 +66,7 @@ import 'pvpc.dart';
 import 'maintenance_screen.dart';
 import 'software_screen.dart';
 import 'share_screen.dart';
+import 'share_users_screen.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1803,6 +1804,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => ShareScreen(client: widget.client))),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.admin_panel_settings_outlined),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Usuarios con acceso'
+                        : 'Users with access'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ShareUsersScreen(client: widget.client, vehicle: widget.vehicle))),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
