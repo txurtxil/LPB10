@@ -849,17 +849,37 @@ Map<String, String> buildShareInviteParams({
 /// hasta que uno no devuelva HTTP 404; el ganador se cachea en sesion.
 /// Confirmado el 17/10: getsharelist -> 404 (el gateway enruta, el
 /// nombre no existe). La respuesta cruda de cada intento va al carlog.
+/// Candidatos owner-side (v220): rutas RELATIVAS completas bajo
+/// /carownerservice/oversea/. Formato "ruta" o "ruta|extra=valor"
+/// (para variantes del endpoint EXISTENTE getsharemsg con parametros
+/// de direccion: el listado owner-side podria salir del mismo endpoint
+/// que el de invitaciones recibidas). v219 confirmo que 7 nombres bajo
+/// sharecar/ dan 404; la familia de nombres debe ser otra.
 const List<String> kShareListCandidates = [
-  'getshareuserlist', 'getshareusers', 'getsharedusers',
-  'getsharecarlist', 'listshare', 'sharelist', 'getshareinfo',
+  // Variantes de getsharemsg (endpoint EXISTENTE) con parametros.
+  'sharecar/getsharemsg|direction=1', 'sharecar/getsharemsg|type=1',
+  'sharecar/getsharemsg|direction=send', 'sharecar/getsharemsg|userType=1',
+  'sharecar/getsharemsg|state=2', 'sharecar/getsharemsg|sendType=1',
+  // Nombres nuevos bajo sharecar/.
+  'sharecar/getsharemsglist', 'sharecar/getsharesendmsg',
+  'sharecar/getsendmsg', 'sharecar/querysharelist', 'sharecar/getlist',
+  // Otros prefijos con los nombres ya probados.
+  'share/getsharelist', 'share/getshareusers', 'share/list',
+  'sharemanage/getsharelist', 'sharemanage/list', 'sharemanage/getlist',
+  'sharedcar/getsharelist', 'sharedcar/list', 'coowner/list',
 ];
 const List<String> kShareInviteCandidates = [
-  'addshare', 'inviteshare', 'createshare', 'addshareuser',
-  'shareinvite', 'addshareduser',
+  'sharecar/addsharemsg', 'sharecar/sendsharemsg', 'sharecar/addshare',
+  'sharecar/create', 'sharecar/invite', 'sharecar/addsharecar',
+  'sharecar/share', 'sharecar/binduser',
+  'share/addshare', 'share/invite', 'sharemanage/addshare',
+  'sharemanage/invite', 'sharedcar/addshare',
 ];
 const List<String> kShareRevokeCandidates = [
-  'cancelshare', 'delshare', 'removeshare', 'revokeshare',
-  'unshare', 'cancelshared',
+  'sharecar/delsharemsg', 'sharecar/delshare', 'sharecar/delete',
+  'sharecar/remove', 'sharecar/unbind', 'sharecar/cancel',
+  'share/cancelshare', 'sharemanage/cancelshare', 'sharemanage/delshare',
+  'sharedcar/cancelshare',
 ];
 
 /// Parametros de revocacion owner-side (v218). Puro y testeable.
@@ -1528,12 +1548,22 @@ class LeapmotorApiClient {
     final cached = _shareOwnPaths[cacheKey];
     final paths = cached != null ? [cached] : candidates;
     for (final p in paths) {
-      final headers = _signedHeaders(bodyParams: bodyParams)
+      // Formato candidato: "ruta/relativa" o "ruta/relativa|extra=valor".
+      final segs = p.split('|');
+      final relPath = segs[0];
+      final params = Map<String, String>.from(bodyParams);
+      if (segs.length > 1) {
+        for (final kv in segs[1].split('&')) {
+          final i = kv.indexOf('=');
+          if (i > 0) params[kv.substring(0, i)] = kv.substring(i + 1);
+        }
+      }
+      final headers = _signedHeaders(bodyParams: params)
         ..addAll(_authHeaders());
       final response = await _accountClient!.post(
-        Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/$p'),
+        Uri.parse('$kBaseUrl/carownerservice/oversea/$relPath'),
         headers: headers,
-        body: bodyParams.entries
+        body: params.entries
             .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
             .join('&'),
       );
