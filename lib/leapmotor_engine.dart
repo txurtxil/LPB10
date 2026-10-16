@@ -710,6 +710,15 @@ const String kCmdSteeringWheelHeat = '320';
 const String kCmdSeatHeat = '301';
 const String kCmdSeatVentilation = '370';
 const String kCmdClimate = '170';
+
+/// Payload del AC off (v214). Antes se enviaba operate='close': en el T03 el
+/// coche lo ignoraba (la nube responde code=0 igual) y en el B10 solo
+/// cambiaba el HVAC a AUTO en vez de apagarlo. La API espera operate='off'.
+/// Referencia: markoceri/leapmotor-api (fix "send operate=off for AC off
+/// commands", oct 2026).
+const String kAcOffPayload =
+    '{"circle":"out","mode":"wind","operate":"off","position":"all","temperature":"26","windlevel":"3","wshld":"0"}';
+
 const String kCmdChargePlan = '190';
 const String kCmdUnlockCharger = '192';
 const String kCmdSunshade = '240';
@@ -1393,9 +1402,7 @@ class LeapmotorApiClient {
       cmdContent: json.encode({'circle': 'in', 'mode': 'hot', 'operate': 'manual', 'position': 'all', 'temperature': '32', 'windlevel': '7', 'wshld': '1'}),
       pin: pin, actionLabel: 'windshield_defrost');
   Future<void> acOff(String vin, String pin) => _remoteControlWithPin(
-      vin: vin, cmdId: kCmdClimate,
-      cmdContent: json.encode({'circle': 'out', 'mode': 'wind', 'operate': 'close', 'position': 'all', 'temperature': '26', 'windlevel': '3', 'wshld': '0'}),
-      pin: pin, actionLabel: 'ac_off');
+      vin: vin, cmdId: kCmdClimate, cmdContent: kAcOffPayload, pin: pin, actionLabel: 'ac_off');
   /// Clima normal PERMANENTE (cmd 170): sigue encendido hasta apagarlo con
   /// acOff. A diferencia de prepareCarNow (360), que se auto-apaga ~20 min.
   /// Mismo formato de payload que quickCool/quickHeat, con temperatura libre.
@@ -1497,7 +1504,9 @@ class LeapmotorApiClient {
       'circle': mode == 'cold' ? 'in' : 'out',
       'windlevel': windlevel,
       'wshld': '0',
-      'operate': enable ? 'manual' : 'close',
+      // v214: la rama off tambien usa 'off' (mismo fix que acOff).
+      'operate': enable ? 'manual' : 'off',
+
       'temperature': temperature,
       'position': 'all',
     };
