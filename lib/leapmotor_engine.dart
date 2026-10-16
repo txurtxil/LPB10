@@ -845,6 +845,23 @@ Map<String, String> buildShareInviteParams({
       'userId': userId,
     };
 
+/// Candidatos owner-side de comparticion (v219). Se prueban en orden
+/// hasta que uno no devuelva HTTP 404; el ganador se cachea en sesion.
+/// Confirmado el 17/10: getsharelist -> 404 (el gateway enruta, el
+/// nombre no existe). La respuesta cruda de cada intento va al carlog.
+const List<String> kShareListCandidates = [
+  'getshareuserlist', 'getshareusers', 'getsharedusers',
+  'getsharecarlist', 'listshare', 'sharelist', 'getshareinfo',
+];
+const List<String> kShareInviteCandidates = [
+  'addshare', 'inviteshare', 'createshare', 'addshareuser',
+  'shareinvite', 'addshareduser',
+];
+const List<String> kShareRevokeCandidates = [
+  'cancelshare', 'delshare', 'removeshare', 'revokeshare',
+  'unshare', 'cancelshared',
+];
+
 /// Parametros de revocacion owner-side (v218). Puro y testeable.
 Map<String, String> buildShareRevokeParams({
   required String vin,
@@ -1501,73 +1518,81 @@ class LeapmotorApiClient {
             'respuesta a invitacion de comparticion');
       });
 
+  /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
+  /// hasta que uno no devuelva HTTP 404 (el gateway enruta cualquier ruta
+  /// sharecar/* y responde 404 JSON cuando el nombre no existe). Cada
+  /// intento se registra crudo en el carlog para el descubrimiento.
+  Future<String> _shareOwnCall(String label, List<String> candidates,
+      String cacheKey, Map<String, String> bodyParams) async {
+    final errors = <String>[];
+    final cached = _shareOwnPaths[cacheKey];
+    final paths = cached != null ? [cached] : candidates;
+    for (final p in paths) {
+      final headers = _signedHeaders(bodyParams: bodyParams)
+        ..addAll(_authHeaders());
+      final response = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/$p'),
+        headers: headers,
+        body: bodyParams.entries
+            .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+            .join('&'),
+      );
+      CarLogBridge.log(
+          'SHARE-OWN $label $p HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 300 ? response.body.length : 300)}');
+      if (response.statusCode == 404) {
+        errors.add('$p:404');
+        continue;
+      }
+      _shareOwnPaths[cacheKey] = p;
+      return response.body;
+    }
+    throw LeapmotorApiException(
+        404, '$label: sin endpoint valido (${errors.join(" | ")})');
+  }
+
+  static final Map<String, String> _shareOwnPaths = {};
+
   /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
-  /// v218). Endpoint CANDIDATO: sharecar/addshare. Los endpoints owner-side
-  /// NO estan documentados (markoceri/leapmotor-api solo cubre el lado
-  /// receptor): el carlog registra la respuesta cruda HTTP, que suele
-  /// revelar el path/campos correctos cuando la API responde 404/400.
+  /// v219). Endpoints candidatos en kShareInviteCandidates.
   Future<void> shareCarInvite(String vin, String invitee,
           {String moduleRights = '100,200,300,400', int durationType = 0}) =>
       withTokenRetry(() async {
-        final bodyParams = buildShareInviteParams(
-            vin: vin,
-            userId: userId ?? '',
-            invitee: invitee,
-            moduleRights: moduleRights,
-            durationType: durationType);
-        final headers =
-            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/addshare'),
-          headers: headers,
-          body: bodyParams.entries
-              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-              .join('&'),
-        );
-        CarLogBridge.log(
-            'SHARE-OWN addshare HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
-        _parseBody(response.statusCode, response.body, 'invitar a compartir');
+        final body = await _shareOwnCall(
+            'invite',
+            kShareInviteCandidates,
+            'invite',
+            buildShareInviteParams(
+                vin: vin,
+                userId: userId ?? '',
+                invitee: invitee,
+                moduleRights: moduleRights,
+                durationType: durationType));
+        _parseBody(200, body, 'invitar a compartir');
       });
 
-  /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v218).
-  /// Endpoint CANDIDATO: sharecar/getsharelist (ver nota en shareCarInvite).
+  /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).
+  /// Endpoints candidatos en kShareListCandidates.
   Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
-        final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
-        final headers =
-            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharelist'),
-          headers: headers,
-          body: bodyParams.entries
-              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-              .join('&'),
-        );
-        CarLogBridge.log(
-            'SHARE-OWN getsharelist HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
-        final data =
-            _parseBody(response.statusCode, response.body, 'usuarios con acceso');
+        final body = await _shareOwnCall(
+            'list',
+            kShareListCandidates,
+            'list',
+            {'carCode': vin, 'userId': userId ?? ''});
+        final data = _parseBody(200, body, 'usuarios con acceso');
         return parseSharedUsers(data);
       });
 
   /// Revoca el acceso de un usuario a un coche de ESTA cuenta (owner-side,
-  /// v218). Endpoint CANDIDATO: sharecar/cancelshare (ver nota en
-  /// shareCarInvite).
+  /// v219). Endpoints candidatos en kShareRevokeCandidates.
   Future<void> shareCarRevoke(String vin, String shareUserId) =>
       withTokenRetry(() async {
-        final bodyParams = buildShareRevokeParams(
-            vin: vin, userId: userId ?? '', shareUserId: shareUserId);
-        final headers =
-            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/cancelshare'),
-          headers: headers,
-          body: bodyParams.entries
-              .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-              .join('&'),
-        );
-        CarLogBridge.log(
-            'SHARE-OWN cancelshare HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 400 ? response.body.length : 400)}');
-        _parseBody(response.statusCode, response.body, 'revocar acceso');
+        final body = await _shareOwnCall(
+            'revoke',
+            kShareRevokeCandidates,
+            'revoke',
+            buildShareRevokeParams(
+                vin: vin, userId: userId ?? '', shareUserId: shareUserId));
+        _parseBody(200, body, 'revocar acceso');
       });
 
 
