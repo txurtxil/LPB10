@@ -659,6 +659,125 @@ class MileageEnergyDetail {
       );
 }
 
+/// Version de software/firmware instalada y OTA pendiente (hotspot/fetch,
+/// v216). OJO: la respuesta trae campos sensibles (downloadURL, sign, md5,
+/// sha256) que el parser DESCARTA deliberadamente; nunca deben llegar al
+/// carlog ni a la UI.
+class SoftwareInfo {
+  final String currentVersion;
+  final DateTime? currentInstalledAt;
+  final bool updateAvailable;
+  final String? newVersion;
+  final String? releaseNotes;
+  final int packageCount;
+  final int totalBytes;
+  final List<SoftwarePackage> packages;
+  const SoftwareInfo({
+    required this.currentVersion,
+    required this.currentInstalledAt,
+    required this.updateAvailable,
+    required this.newVersion,
+    required this.releaseNotes,
+    required this.packageCount,
+    required this.totalBytes,
+    required this.packages,
+  });
+
+  String get totalSizeLabel => formatBytes(totalBytes);
+
+  static String formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'kB', 'MB', 'GB'];
+    var v = bytes.toDouble();
+    var u = 0;
+    while (v >= 1024 && u < units.length - 1) {
+      v /= 1024;
+      u++;
+    }
+    return '${v.toStringAsFixed(v >= 100 || u == 0 ? 0 : 1)} ${units[u]}';
+  }
+}
+
+/// Un paquete de la OTA pendiente (una ECU/ modulo).
+class SoftwarePackage {
+  final String product, softversion, softNumber, hardware;
+  final int fileSize;
+  const SoftwarePackage({
+    required this.product,
+    required this.softversion,
+    required this.softNumber,
+    required this.hardware,
+    required this.fileSize,
+  });
+
+  factory SoftwarePackage.fromMap(Map<String, dynamic> m) => SoftwarePackage(
+        product: (m['product'] as String? ?? '').trim(),
+        softversion: (m['softversion'] as String? ?? '').trim(),
+        softNumber: (m['softNumber'] as String? ?? '').trim(),
+        hardware: (m['hardware'] as String? ?? '').trim(),
+        fileSize: _toIntSafe(m['fileSize']),
+      );
+
+  String get sizeLabel => SoftwareInfo.formatBytes(fileSize);
+}
+
+DateTime? _epochMsToLocal(dynamic v) {
+  final ms = _toIntSafe(v);
+  if (ms <= 0) return null;
+  return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+}
+
+String? _pickReleaseNotes(dynamic logJsonMultiLang, String language) {
+  final list = (logJsonMultiLang as List?) ?? const [];
+  Map<String, dynamic>? first, match;
+  for (final e in list) {
+    final em = Map<String, dynamic>.from(e as Map);
+    if (first == null) first = em;
+    final lang = (em['language'] as String? ?? '').toLowerCase();
+    if (language.isNotEmpty && lang.startsWith(language.toLowerCase())) {
+      match = em;
+      break;
+    }
+  }
+  final sel = match ?? first;
+  if (sel == null) return null;
+  final sb = StringBuffer();
+  for (final d in (sel['data'] as List? ?? const [])) {
+    final dm = Map<String, dynamic>.from(d as Map);
+    final t = (dm['title'] as String? ?? '').trim();
+    final c = (dm['content'] as String? ?? '').trim();
+    if (t.isNotEmpty) sb.writeln('## $t');
+    if (c.isNotEmpty) sb.writeln(c);
+  }
+  final s = sb.toString().trim();
+  return s.isEmpty ? null : s;
+}
+
+/// Parser puro y testeable de hotspot/fetch (v216). [language] elige las
+/// notas de version en ese idioma, con fallback al primero disponible.
+SoftwareInfo parseSoftwareInfo(Map<String, dynamic> m,
+    {String language = 'es'}) {
+  final cur = Map<String, dynamic>.from(m['currentVersion'] as Map? ?? const {});
+  final newV = m['newVersion'] == null
+      ? null
+      : Map<String, dynamic>.from(m['newVersion'] as Map);
+  final pkgs = <SoftwarePackage>[
+    if (newV != null)
+      for (final p in (newV['updateItemList'] as List? ?? const []))
+        SoftwarePackage.fromMap(Map<String, dynamic>.from(p as Map)),
+  ];
+  return SoftwareInfo(
+    currentVersion: (cur['generalVersion'] as String? ?? '').trim(),
+    currentInstalledAt: _epochMsToLocal(cur['time']),
+    updateAvailable: newV != null,
+    newVersion: (newV?['generalVersion'] as String? ?? '').trim(),
+    releaseNotes: _pickReleaseNotes(
+        newV?['logJsonMultiLang'] ?? cur['logJsonMultiLang'], language),
+    packageCount: pkgs.length,
+    totalBytes: pkgs.fold(0, (a, p) => a + p.fileSize),
+    packages: pkgs,
+  );
+}
 
 class LeapmotorApiException implements Exception {
   final int statusCode;
@@ -1184,6 +1303,22 @@ class LeapmotorApiClient {
         );
         final data = _parseBody(response.statusCode, response.body, 'kilometraje oficial');
         return MileageEnergyDetail.fromMap(_dataAsMap(data));
+      });
+
+  /// Versiones de software/firmware y OTA pendiente (hotspot/fetch).
+  /// Solo lectura, sin PIN. code 40 = "No such permission": solo el
+  /// propietario lo ve; la pantalla lo traduce. OJO: no loguear el JSON
+  /// crudo (contiene downloadURL/sign/md5/sha256).
+  Future<SoftwareInfo> getSoftwareInfo(String vin, {String language = 'es'}) =>
+      withTokenRetry(() async {
+        final headers = _signedHeaders(bodyParams: {'vin': vin})..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/hotspot/fetch'),
+          headers: headers,
+          body: 'vin=${Uri.encodeComponent(vin)}',
+        );
+        final data = _parseBody(response.statusCode, response.body, 'software del vehiculo');
+        return parseSoftwareInfo(_dataAsMap(data), language: language);
       });
 
 

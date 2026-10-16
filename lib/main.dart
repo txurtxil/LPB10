@@ -64,6 +64,7 @@ import 'abrp.dart';
 import 'drive_backup.dart';
 import 'pvpc.dart';
 import 'maintenance_screen.dart';
+import 'software_screen.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1765,6 +1766,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const InformeConsumoScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.system_update_alt),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Software del vehiculo'
+                        : 'Vehicle software'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => SoftwareScreen(client: widget.client, vehicle: widget.vehicle))),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.system_update_alt),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Software del vehiculo'
+                        : 'Vehicle software'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => SoftwareScreen(client: widget.client, vehicle: widget.vehicle))),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
