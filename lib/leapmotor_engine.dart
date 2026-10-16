@@ -498,7 +498,9 @@ class Vehicle {
   Vehicle({required this.vin, required this.carType, this.nickName, this.carId});
 
   String get statusPath =>
-      (carType.toLowerCase() == 'b10' || carType.toLowerCase() == 'b11') ? 'c10' : carType.toLowerCase();
+      (const {'b10', 'b11', 'b05'}.contains(carType.toLowerCase()))
+          ? 'c10'
+          : carType.toLowerCase();
 
   /// v3.60.207: el T03 (y otros modelos) reportan un carType que NO coincide
   /// con su ruta de estado (un T03 reporta 'a10' y /status/get/a10 es 404:
@@ -506,7 +508,9 @@ class Vehicle {
   /// y se usa la primera que responda; la buena se recuerda por VIN.
   List<String> get statusPathCandidates {
     final t = carType.toLowerCase();
-    if (t == 'b10' || t == 'b11') return ['c10'];
+    // v3.60.215: el B05 tambien responde por C10 (markoceri/leapmotor-api,
+    // oct 2026: "map B05 vehicle status requests to the C10 endpoint").
+    if (t == 'b10' || t == 'b11' || t == 'b05') return ['c10'];
     final list = <String>[t];
     // v3.60.208: mas candidatos para modelos como el T03/B03X (carType
     // 'a10'). 't03' existe en el servidor pero devolvio code 100 "No data
