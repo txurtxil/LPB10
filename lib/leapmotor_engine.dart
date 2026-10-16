@@ -855,31 +855,32 @@ Map<String, String> buildShareInviteParams({
 /// de direccion: el listado owner-side podria salir del mismo endpoint
 /// que el de invitaciones recibidas). v219 confirmo que 7 nombres bajo
 /// sharecar/ dan 404; la familia de nombres debe ser otra.
+/// Candidatos owner-side (v221): tras 20 intentos 404 en sharecar/ sin
+/// versionar, se prueba el versionado estilo casa (vehicle/v1/list ->
+/// sharecar/v1/...), la inversion carshare/, y paginacion. Si todo falla,
+/// el owner-side no es REST descubrible y toca la captura de la app
+/// oficial (RPI/Waydroid) o la issue a markoceri.
 const List<String> kShareListCandidates = [
-  // Variantes de getsharemsg (endpoint EXISTENTE) con parametros.
-  'sharecar/getsharemsg|direction=1', 'sharecar/getsharemsg|type=1',
-  'sharecar/getsharemsg|direction=send', 'sharecar/getsharemsg|userType=1',
-  'sharecar/getsharemsg|state=2', 'sharecar/getsharemsg|sendType=1',
-  // Nombres nuevos bajo sharecar/.
-  'sharecar/getsharemsglist', 'sharecar/getsharesendmsg',
-  'sharecar/getsendmsg', 'sharecar/querysharelist', 'sharecar/getlist',
-  // Otros prefijos con los nombres ya probados.
-  'share/getsharelist', 'share/getshareusers', 'share/list',
-  'sharemanage/getsharelist', 'sharemanage/list', 'sharemanage/getlist',
-  'sharedcar/getsharelist', 'sharedcar/list', 'coowner/list',
+  // Versionado sharecar/v1/ (estilo vehicle/v1/).
+  'sharecar/v1/getsharelist', 'sharecar/v1/list', 'sharecar/v1/getlist',
+  'sharecar/v1/query', 'sharecar/v1/getsharemsg', 'sharecar/v1/page',
+  // Inversion carshare/.
+  'carshare/v1/getsharelist', 'carshare/v1/list', 'carshare/v1/getlist',
+  'carshare/getsharelist', 'carshare/list', 'carshare/getlist',
+  // Otros prefijos versionados.
+  'share/v1/getsharelist', 'sharedcar/v1/getsharelist', 'share/v1/list',
 ];
 const List<String> kShareInviteCandidates = [
-  'sharecar/addsharemsg', 'sharecar/sendsharemsg', 'sharecar/addshare',
-  'sharecar/create', 'sharecar/invite', 'sharecar/addsharecar',
-  'sharecar/share', 'sharecar/binduser',
-  'share/addshare', 'share/invite', 'sharemanage/addshare',
-  'sharemanage/invite', 'sharedcar/addshare',
+  'sharecar/v1/addshare', 'sharecar/v1/invite', 'sharecar/v1/create',
+  'sharecar/v1/addsharemsg', 'sharecar/v1/sendmsg', 'sharecar/v1/add',
+  'carshare/v1/addshare', 'carshare/v1/invite', 'carshare/v1/create',
+  'share/v1/addshare', 'sharedcar/v1/addshare', 'carshare/addshare',
 ];
 const List<String> kShareRevokeCandidates = [
-  'sharecar/delsharemsg', 'sharecar/delshare', 'sharecar/delete',
-  'sharecar/remove', 'sharecar/unbind', 'sharecar/cancel',
-  'share/cancelshare', 'sharemanage/cancelshare', 'sharemanage/delshare',
-  'sharedcar/cancelshare',
+  'sharecar/v1/cancelshare', 'sharecar/v1/delshare', 'sharecar/v1/delete',
+  'sharecar/v1/remove', 'sharecar/v1/cancel',
+  'carshare/v1/cancelshare', 'carshare/v1/delshare', 'carshare/cancelshare',
+  'share/v1/cancelshare', 'sharedcar/v1/cancelshare',
 ];
 
 /// Parametros de revocacion owner-side (v218). Puro y testeable.
