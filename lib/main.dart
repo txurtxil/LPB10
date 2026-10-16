@@ -65,6 +65,7 @@ import 'drive_backup.dart';
 import 'pvpc.dart';
 import 'maintenance_screen.dart';
 import 'software_screen.dart';
+import 'share_screen.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -603,6 +604,18 @@ Future<VehicleStatus?> quickStatus() async {
   }
 }
 
+/// Devuelve el carType del VIN mirando la lista de vehiculos de la cuenta
+/// (v217: el AC off lleva payload distinto segun el modelo).
+Future<String> _carTypeForVin(LeapmotorApiClient c, String vin) async {
+  try {
+    final vehicles = await c.getVehicleList();
+    for (final v in vehicles) {
+      if (v.vin == vin) return v.carType;
+    }
+  } catch (_) {}
+  return '';
+}
+
 Future<bool> carQuickAction(String action) async {
   gQuickActionError = '';
   if (await modoSoloLectura()) {
@@ -640,7 +653,11 @@ Future<bool> carQuickAction(String action) async {
       case 'preheat_off':   await c.batteryPreheatOff(vin, pin); break;
       case 'wheel_heat':    await c.steeringWheelHeatOn(vin, pin); break;
       case 'charger_unlock': await c.unlockCharger(vin, pin); break;
-      case 'ac_off':         await c.acOff(vin, pin); break;
+      case 'ac_off': {
+        final carType = await _carTypeForVin(c, vin);
+        await c.acOff(vin, pin, carType: carType);
+        break;
+      }
       case 'sunshade_open':  await c.sunshadeOpen(vin, pin); break;
       case 'sunshade_close': await c.sunshadeClose(vin, pin); break;
       case 'windows_open':   await c.windowsOpen(vin, pin); break;
@@ -1779,13 +1796,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.system_update_alt),
+                    icon: const Icon(Icons.group_add_outlined),
                     label: Text(Localizations.localeOf(context).languageCode == 'es'
-                        ? 'Software del vehiculo'
-                        : 'Vehicle software'),
+                        ? 'Coches compartidos'
+                        : 'Shared vehicles'),
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => SoftwareScreen(client: widget.client, vehicle: widget.vehicle))),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => ShareScreen(client: widget.client))),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
@@ -4400,7 +4417,7 @@ class _ControlsScreenState extends State<ControlsScreen> {
               _ActionBtn(AppLocalizations.of(context)!.actionQuickHeat, Icons.whatshot, () => _run(AppLocalizations.of(context)!.actionQuickHeat, () => c.quickHeat(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionQuickCool, Icons.ac_unit, () => _run(AppLocalizations.of(context)!.actionQuickCool, () => c.quickCool(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionDefrost, Icons.blur_on, () => _run(AppLocalizations.of(context)!.actionDefrost, () => c.windshieldDefrost(vin, pin))),
-              _ActionBtn(AppLocalizations.of(context)!.actionAcOff, Icons.power_settings_new, () => _run(AppLocalizations.of(context)!.actionAcOff, () => c.acOff(vin, pin))),
+              _ActionBtn(AppLocalizations.of(context)!.actionAcOff, Icons.power_settings_new, () => _run(AppLocalizations.of(context)!.actionAcOff, () => c.acOff(vin, pin, carType: widget.vehicle.carType))),
             ]),
             _sectionTitle(AppLocalizations.of(context)!.sectionComfort),
             _actionGrid([

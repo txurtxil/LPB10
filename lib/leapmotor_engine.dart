@@ -721,6 +721,66 @@ class SoftwarePackage {
   String get sizeLabel => SoftwareInfo.formatBytes(fileSize);
 }
 
+/// Invitacion de comparticion de coche recibida (getsharemsg, v217).
+class ShareInvitation {
+  final int msgId;
+  final String shareUserId;
+  final String vin;
+  final String carId;
+  final String carType;
+  final String carAlias;
+  final String ownerName;
+  final String moduleRights;
+  final int shareTimeMs;
+  const ShareInvitation({
+    required this.msgId,
+    required this.shareUserId,
+    required this.vin,
+    required this.carId,
+    required this.carType,
+    required this.carAlias,
+    required this.ownerName,
+    required this.moduleRights,
+    required this.shareTimeMs,
+  });
+
+  bool get hasBasic => moduleRights.split(',').contains('100');
+  bool get hasVehicleControl => moduleRights.split(',').contains('200');
+  bool get hasPositioning => moduleRights.split(',').contains('300');
+  bool get hasMileageEnergy => moduleRights.split(',').contains('400');
+
+  DateTime? get shareTime =>
+      shareTimeMs > 0
+          ? DateTime.fromMillisecondsSinceEpoch(shareTimeMs, isUtc: true)
+              .toLocal()
+          : null;
+}
+
+/// Parser puro y testeable de getsharemsg (v217). Tolerante con campos
+/// ausentes o con tipos distintos.
+List<ShareInvitation> parseShareInvitations(dynamic data) {
+  if (data is! List) return const [];
+  final out = <ShareInvitation>[];
+  for (final e in data) {
+    if (e is! Map) continue;
+    final m = Map<String, dynamic>.from(e);
+    out.add(ShareInvitation(
+      msgId: _toIntSafe(m['msgid']),
+      shareUserId: (m['shareUserid'] as String? ?? '').trim(),
+      vin: (m['carCode'] as String? ?? '').trim(),
+      carId: (m['carId'] as String? ?? '').trim(),
+      carType: (m['carType'] as String? ?? '').trim(),
+      carAlias: (m['carAlias'] as String? ?? '').trim(),
+      ownerName: ((m['nickName'] ?? m['email'] ?? m['mobileNumber']) as String? ??
+              '')
+          .trim(),
+      moduleRights: (m['moduleRights'] as String? ?? '').trim(),
+      shareTimeMs: _toIntSafe(m['shareTime']),
+    ));
+  }
+  return out;
+}
+
 DateTime? _epochMsToLocal(dynamic v) {
   final ms = _toIntSafe(v);
   if (ms <= 0) return null;
@@ -841,6 +901,14 @@ const String kCmdClimate = '170';
 /// commands", oct 2026).
 const String kAcOffPayload =
     '{"circle":"out","mode":"wind","operate":"off","position":"all","temperature":"26","windlevel":"3","wshld":"0"}';
+
+/// AC off para la familia C10 (B10/B11/B05/C10/C11/B03): cuerpo DESNUDO.
+/// La documentacion de la API (markoceri) indica que el B10/C10 ignoran el
+/// cuerpo completo; solo aceptan {"operate":"off"}.
+const String kAcOffPayloadBare = '{"operate":"off"}';
+
+/// Modelos que usan el AC off desnudo (familia de endpoint C10).
+const Set<String> kBareAcOffCarTypes = {'b10', 'b11', 'b05', 'c10', 'c11', 'b03'};
 
 const String kCmdChargePlan = '190';
 const String kCmdUnlockCharger = '192';
@@ -1321,6 +1389,46 @@ class LeapmotorApiClient {
         return parseSoftwareInfo(_dataAsMap(data), language: language);
       });
 
+  /// Invitaciones pendientes de comparticion de coche recibidas por esta
+  /// cuenta (sharecar/getsharemsg, v217). Devuelve la lista de invitaciones.
+  Future<List<ShareInvitation>> getShareInvitations() => withTokenRetry(() async {
+        final headers = _signedHeaders(bodyParams: {})..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
+          headers: headers,
+        );
+        final data = _parseBody(
+            response.statusCode, response.body, 'invitaciones de comparticion');
+        return parseShareInvitations(data);
+      });
+
+  /// Acepta (accept=true) o rechaza (accept=false) una invitacion de
+  /// comparticion (sharecar/setokmsg, v217). Solo lectura/escritura de la
+  /// relacion de comparticion; no manda nada al coche.
+  Future<void> answerShareInvitation(ShareInvitation inv,
+          {required bool accept}) =>
+      withTokenRetry(() async {
+        final state = accept ? 'yes' : 'no';
+        final bodyParams = <String, String>{
+          'shareUserId': inv.shareUserId,
+          'userId': userId ?? '',
+          'carCode': inv.vin,
+          'state': state,
+        };
+        final headers =
+            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+        final response = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
+          headers: headers,
+          body: bodyParams.entries
+              .map((e) =>
+                  '${e.key}=${Uri.encodeComponent(e.value)}')
+              .join('&'),
+        );
+        _parseBody(response.statusCode, response.body,
+            'respuesta a invitacion de comparticion');
+      });
+
 
 
   /// URL de la imagen oficial del coche (carpicture/key): la misma foto
@@ -1540,8 +1648,17 @@ class LeapmotorApiClient {
       vin: vin, cmdId: kCmdClimate,
       cmdContent: json.encode({'circle': 'in', 'mode': 'hot', 'operate': 'manual', 'position': 'all', 'temperature': '32', 'windlevel': '7', 'wshld': '1'}),
       pin: pin, actionLabel: 'windshield_defrost');
-  Future<void> acOff(String vin, String pin) => _remoteControlWithPin(
-      vin: vin, cmdId: kCmdClimate, cmdContent: kAcOffPayload, pin: pin, actionLabel: 'ac_off');
+  /// AC off (v214 fix operate=off; v217: payload por modelo). Los de la
+  /// familia C10 llevan cuerpo desnudo; el resto, el cuerpo completo.
+  Future<void> acOff(String vin, String pin, {String carType = ''}) =>
+      _remoteControlWithPin(
+          vin: vin,
+          cmdId: kCmdClimate,
+          cmdContent: kBareAcOffCarTypes.contains(carType.toLowerCase())
+              ? kAcOffPayloadBare
+              : kAcOffPayload,
+          pin: pin,
+          actionLabel: 'ac_off');
   /// Clima normal PERMANENTE (cmd 170): sigue encendido hasta apagarlo con
   /// acOff. A diferencia de prepareCarNow (360), que se auto-apaga ~20 min.
   /// Mismo formato de payload que quickCool/quickHeat, con temperatura libre.
