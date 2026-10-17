@@ -77,6 +77,39 @@ class _InformeConsumoScreenState extends State<InformeConsumoScreen> {
         }
       }
     } catch (_) {}
+    // v222: dias reconstruidos del historial permanente (lmb10_history/
+    // trips.jsonl), que SOBREVIVE aunque el agg local (trips.jsonl de
+    // <docs>) se pierda/trunque. Clave identica al DayAgg: yyyy-MM-dd.
+    final histDias = <String, ({int km, double soc})>{};
+    try {
+      final hf = File('${(await HistoryArchive.dir()).path}/trips.jsonl');
+      if (await hf.exists()) {
+        final byDay = <String, List<({int ts, int km, double soc})>>{};
+        for (final line in await hf.readAsLines()) {
+          try {
+            final m = json.decode(line);
+            if (m is! Map) continue;
+            final ts = m['ts'];
+            final km = m['km'];
+            final soc = m['soc'];
+            if (ts is! int || km is! num || soc is! num) continue;
+            final dia = DateTime.fromMillisecondsSinceEpoch(ts);
+            final key = '${dia.year}-${_2(dia.month)}-${_2(dia.day)}';
+            (byDay[key] ??= []).add(
+                (ts: ts, km: km.toInt(), soc: soc.toDouble()));
+          } catch (_) {}
+        }
+        for (final e in byDay.entries) {
+          final v = e.value..sort((a, b) => a.ts.compareTo(b.ts));
+          final kmDia = v.last.km - v.first.km;
+          final socDia = v.first.soc - v.last.soc;
+          if (kmDia > 0 && socDia > 0) {
+            histDias[e.key] = (km: kmDia, soc: socDia);
+          }
+        }
+      }
+    } catch (_) {}
+    final vistos = <String>{};
     final todos = <_DiaConsumo>[];
     for (final a in agg) {
       if (a.d.length != 10) continue;
@@ -90,8 +123,25 @@ class _InformeConsumoScreenState extends State<InformeConsumoScreen> {
       final te = (tes == null || tes.isEmpty)
           ? null
           : tes.reduce((x, y) => x + y) / tes.length;
+      vistos.add(a.d);
       todos.add(_DiaConsumo(a.d, a.km, kwh100, coste, te));
     }
+    for (final e in histDias.entries) {
+      if (vistos.contains(e.key)) continue;
+      final km = e.value.km.toDouble();
+      if (km < DailyStats.kMinKm) continue;
+      final pct = e.value.soc / km * 100.0;
+      if (pct < DailyStats.kMinAvg || pct > DailyStats.kMaxAvg) continue;
+      final kwh100 = pct / 100.0 * gBatteryKwh;
+      final kwhDia = e.value.soc / 100.0 * gBatteryKwh;
+      final coste = (precios[e.key] ?? 0.0) * kwhDia;
+      final tes = teDia[e.key];
+      final te = (tes == null || tes.isEmpty)
+          ? null
+          : tes.reduce((x, y) => x + y) / tes.length;
+      todos.add(_DiaConsumo(e.key, km, kwh100, coste, te));
+    }
+    todos.sort((a, b) => a.d.compareTo(b.d));
     if (!mounted) return;
     setState(() {
       _todos = todos;
