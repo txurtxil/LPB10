@@ -50,6 +50,7 @@ class TspClient {
 
     final respHeaders = Completer<List<Header>>();
     final respBody = BytesBuilder();
+    final bodyDone = Completer<void>();
     stream.incomingMessages.listen((msg) {
       if (msg is HeadersStreamMessage) {
         if (!respHeaders.isCompleted) respHeaders.complete(msg.headers);
@@ -58,8 +59,10 @@ class TspClient {
       }
     }, onError: (e) {
       if (!respHeaders.isCompleted) respHeaders.completeError(e);
+      if (!bodyDone.isCompleted) bodyDone.completeError(e);
     }, onDone: () {
       if (!respHeaders.isCompleted) respHeaders.complete([]);
+      if (!bodyDone.isCompleted) bodyDone.complete();
     });
 
     final headers = await respHeaders.future
@@ -69,10 +72,8 @@ class TspClient {
         .map((h) => utf8.decode(h.value))
         .firstOrNull ?? '500';
 
-    // Esperar el cuerpo completo
-    await stream.incomingMessages.length
-        .then((_) {})
-        .catchError((_) {});
+    await bodyDone.future
+        .timeout(const Duration(seconds: 20));
     final bodyStr = utf8.decode(respBody.toBytes(), allowMalformed: true);
 
     if (status != '200') {
