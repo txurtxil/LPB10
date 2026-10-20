@@ -1,3 +1,4 @@
+import 'tsp_sharecar.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -1603,28 +1604,33 @@ class LeapmotorApiClient {
 
   /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).
   /// Endpoints candidatos en kShareListCandidates.
-  Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
-        final body = await _shareOwnCall(
-            'list',
-            kShareListCandidates,
-            'list',
-            {'carCode': vin, 'userId': userId ?? ''});
-        final data = _parseBody(200, body, 'usuarios con acceso');
-        return parseSharedUsers(data);
-      });
+  Future<List<SharedUser>> getSharedUsers(String vin) async {
+    final api = ShareCarApi();
+    try {
+      final tsp = await api.list(vin, userId ?? '');
+      return tsp.map((u) => SharedUser(
+        shareUserId: u.userid,
+        nickName: u.nickName ?? '',
+        email: u.mobileNumber ?? '',
+        mobileNumber: u.mobileNumber ?? '',
+        moduleRights: u.moduleRights,
+        expireTimeMs: u.expireTime ?? 0,
+      )).toList();
+    } finally {
+      await api.close();
+    }
+  }
 
   /// Revoca el acceso de un usuario a un coche de ESTA cuenta (owner-side,
   /// v219). Endpoints candidatos en kShareRevokeCandidates.
-  Future<void> shareCarRevoke(String vin, String shareUserId) =>
-      withTokenRetry(() async {
-        final body = await _shareOwnCall(
-            'revoke',
-            kShareRevokeCandidates,
-            'revoke',
-            buildShareRevokeParams(
-                vin: vin, userId: userId ?? '', shareUserId: shareUserId));
-        _parseBody(200, body, 'revocar acceso');
-      });
+  Future<void> shareCarRevoke(String vin, String shareUserId) async {
+    final api = ShareCarApi();
+    try {
+      await api.revoke(vin, userId ?? '', shareUserId);
+    } finally {
+      await api.close();
+    }
+  }
 
 
 
