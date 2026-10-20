@@ -1,140 +1,145 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:http2/http2.dart';
 import 'cert_store.dart';
 
-/// Cliente del canal TSP (socket TLS + protocolo binario enmarcado) usado por
-/// el API owner-side de Leapmotor (sharecar, etc.).
+/// Cliente del canal TSP de Leapmotor via HTTP/2 (el socket que la app
+/// oficial usa para el API owner-side). TLS con mTLS (cert del usuario).
 ///
-/// Framing capturado del trafico real (2026-10-20):
-///   [00 00] [2B len big-endian] [1B cmd] [4B seq little-endian] [payload]
-///   cmd 01 = payload en claro (url-encoded: a=b&c=d)
-///   Respuesta = mismo framing; el payload JSON llega en claro (cmd 01) tras
-///   el handshake (cmd 05/04 = negociacion de sesion, la omitimos replicando
-///   solo el cmd 01 que el servidor acepta tras el TLS).
+/// El "framing" que capturamos (cmd 01/04/05) era en realidad HTTP/2:
+///   cmd 01 = DATA frame con el payload url-encoded (carCode=...&userId=...)
+///   El :path HTTP/2 identifica el endpoint (getsharelist, addshare, etc).
+///
+/// IMPORTANTE: el path exacto aun no se ha capturado (las mutaciones de la
+/// app oficial van cifradas). Este cliente asume REST-over-HTTP2 con los
+/// paths candidatos del catalogo DEX; ajustar _path tras capturar el real.
 class TspClient {
   static const String _host = 'appgateway.leapmotor-international.de';
   static const int _port = 443;
 
-  Socket? _socket;
-  final _seq = 0;
-  int _nextSeq = 0;
-  final _pending = <int, Completer<Map<String, dynamic>>>{};
-  StreamSubscription<Uint8List>? _sub;
-  final List<int> _buf = [];
+  ClientTransportConnection? _conn;
 
   Future<void> connect() async {
-    if (_socket != null) return;
+    if (_conn != null) return;
     final pair = await loadClientCert();
     final ctx = SecurityContext(withTrustedRoots: true);
     ctx.useCertificateChainBytes(pair.cert);
     ctx.usePrivateKeyBytes(pair.key);
-    final s = await SecureSocket.connect(_host, _port, context: ctx,
-        onBadCertificate: (_) => true);  // CA privada del gateway; el engine hace lo mismo
-    _socket = s;
-    _sub = s.listen(_onData, onError: (e) {
-      for (final c in _pending.values) {
-        c.completeError('TSP socket error: $e');
-      }
-      _pending.clear();
-    }, onDone: () {
-      for (final c in _pending.values) {
-        c.completeError('TSP socket closed');
-      }
-      _pending.clear();
-      _socket = null;
-    });
+    final socket = await SecureSocket.connect(_host, _port, context: ctx,
+        onBadCertificate: (_) => true, supportedProtocols: ['h2']);
+    _conn = ClientTransportConnection.viaSocket(socket);
   }
 
-  void _onData(Uint8List data) {
-    _buf.addAll(data);
-    // Parsear frames: [00 00][len hi][len lo][cmd][seq*4][payload len-5]
-    while (_buf.length >= 7) {
-      if (_buf[0] != 0 || _buf[1] != 0) { _buf.removeAt(0); continue; }
-      final len = (_buf[2] << 8) | _buf[3];
-      if (_buf.length < 2 + 2 + len) return; // incompleto, esperar mas
-      final cmd = _buf[4];
-      final seq = _buf[5] | (_buf[6] << 8) | (_buf[7] << 16) | (_buf[8] << 24);
-      final payload = _buf.sublist(9, 2 + 2 + len);
-      _buf.removeRange(0, 2 + 2 + len);
-      if (cmd == 0x01) {
-        // respuesta en claro: JSON
-        try {
-          final j = json.decode(utf8.decode(payload)) as Map<String, dynamic>;
-          _pending.remove(seq)?.complete(j);
-        } catch (_) {}
+  /// Llama a un endpoint TSP. Devuelve el cuerpo de la respuesta (bytes).
+  Future<Map<String, dynamic>> call(String method, String path,
+      Map<String, String> params) async {
+    await connect();
+    final stream = _conn!.makeRequest([
+      Header.ascii(':method', method),
+      Header.ascii(':path', path),
+      Header.ascii(':authority', _host),
+      Header.ascii(':scheme', 'https'),
+      Header.ascii('content-type', 'application/x-www-form-urlencoded'),
+      Header.ascii('accept', 'application/json'),
+    ]);
+    final body = utf8.encode(params.entries
+        .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&'));
+    stream.sendData(body, endStream: true);
+
+    final respHeaders = Completer<List<Header>>();
+    final respBody = BytesBuilder();
+    stream.incomingMessages.listen((msg) {
+      if (msg is HeadersStreamMessage) {
+        if (!respHeaders.isCompleted) respHeaders.complete(msg.headers);
+      } else if (msg is DataStreamMessage) {
+        respBody.add(msg.bytes);
       }
-      // cmd 04/05 = handshake/negociacion: ignorar (el servidor acepta cmd 01 tras TLS)
+    }, onError: (e) {
+      if (!respHeaders.isCompleted) respHeaders.completeError(e);
+    }, onDone: () {
+      if (!respHeaders.isCompleted) respHeaders.complete([]);
+    });
+
+    final headers = await respHeaders.future
+        .timeout(const Duration(seconds: 20));
+    final status = headers
+        .where((h) => h.name == ':status')
+        .map((h) => utf8.decode(h.value))
+        .firstOrNull ?? '500';
+
+    // Esperar el cuerpo completo
+    await stream.incomingMessages.length
+        .then((_) {})
+        .catchError((_) {});
+    final bodyStr = utf8.decode(respBody.toBytes(), allowMalformed: true);
+
+    if (status != '200') {
+      throw Exception('TSP HTTP2 $status: $bodyStr');
+    }
+    try {
+      return json.decode(bodyStr) as Map<String, dynamic>;
+    } catch (_) {
+      return {'raw': bodyStr};
     }
   }
 
-  /// Envia un comando y espera la respuesta JSON.
-  Future<Map<String, dynamic>> command(String params) async {
-    await connect();
-    final seq = _nextSeq++;
-    final payload = utf8.encode(params);
-    final len = 1 + 4 + payload.length; // cmd + seq + payload
-    final frame = Uint8List(4 + len);
-    final b = ByteData.sublistView(frame);
-    b.setUint16(2, len, Endian.big);
-    b.setUint8(4, 0x01);
-    b.setUint32(5, seq, Endian.little);
-    frame.setRange(9, 9 + payload.length, payload);
-    final c = Completer<Map<String, dynamic>>();
-    _pending[seq] = c;
-    _socket!.add(frame);
-    await _socket!.flush();
-    return c.future.timeout(const Duration(seconds: 20),
-        onTimeout: () {
-          _pending.remove(seq);
-          throw TimeoutException('TSP command timeout', const Duration(seconds: 20));
-        });
-  }
-
   Future<void> close() async {
-    await _sub?.cancel();
-    _socket?.destroy();
-    _socket = null;
-    _pending.clear();
+    await _conn?.finish();
+    _conn = null;
   }
 }
 
-/// API owner-side de compartir coche (usuarios con acceso) sobre el canal TSP.
+/// API owner-side de compartir coche sobre el canal TSP HTTP/2.
 class ShareCarApi {
   final TspClient _tsp = TspClient();
 
-  /// Lista los usuarios con los que se ha compartido el coche.
+  // Paths candidatos del catalogo DEX (ajustar tras capturar el real).
+  static const _kListPaths = [
+    '/carownerservice/oversea/sharecar/v1/getsharelist',
+    '/carownerservice/oversea/sharecar/getsharelist',
+  ];
+  static const _kInvitePaths = [
+    '/carownerservice/oversea/sharecar/v1/addshare',
+    '/carownerservice/oversea/sharecar/addshare',
+  ];
+  static const _kRevokePaths = [
+    '/carownerservice/oversea/sharecar/v1/deletesharecar',
+    '/carownerservice/oversea/sharecar/deletesharecar',
+  ];
+
   Future<List<SharedUser>> list(String vin, String ownerUserId) async {
-    final r = await _tsp.command('carCode=$vin&userId=$ownerUserId');
+    final r = await _tryPaths('POST', _kListPaths,
+        {'carCode': vin, 'userId': ownerUserId});
     final list = (r['data']?['sharedcars'] as List?) ?? [];
     return list.map((e) => SharedUser.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// Estado de un usuario compartido concreto.
-  Future<Map<String, dynamic>> state(String vin, String ownerUserId, String shareUserId) async {
-    return _tsp.command('state=yes&carCode=$vin&userId=$ownerUserId&shareUserId=$shareUserId');
-  }
+  Future<Map<String, dynamic>> invite(String vin, String ownerUserId, String shareUserId) =>
+      _tryPaths('POST', _kInvitePaths,
+          {'carCode': vin, 'userId': ownerUserId, 'shareUserId': shareUserId});
 
-  /// Comparte el coche con un nuevo usuario (shareUserId = id del invitado).
-  Future<Map<String, dynamic>> invite(String vin, String ownerUserId, String shareUserId) async {
-    return _tsp.command('carCode=$vin&userId=$ownerUserId&shareUserId=$shareUserId');
-  }
+  Future<Map<String, dynamic>> revoke(String vin, String ownerUserId, String shareUserId) =>
+      _tryPaths('POST', _kRevokePaths,
+          {'carCode': vin, 'userId': ownerUserId, 'shareUserId': shareUserId});
 
-  /// Revoca el acceso de un usuario compartido.
-  Future<Map<String, dynamic>> revoke(String vin, String ownerUserId, String shareUserId) async {
-    return _tsp.command('carCode=$vin&userId=$ownerUserId&shareUserId=$shareUserId');
-  }
-
-  /// Cambia la duracion del prestamo.
-  Future<Map<String, dynamic>> duration(String vin, int durationType) async {
-    return _tsp.command('durationType=$durationType&carCode=$vin');
+  Future<Map<String, dynamic>> _tryPaths(
+      String method, List<String> paths, Map<String, String> params) async {
+    Exception? last;
+    for (final p in paths) {
+      try {
+        return await _tsp.call(method, p, params);
+      } catch (e) {
+        last = Exception('$p: $e');
+      }
+    }
+    throw last ?? Exception('no paths');
   }
 
   Future<void> close() => _tsp.close();
 }
 
-/// Modelo de un usuario compartido (capturado del JSON real).
 class SharedUser {
   final int carId;
   final String userid;
@@ -177,4 +182,12 @@ class SharedUser {
     nickName: j['nickName'],
     mobileNumber: j['mobileNumber'],
   );
+}
+
+extension on Stream<StreamMessage> {
+  Future<int> get length async {
+    var n = 0;
+    await for (final _ in this) { n++; }
+    return n;
+  }
 }
