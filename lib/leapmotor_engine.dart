@@ -1600,33 +1600,30 @@ class LeapmotorApiClient {
 
   /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).
   /// Endpoints candidatos en kShareListCandidates.
-  Future<List<SharedUser>> getSharedUsers(String vin) async {
-    final api = ShareCarApi();
-    try {
-      final tsp = await api.list(vin, userId ?? '');
-      return tsp.map((u) => SharedUser(
-        shareUserId: u.userid,
-        nickName: u.nickName ?? '',
-        email: u.mobileNumber ?? '',
-        mobileNumber: u.mobileNumber ?? '',
-        moduleRights: u.moduleRights,
-        expireTimeMs: u.expireTime ?? 0,
-      )).toList();
-    } finally {
-      await api.close();
-    }
-  }
+  Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
+    final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
+    final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+    final response = await _accountClient!.post(
+      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharelist'),
+      headers: headers,
+      body: bodyParams,
+    );
+    final data = _parseBody(response.statusCode, response.body, 'usuarios con acceso');
+    return parseSharedUsers(data);
+  });
 
   /// Revoca el acceso de un usuario a un coche de ESTA cuenta (owner-side,
   /// v219). Endpoints candidatos en kShareRevokeCandidates.
-  Future<void> shareCarRevoke(String vin, String shareUserId) async {
-    final api = ShareCarApi();
-    try {
-      await api.revoke(vin, userId ?? '', shareUserId);
-    } finally {
-      await api.close();
-    }
-  }
+  Future<void> shareCarRevoke(String vin, String shareUserId) => withTokenRetry(() async {
+    final bodyParams = {'carCode': vin, 'userId': userId ?? '', 'shareUserId': shareUserId};
+    final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+    final response = await _accountClient!.post(
+      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/deletesharecar'),
+      headers: headers,
+      body: bodyParams,
+    );
+    _parseBody(response.statusCode, response.body, 'revocar acceso');
+  });
 
 
 
