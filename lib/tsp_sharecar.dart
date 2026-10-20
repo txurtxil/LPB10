@@ -31,7 +31,7 @@ class TspClient {
     ctx.useCertificateChainBytes(pair.cert);
     ctx.usePrivateKeyBytes(pair.key);
     final s = await SecureSocket.connect(_host, _port, context: ctx,
-        onBadCertificate: (_) => false);
+        onBadCertificate: (_) => true);  // CA privada del gateway; el engine hace lo mismo
     _socket = s;
     _sub = s.listen(_onData, onError: (e) {
       for (final c in _pending.values) {
