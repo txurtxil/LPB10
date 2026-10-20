@@ -862,14 +862,10 @@ Map<String, String> buildShareInviteParams({
 /// el owner-side no es REST descubrible y toca la captura de la app
 /// oficial (RPI/Waydroid) o la issue a markoceri.
 const List<String> kShareListCandidates = [
-  // Versionado sharecar/v1/ (estilo vehicle/v1/).
-  'sharecar/v1/getsharelist', 'sharecar/v1/list', 'sharecar/v1/getlist',
-  'sharecar/v1/query', 'sharecar/v1/getsharemsg', 'sharecar/v1/page',
-  // Inversion carshare/.
-  'carshare/v1/getsharelist', 'carshare/v1/list', 'carshare/v1/getlist',
-  'carshare/getsharelist', 'carshare/list', 'carshare/getlist',
-  // Otros prefijos versionados.
-  'share/v1/getsharelist', 'sharedcar/v1/getsharelist', 'share/v1/list',
+  // SIN /v1/ (getsharemsg funciona asi, v217). Nombres del DEX.
+  'sharecar/getsharevechiclelist', 'sharecar/getsharevehiclelist',
+  'sharecar/getsharelist', 'sharecar/getlist', 'sharecar/list',
+  'sharecar/query', 'sharecar/page',
 ];
 const List<String> kShareInviteCandidates = [
   'sharecar/v1/addshare', 'sharecar/v1/invite', 'sharecar/v1/create',
