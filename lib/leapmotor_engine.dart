@@ -1516,15 +1516,32 @@ class LeapmotorApiClient {
 
   /// Invitaciones pendientes de comparticion de coche recibidas por esta
   /// cuenta (sharecar/getsharemsg, v217). Devuelve la lista de invitaciones.
+  /// Firma DOMESTICA (getRequestMap del oficial): mapa con
+  /// timestamp+nonce+phoneID+token+params, sign=md5hex(concat valores
+  /// ordenados), y el TOKEN SE ELIMINA del mapa enviado. La bandeja
+  /// (getsharemsg) usa ESTE modo, no el abroad HMAC.
+  Map<String, String> _domesticSignedParams(Map<String, String> params) {
+    final map = <String, String>{
+      'timestamp': _ts(),
+      'nonce': (10000 + (DateTime.now().millisecondsSinceEpoch % 9000000)).toString(),
+      'phoneID': deviceId,
+      'token': token ?? '',
+      ...params,
+    };
+    final sorted = map.keys.toList()..sort();
+    final concat = sorted.map((k) => map[k]!).join();
+    final sign = crypto.md5.convert(utf8.encode(concat)).toString();
+    map.remove('token');
+    map['sign'] = sign;
+    return map;
+  }
+
   Future<List<ShareInvitation>> getShareInvitations() => withTokenRetry(() async {
-        // v241b: el oficial usa getRequestMap (sign NO-HMAC, como setokmsg) y
-        // la ruta getRouteQueryOtherShareMsg. Probamos getsharemsg con
-        // sha256-upper + log RAW del body para diagnosticar en el carlog.
-        final headers = _signedHeaders(bodyParams: {}, useHmac: false)
-          ..addAll(_authHeaders());
+        final body = _domesticSignedParams({});
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
-          headers: headers,
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
         );
         final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
         CarLogBridge.log('SHARE-OWN getsharemsg HTTP ' + response.statusCode.toString() + ': ' + (raw.length > 300 ? raw.substring(0, 300) : raw));
