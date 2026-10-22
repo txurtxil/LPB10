@@ -29,7 +29,7 @@ void main() {
           vin: 'VIN2', userId: 'U2', shareUserId: 'S3');
       expect(p['carCode'], 'VIN2');
       expect(p['userId'], 'U2');
-      expect(p['shareUserId'], 'S3');
+      expect(p['shareUserid'], 'S3');
     });
   });
 
@@ -60,7 +60,7 @@ void main() {
 
     test('variantes de nombres de campos', () {
       final list = parseSharedUsers([
-        {'shareUserId': 'S9', 'userId': 'ignored', 'email': 'e@f.g'}
+        {'shareUserid': 'S9', 'userId': 'ignored', 'email': 'e@f.g'}
       ]);
       expect(list.first.shareUserId, 'S9');
       expect(list.first.nickName, '');
