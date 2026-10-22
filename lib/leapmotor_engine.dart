@@ -899,7 +899,7 @@ Map<String, String> buildShareRevokeParams({
   required String userId,
   required String shareUserId,
 }) =>
-    {'carCode': vin, 'shareUserid': shareUserId, 'userId': userId};
+    {'carcode': vin, 'shareuserid': shareUserId, 'userid': userId}; // v235d: case real del bean DeleteShareCarBean
 
 DateTime? _epochMsToLocal(dynamic v) {
   final ms = _toIntSafe(v);
@@ -1599,13 +1599,11 @@ class LeapmotorApiClient {
 
   /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
   /// v219). Endpoints candidatos en kShareInviteCandidates.
-  /// v233: flujo real en 2 pasos (decompilado de ShareCarManager):
-  ///  1) searchEmail -> shareUserid numerico del invitado (sign sha256-UPPER)
-  ///  2) sendshare con carCode+carType+durationType+email+moduleRights+shareUserid+userId
+  /// v235d: flujo 2 pasos con DIAGNOSTICO de sendshare (prueba variantes y
+  /// loguea cada intento al carlog; para en la primera que devuelve code 0).
   Future<void> shareCarInvite(String vin, String invitee,
           {String moduleRights = '100,200,300,400', int durationType = 0}) =>
       withTokenRetry(() async {
-        // Paso 1: buscar usuario por email
         String? foundId;
         String? lastErr;
         for (final path in kShareFindEmailCandidates) {
@@ -1620,9 +1618,9 @@ class LeapmotorApiClient {
             final data = _parseBody(resp.statusCode, resp.body, 'buscar email $path');
             final d = data['data'];
             if (d is Map) {
-              foundId = (d['id'] ?? d['userId'] ?? d['shareUserid'] ?? d['accountId'])?.toString();
+              foundId = (d['id'] ?? d['userId'] ?? d['userid'] ?? d['shareUserid'] ?? d['shareUserId'] ?? d['accountId'])?.toString();
             } else if (d is List && d.isNotEmpty && d.first is Map) {
-              foundId = (d.first['id'] ?? d.first['userId'] ?? d.first['shareUserid'])?.toString();
+              foundId = (d.first['id'] ?? d.first['userId'] ?? d.first['userid'] ?? d.first['shareUserid'])?.toString();
             }
             if (foundId != null && foundId!.isNotEmpty) break;
           } catch (e) {
@@ -1632,28 +1630,37 @@ class LeapmotorApiClient {
         if (foundId == null || foundId!.isEmpty) {
           throw Exception('No se encontro usuario con ese email ($lastErr)');
         }
-        // Paso 2: sendshare con shareUserid
         final carType = _vehicles
                 .where((v) => v.vin.toUpperCase() == vin.toUpperCase())
                 .map((v) => v.carType)
                 .firstOrNull ??
             'B10';
-        final bodyParams = <String, String>{
-          'carCode': vin,
-          'carType': carType,
-          'durationType': '$durationType',
-          'email': invitee,
-          'moduleRights': moduleRights,
-          'shareUserid': foundId!,
-          'userId': userId ?? '',
+        final ownerId = userId ?? '';
+        final variants = <String, Map<String, String>>{
+          'H1-actual': {'carCode': vin, 'carType': carType, 'durationType': '$durationType', 'email': invitee, 'moduleRights': moduleRights, 'shareUserid': foundId!, 'userId': ownerId},
+          'H2-minusculas': {'carcode': vin, 'cartype': carType, 'durationtype': '$durationType', 'email': invitee, 'modulerights': moduleRights, 'shareuserid': foundId!, 'userid': ownerId},
+          'H4-ids-invertidos': {'carCode': vin, 'userid': foundId!, 'type': '0', 'shareUserid': ownerId, 'moduleRights': moduleRights, 'durationType': '$durationType'},
+          'H5-minimal': {'carCode': vin, 'shareUserid': foundId!, 'userId': ownerId},
+          'H6-con-rightList': {'carCode': vin, 'carType': carType, 'shareUserid': foundId!, 'userId': ownerId, 'durationType': '$durationType', 'moduleRights': moduleRights, 'rightList': '190,180,170,280,192,171'},
         };
-        final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-        final resp = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
-          headers: headers,
-          body: bodyParams.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
-        );
-        _parseBody(resp.statusCode, resp.body, 'invitar a compartir');
+        String lastInfo = '';
+        for (final e in variants.entries) {
+          try {
+            final headers = _signedHeaders(bodyParams: e.value)..addAll(_authHeaders());
+            final resp = await _accountClient!.post(
+              Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
+              headers: headers,
+              body: e.value.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
+            );
+            _parseBody(resp.statusCode, resp.body, 'invite ${e.key}');
+            CarLogBridge.log('SHARE-OWN invite OK con ${e.key}');
+            return;
+          } catch (err) {
+            lastInfo = '${e.key}: $err';
+            CarLogBridge.log('SHARE-OWN invite fallo ${e.key}: $err');
+          }
+        }
+        throw Exception('sendshare: ninguna variante funciono. $lastInfo');
       });
 
   /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).

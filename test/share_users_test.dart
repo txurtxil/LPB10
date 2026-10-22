@@ -7,8 +7,8 @@ void main() {
     test('campos y valores por defecto', () {
       final p = buildShareInviteParams(
           vin: 'VIN1', userId: 'U1', invitee: 'a@b.c');
-      expect(p['carCode'], 'VIN1');
-      expect(p['userId'], 'U1');
+      expect(p['carcode'], 'VIN1');
+      expect(p['userid'], 'U1');
       expect(p['email'], 'a@b.c');
       expect(p['moduleRights'], '100,200,300,400');
       expect(p['durationType'], '0');
@@ -27,9 +27,9 @@ void main() {
     test('campos', () {
       final p = buildShareRevokeParams(
           vin: 'VIN2', userId: 'U2', shareUserId: 'S3');
-      expect(p['carCode'], 'VIN2');
-      expect(p['userId'], 'U2');
-      expect(p['shareUserid'], 'S3');
+      expect(p['carcode'], 'VIN2');
+      expect(p['userid'], 'U2');
+      expect(p['shareuserid'], 'S3');
     });
   });
 
@@ -42,7 +42,7 @@ void main() {
     test('entrada completa con permisos', () {
       final list = parseSharedUsers([
         {
-          'shareUserid': 'S1',
+          'shareuserid': 'S1',
           'nickName': 'Beta',
           'email': 'b@c.d',
           'mobileNumber': '600000000',
@@ -60,7 +60,7 @@ void main() {
 
     test('variantes de nombres de campos', () {
       final list = parseSharedUsers([
-        {'shareUserid': 'S9', 'userId': 'ignored', 'email': 'e@f.g'}
+        {'shareuserid': 'S9', 'userid': 'ignored', 'email': 'e@f.g'}
       ]);
       expect(list.first.shareUserId, 'S9');
       expect(list.first.nickName, '');
