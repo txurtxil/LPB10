@@ -761,6 +761,17 @@ class ShareInvitation {
 /// Parser puro y testeable de getsharemsg (v217). Tolerante con campos
 /// ausentes o con tipos distintos.
 List<ShareInvitation> parseShareInvitations(dynamic data) {
+  // v244: el sobre de getsharemsg puede variar: data, data.list, data.data,
+  // data.records. Normalizar a la lista de items.
+  if (data is Map) {
+    final d = data['data'];
+    if (d is List) data = d;
+    else if (d is Map) {
+      data = d['list'] ?? d['data'] ?? d['records'] ?? const [];
+    } else {
+      data = const [];
+    }
+  }
   if (data is! List) return const [];
   final out = <ShareInvitation>[];
   for (final e in data) {
@@ -1537,19 +1548,15 @@ class LeapmotorApiClient {
   }
 
   Future<List<ShareInvitation>> getShareInvitations() => withTokenRetry(() async {
-        final body = _domesticSignedParams({});
+        // v244: HMAC (confirmado por captura: sign sha256 64hex en headers,
+        // nonce double). El experimento domestico fue un desvio. Log RAW.
+        final headers = _signedHeaders(bodyParams: {})..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            // El token se FIRMA pero NO va en el body (getRequestMap lo
-            // elimina): el server lo recibe por HEADER.
-            ..._authHeaders(),
-          },
-          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+          headers: headers,
         );
         final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
-        CarLogBridge.log('SHARE-OWN getsharemsg HTTP ' + response.statusCode.toString() + ': ' + (raw.length > 300 ? raw.substring(0, 300) : raw));
+        CarLogBridge.log('SHARE-OWN getsharemsg HTTP ' + response.statusCode.toString() + ': ' + (raw.length > 400 ? raw.substring(0, 400) : raw));
         final data = _parseBody(
             response.statusCode, response.body, 'invitaciones de comparticion');
         return parseShareInvitations(data);
