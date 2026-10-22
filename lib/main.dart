@@ -1316,6 +1316,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'carname': invs.first.carAlias,
           })
         ];
+        client.injectVehicle(vehicles.first);
       }
 
       final session = client.exportSession();

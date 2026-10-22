@@ -1329,6 +1329,14 @@ class LeapmotorApiClient {
         return vehicles;
       });
 
+  /// v245: inyecta un vehiculo virtual (cuenta solo-compartida) para que
+  /// _findVehicle no falle en el dashboard de una cuenta invitada.
+  void injectVehicle(Vehicle v) {
+    if (!_vehicles.any((x) => x.vin.toUpperCase() == v.vin.toUpperCase())) {
+      _vehicles = [..._vehicles, v];
+    }
+  }
+
   Vehicle _findVehicle(String vin) =>
       _vehicles.firstWhere((v) => v.vin == vin, orElse: () => throw LeapmotorApiException(0, 'Vehicle not found for VIN $vin'));
 
