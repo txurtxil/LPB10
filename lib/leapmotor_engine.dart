@@ -1663,7 +1663,7 @@ class LeapmotorApiClient {
   /// v236: revoke DIAGNOSTICO con autovalidacion: prueba combinaciones de
   /// path/sign/case y valida reales con la lista (code 0 no basta). La que
   /// SÍ borra queda fijada tras el test.
-  Future<void> shareCarRevoke(String vin, String shareUserId) =>
+  Future<void> shareCarRevoke(String vin, String shareUserId, {String email = '', String mobileNumber = ''}) =>
       withTokenRetry(() async {
         final owner = userId ?? '';
         String? lastErr;
@@ -1676,6 +1676,9 @@ class LeapmotorApiClient {
           'R6-cancel-lc-up': ['sharecar/cancelsharecar', 'up', 'lower'],
           'R9-del-invertidos': ['invert', 'hmac', 'camel'],
           'R10-del-invertidos-full': ['invertfull', 'hmac', 'camel'],
+          'R11-modify-type1': ['modify1', 'hmac', 'camel'],
+          'R12-del-email': ['delemail', 'hmac', 'camel'],
+          'R13-del-mobile': ['delmobile', 'hmac', 'camel'],
         };
         for (final e in variants.entries) {
           final path = e.value[0], sign = e.value[1], cs = e.value[2];
@@ -1687,6 +1690,15 @@ class LeapmotorApiClient {
           } else if (path == 'invertfull') {
             realPath = 'sharecar/deletesharecar';
             body = {'carCode': vin, 'userid': shareUserId, 'type': '0', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
+          } else if (path == 'modify1') {
+            realPath = 'sharecar/modify/shared';
+            body = {'carCode': vin, 'userid': shareUserId, 'type': '1', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
+          } else if (path == 'delemail') {
+            realPath = 'sharecar/deletesharecar';
+            body = {'carCode': vin, 'email': email, 'userid': shareUserId, 'shareUserid': owner};
+          } else if (path == 'delmobile') {
+            realPath = 'sharecar/deletesharecar';
+            body = {'carCode': vin, 'mobileNumber': mobileNumber, 'userid': shareUserId, 'shareUserid': owner};
           } else {
             realPath = path;
             body = cs == 'lower'
@@ -1702,6 +1714,7 @@ class LeapmotorApiClient {
               body: body.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
             );
             _parseBody(resp.statusCode, resp.body, 'revoke ${e.key}');
+            await Future.delayed(const Duration(seconds: 2));
             final list = await getSharedUsers(vin);
             final gone = !list.any((u) => u.shareUserId == shareUserId);
             if (gone) {

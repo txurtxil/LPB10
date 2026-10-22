@@ -33,7 +33,7 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
   Future<void> _revoke(SharedUser u) async {
     final es = Localizations.localeOf(context).languageCode == 'es';
     try {
-      await widget.client.shareCarRevoke(widget.vehicle.vin, u.shareUserId);
+      await widget.client.shareCarRevoke(widget.vehicle.vin, u.shareUserId, email: u.email, mobileNumber: u.mobileNumber);
       CarLogBridge.log('SHARE-OWN revocado: ${u.shareUserId}');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
