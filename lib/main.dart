@@ -1527,7 +1527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .timeout(const Duration(seconds: 30));
     } on TimeoutException {
       CarLogBridge.log('DASHBOARD TIMEOUT carga inicial -> panel parcial');
-      if (mounted) setState(() { _loading = false; _refreshing = false; });
+      if (mounted) setState(() { _refreshing = false; });
     }
   }
 
