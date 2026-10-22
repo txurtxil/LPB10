@@ -821,7 +821,7 @@ List<SharedUser> parseSharedUsers(dynamic data) {
     if (e is! Map) continue;
     final m = Map<String, dynamic>.from(e);
     out.add(SharedUser(
-      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['userid'] ?? m['userId'] ?? '')
+      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['shareuserid'] ?? m['userid'] ?? m['userId'] ?? '')
           .toString(),
       nickName: (m['nickName'] ?? m['nickname'] ?? '').toString(),
       email: (m['email'] ?? '').toString(),
