@@ -869,8 +869,8 @@ const List<String> kShareListCandidates = [
   'sharecar/query', 'sharecar/page',
 ];
 const List<String> kShareFindEmailCandidates = [
-  // v233: URL_SHARE_FIND_EMAIL de HttpConfig (valor getString2, no extraido).
-  // Candidatos por convencion de nombres; el carlog muestra cual responde.
+  // v233b: CONFIRMADO en memoria del dump caliente - el TSP usaba payload 'email='.
+  'sharecar/email',
   'sharecar/findemail',
   'sharecar/searchemail',
   'sharecar/checkemail',
