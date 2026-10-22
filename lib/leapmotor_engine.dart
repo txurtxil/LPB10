@@ -899,7 +899,7 @@ Map<String, String> buildShareRevokeParams({
   required String userId,
   required String shareUserId,
 }) =>
-    {'carCode': vin, 'shareUserId': shareUserId, 'userId': userId};
+    {'carCode': vin, 'shareUserid': shareUserId, 'userId': userId};
 
 DateTime? _epochMsToLocal(dynamic v) {
   final ms = _toIntSafe(v);
@@ -1610,7 +1610,7 @@ class LeapmotorApiClient {
         String? lastErr;
         for (final path in kShareFindEmailCandidates) {
           try {
-            final headers = _signedHeaders(bodyParams: {'email': invitee}, useHmac: false)
+            final headers = _signedHeaders(bodyParams: {'email': invitee})
               ..addAll(_authHeaders());
             final resp = await _accountClient!.post(
               Uri.parse('$kBaseUrl/carownerservice/oversea/$path'),
