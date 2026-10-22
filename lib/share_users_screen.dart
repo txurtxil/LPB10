@@ -43,10 +43,10 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
               : (es ? 'Invitacion rechazada' : 'Invitation rejected'))));
       setState(_reload);
     } catch (e) {
-      CarLogBridge.log('SHARE-OWN FALLO answer: \$e');
+      CarLogBridge.log('SHARE-OWN FALLO answer: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: \$e')));
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
