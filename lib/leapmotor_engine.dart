@@ -868,6 +868,16 @@ const List<String> kShareListCandidates = [
   'sharecar/getsharelist', 'sharecar/getlist', 'sharecar/list',
   'sharecar/query', 'sharecar/page',
 ];
+const List<String> kShareFindEmailCandidates = [
+  // v233: URL_SHARE_FIND_EMAIL de HttpConfig (valor getString2, no extraido).
+  // Candidatos por convencion de nombres; el carlog muestra cual responde.
+  'sharecar/findemail',
+  'sharecar/searchemail',
+  'sharecar/checkemail',
+  'sharecar/getuserbyemail',
+  'sharecar/getuseridbyemail',
+];
+
 const List<String> kShareInviteCandidates = [
   // v232: nombre CONFIRMADO en strings del DEX.
   'sharecar/sendshare',
@@ -1270,7 +1280,7 @@ class LeapmotorApiClient {
     return data;
   }
 
-  Map<String, String> _signedHeaders({String? vin, Map<String, String>? bodyParams}) {
+  Map<String, String> _signedHeaders({String? vin, Map<String, String>? bodyParams, bool useHmac = true}) {
     final nonce = _nonce();
     final timestamp = _ts();
     final signFields = <String, String>{
@@ -1281,7 +1291,11 @@ class LeapmotorApiClient {
     };
     final sortedKeys = signFields.keys.toList()..sort();
     final signInput = sortedKeys.map((k) => signFields[k]!).join('');
-    final sign = crypto.Hmac(crypto.sha256, _signKey!).convert(utf8.encode(signInput)).toString();
+    // v233: getAbroadRequestMap(map, false) usa sha256-UPPER (sin HMAC) para
+    // endpoints como el find-email; el resto mantiene el HMAC con _signKey.
+    final sign = useHmac
+        ? crypto.Hmac(crypto.sha256, _signKey!).convert(utf8.encode(signInput)).toString()
+        : crypto.sha256.convert(utf8.encode(signInput)).toString().toUpperCase();
     return _baseHeaders(nonce, timestamp, sign);
   }
 
@@ -1587,20 +1601,61 @@ class LeapmotorApiClient {
 
   /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
   /// v219). Endpoints candidatos en kShareInviteCandidates.
+  /// v233: flujo real en 2 pasos (decompilado de ShareCarManager):
+  ///  1) searchEmail -> shareUserid numerico del invitado (sign sha256-UPPER)
+  ///  2) sendshare con carCode+carType+durationType+email+moduleRights+shareUserid+userId
   Future<void> shareCarInvite(String vin, String invitee,
           {String moduleRights = '100,200,300,400', int durationType = 0}) =>
       withTokenRetry(() async {
-        final body = await _shareOwnCall(
-            'invite',
-            kShareInviteCandidates,
-            'invite',
-            buildShareInviteParams(
-                vin: vin,
-                userId: userId ?? '',
-                invitee: invitee,
-                moduleRights: moduleRights,
-                durationType: durationType));
-        _parseBody(200, body, 'invitar a compartir');
+        // Paso 1: buscar usuario por email
+        String? foundId;
+        String? lastErr;
+        for (final path in kShareFindEmailCandidates) {
+          try {
+            final headers = _signedHeaders(bodyParams: {'email': invitee}, useHmac: false)
+              ..addAll(_authHeaders());
+            final resp = await _accountClient!.post(
+              Uri.parse('$kBaseUrl/carownerservice/oversea/$path'),
+              headers: headers,
+              body: 'email=${Uri.encodeQueryComponent(invitee)}',
+            );
+            final data = _parseBody(resp.statusCode, resp.body, 'buscar email $path');
+            final d = data['data'];
+            if (d is Map) {
+              foundId = (d['id'] ?? d['userId'] ?? d['shareUserid'] ?? d['accountId'])?.toString();
+            } else if (d is List && d.isNotEmpty && d.first is Map) {
+              foundId = (d.first['id'] ?? d.first['userId'] ?? d.first['shareUserid'])?.toString();
+            }
+            if (foundId != null && foundId!.isNotEmpty) break;
+          } catch (e) {
+            lastErr = 'e:$e';
+          }
+        }
+        if (foundId == null || foundId!.isEmpty) {
+          throw Exception('No se encontro usuario con ese email ($lastErr)');
+        }
+        // Paso 2: sendshare con shareUserid
+        final carType = _vehicles
+                .where((v) => v.vin.toUpperCase() == vin.toUpperCase())
+                .map((v) => v.carType)
+                .firstOrNull ??
+            'B10';
+        final bodyParams = <String, String>{
+          'carCode': vin,
+          'carType': carType,
+          'durationType': '$durationType',
+          'email': invitee,
+          'moduleRights': moduleRights,
+          'shareUserid': foundId!,
+          'userId': userId ?? '',
+        };
+        final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
+          headers: headers,
+          body: bodyParams.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+        );
+        _parseBody(resp.statusCode, resp.body, 'invitar a compartir');
       });
 
   /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).
@@ -1609,7 +1664,7 @@ class LeapmotorApiClient {
     final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
     final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
     final response = await _accountClient!.post(
-      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharelist'),
+      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharevechiclelist'),
       headers: headers,
       body: bodyParams,
     );
