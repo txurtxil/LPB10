@@ -1530,7 +1530,7 @@ class LeapmotorApiClient {
     };
     final sorted = map.keys.toList()..sort();
     final concat = sorted.map((k) => map[k]!).join();
-    final sign = crypto.md5.convert(utf8.encode(concat)).toString();
+    final sign = crypto.md5.convert(utf8.encode(concat)).toString().substring(8, 24);
     map.remove('token');
     map['sign'] = sign;
     return map;
