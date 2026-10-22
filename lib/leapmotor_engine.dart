@@ -1527,7 +1527,7 @@ class LeapmotorApiClient {
           headers: headers,
         );
         final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
-        CarLogBridge.log('SHARE-OWN getsharemsg HTTP \${response.statusCode}: \${raw.length > 300 ? raw.substring(0, 300) : raw}');
+        CarLogBridge.log('SHARE-OWN getsharemsg HTTP ' + response.statusCode.toString() + ': ' + (raw.length > 300 ? raw.substring(0, 300) : raw));
         final data = _parseBody(
             response.statusCode, response.body, 'invitaciones de comparticion');
         return parseShareInvitations(data);

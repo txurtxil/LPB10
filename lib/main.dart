@@ -1300,8 +1300,23 @@ class _LoginScreenState extends State<LoginScreen> {
       final staticClient = await createStaticClient();
       final client = LeapmotorApiClient(staticClient);
       await client.login(_emailCtrl.text.trim(), _passCtrl.text.trim());
-      final vehicles = await client.getVehicleList();
-      if (vehicles.isEmpty) throw Exception('No se encontro ningun vehiculo asociado a la cuenta.');
+      var vehicles = await client.getVehicleList();
+      if (vehicles.isEmpty) {
+        // v242: cuenta solo compartida (sin vehiculo propio). Si tiene
+        // invitaciones pendientes, entramos con un vehiculo virtual desde
+        // la primera invitacion para poder llegar a la bandeja.
+        final invs = await client.getShareInvitations();
+        if (invs.isEmpty) {
+          throw Exception('No se encontro ningun vehiculo asociado a la cuenta.');
+        }
+        vehicles = [
+          Vehicle.fromDict({
+            'vin': invs.first.vin,
+            'carType': invs.first.carType,
+            'carname': invs.first.carAlias,
+          })
+        ];
+      }
 
       final session = client.exportSession();
       await _storage.write(key: _sessionKey, value: json.encode(session.toMap()));
