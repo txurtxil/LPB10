@@ -66,7 +66,6 @@ import 'pvpc.dart';
 import 'maintenance_screen.dart';
 import 'software_screen.dart';
 import 'share_screen.dart';
-import 'share_users_screen.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -1675,9 +1674,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final s = await loadShowMapSetting();
                   if (mounted) setState(() => _showMap = s);
                   break;
-                case 'shareUsers':
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShareUsersScreen(client: widget.client, vehicle: widget.vehicle)));
-                  break;
                 case 'guard':
                   final pin = await _resolvePin();
                   if (pin == null || pin.isEmpty) return;
@@ -1700,7 +1696,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: const Icon(Icons.tune), title: Text(AppLocalizations.of(context)!.settingsTooltip))),
                 const PopupMenuDivider(),
                 PopupMenuItem(value: 'guard', child: ListTile(dense: true, leading: const Icon(Icons.shield_outlined), title: Text(AppLocalizations.of(context)!.guardModeButton))),
-                PopupMenuItem(value: 'shareUsers', child: const ListTile(dense: true, leading: Icon(Icons.people_outline), title: Text('Usuarios con acceso'))),
                 PopupMenuItem(value: 'debug', child: ListTile(dense: true, leading: const Icon(Icons.bug_report_outlined), title: Text(AppLocalizations.of(context)!.debugButton))),
               ];
             },
@@ -1808,16 +1803,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => ShareScreen(client: widget.client))),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.people_outline),
-                    label: Text(Localizations.localeOf(context).languageCode == 'es'
-                        ? 'Usuarios con acceso'
-                        : 'Users with access'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => ShareUsersScreen(client: widget.client, vehicle: widget.vehicle))),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
