@@ -872,14 +872,8 @@ const List<String> kShareListCandidates = [
   'sharecar/query', 'sharecar/page',
 ];
 const List<String> kShareFindEmailCandidates = [
-  // v233b: CONFIRMADO en memoria del dump caliente - el TSP usaba payload 'email='.
+  // v235: CONFIRMADO en dump caliente (el TSP usaba payload 'email=').
   'sharecar/email/find',
-  'sharecar/email',
-  'sharecar/findemail',
-  'sharecar/searchemail',
-  'sharecar/checkemail',
-  'sharecar/getuserbyemail',
-  'sharecar/getuseridbyemail',
 ];
 
 const List<String> kShareInviteCandidates = [
