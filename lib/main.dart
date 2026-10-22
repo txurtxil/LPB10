@@ -1519,6 +1519,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadStatus({bool retryOnTransient = true}) async {
+    // v247: timeout global de 30s en la carga inicial. Una cuenta compartida
+    // puede colgar alguna llamada (retry silencioso) -> degrada a panel
+    // parcial en vez de reloj de arena eterno.
+    try {
+      await _loadStatusImpl(retryOnTransient: retryOnTransient)
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      CarLogBridge.log('DASHBOARD TIMEOUT carga inicial -> panel parcial');
+      if (mounted) setState(() { _loading = false; _refreshing = false; });
+    }
+  }
+
+  Future<void> _loadStatusImpl({bool retryOnTransient = true}) async {
+    CarLogBridge.log('DASHBOARD loadStatus inicio');
     setState(() { _refreshing = true; _transientError = null; });
     try {
       final status = await widget.client.getVehicleStatus(widget.vehicle.vin);
