@@ -779,15 +779,15 @@ List<ShareInvitation> parseShareInvitations(dynamic data) {
     final m = Map<String, dynamic>.from(e);
     out.add(ShareInvitation(
       msgId: _toIntSafe(m['msgid']),
-      shareUserId: (m['shareUserid'] as String? ?? '').trim(),
-      vin: (m['carCode'] as String? ?? '').trim(),
-      carId: (m['carId'] as String? ?? '').trim(),
-      carType: (m['carType'] as String? ?? '').trim(),
-      carAlias: (m['carAlias'] as String? ?? '').trim(),
-      ownerName: ((m['nickName'] ?? m['email'] ?? m['mobileNumber']) as String? ??
-              '')
+      shareUserId: (m['shareUserid']?.toString() ?? '').trim(),
+      vin: (m['carCode']?.toString() ?? '').trim(),
+      carId: (m['carId']?.toString() ?? '').trim(),
+      carType: (m['carType']?.toString() ?? '').trim(),
+      carAlias: (m['carAlias']?.toString() ?? '').trim(),
+      ownerName: (m['nickName'] ?? m['email'] ?? m['mobileNumber'] ?? '')
+          .toString()
           .trim(),
-      moduleRights: (m['moduleRights'] as String? ?? '').trim(),
+      moduleRights: (m['moduleRights']?.toString() ?? '').trim(),
       shareTimeMs: _toIntSafe(m['shareTime']),
     ));
   }
