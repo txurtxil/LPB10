@@ -1540,7 +1540,12 @@ class LeapmotorApiClient {
         final body = _domesticSignedParams({});
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            // El token se FIRMA pero NO va en el body (getRequestMap lo
+            // elimina): el server lo recibe por HEADER.
+            ..._authHeaders(),
+          },
           body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
         );
         final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
