@@ -873,6 +873,7 @@ const List<String> kShareListCandidates = [
 ];
 const List<String> kShareFindEmailCandidates = [
   // v233b: CONFIRMADO en memoria del dump caliente - el TSP usaba payload 'email='.
+  'sharecar/email/find',
   'sharecar/email',
   'sharecar/findemail',
   'sharecar/searchemail',
