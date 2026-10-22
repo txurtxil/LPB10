@@ -1697,7 +1697,7 @@ class LeapmotorApiClient {
             final headers = _signedHeaders(bodyParams: body, useHmac: sign == 'hmac')
               ..addAll(_authHeaders());
             final resp = await _accountClient!.post(
-              Uri.parse('$kBaseUrl/carownerservice/oversea/$path'),
+              Uri.parse('$kBaseUrl/carownerservice/oversea/$realPath'),
               headers: headers,
               body: body.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
             );
