@@ -812,13 +812,16 @@ class SharedUser {
 
 /// Parser tolerante del listado owner-side (v218).
 List<SharedUser> parseSharedUsers(dynamic data) {
+  // v234: el server devuelve el sobre completo {"code":0,"data":[...]}.
+  // Aceptar sobre o lista directa (los mocks antiguos pasaban la lista).
+  if (data is Map) data = data['data'];
   if (data is! List) return const [];
   final out = <SharedUser>[];
   for (final e in data) {
     if (e is! Map) continue;
     final m = Map<String, dynamic>.from(e);
     out.add(SharedUser(
-      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['userId'] ?? '')
+      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['userid'] ?? m['userId'] ?? '')
           .toString(),
       nickName: (m['nickName'] ?? m['nickname'] ?? '').toString(),
       email: (m['email'] ?? '').toString(),
