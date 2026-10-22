@@ -1181,7 +1181,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       final client = await crearClienteConSesion(session);
 
-      final vehicles = await client.getVehicleList();
+      var vehicles = await client.getVehicleList();
       // v213: autologin con exito -> resetea el contador de fallos de token.
       try { await _storage.delete(key: _fallosTokenKey); } catch (_) {}
       if (vehicles.isEmpty) {
