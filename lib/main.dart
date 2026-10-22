@@ -1184,7 +1184,19 @@ class _SplashScreenState extends State<SplashScreen> {
       final vehicles = await client.getVehicleList();
       // v213: autologin con exito -> resetea el contador de fallos de token.
       try { await _storage.delete(key: _fallosTokenKey); } catch (_) {}
-      if (vehicles.isEmpty) throw Exception('Sin vehiculos');
+      if (vehicles.isEmpty) {
+        // v246: cuenta solo-compartida: vehiculo virtual desde la bandeja
+        final invs = await client.getShareInvitations();
+        if (invs.isEmpty) throw Exception('Sin vehiculos');
+        vehicles = [
+          Vehicle.fromDict({
+            'vin': invs.first.vin,
+            'carType': invs.first.carType,
+            'carname': invs.first.carAlias,
+          })
+        ];
+        client.injectVehicle(vehicles.first);
+      }
 
       final savedVin = await _storage.read(key: _vinKey);
       final vehicle = vehicles.firstWhere((v) => v.vin == savedVin, orElse: () => vehicles.first);
@@ -1522,6 +1534,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await Future.delayed(const Duration(seconds: 3));
         if (!mounted) return;
         await _loadStatus(retryOnTransient: false);
+        return;
+      }
+      // v246: cuenta compartida sin permiso para este dato -> degrada en
+      // silencio y mantiene el panel con lo ultimo conocido.
+      if (e.toString().contains('No such permission') ||
+          e.toString().contains('Error 40')) {
+        setState(() {
+          _refreshing = false;
+          _transientError = null;
+        });
         return;
       }
       // Mantiene el ultimo estado conocido visible; solo muestra un aviso discreto
