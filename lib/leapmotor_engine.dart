@@ -1662,77 +1662,38 @@ class LeapmotorApiClient {
     return parseSharedUsers(data);
   });
 
-  /// v236: revoke DIAGNOSTICO con autovalidacion: prueba combinaciones de
-  /// path/sign/case y valida reales con la lista (code 0 no basta). La que
-  /// SÍ borra queda fijada tras el test.
+  /// v240: revoke REAL capturado del trafico oficial (22-oct noche):
+  /// 1) verifica el PIN: POST vehicle/v1/operPwd/verify (operatePassword+vin)
+  /// 2) borra: POST sharecar/deletesharecar
+  ///    body: carCode + userId=<OBJETIVO> + shareUserId=<PROPIETARIO>
+  /// (ids INVERTIDOS vs lo intuitivo; camelCase; sin operatePassword aqui).
   Future<void> shareCarRevoke(String vin, String shareUserId, {String email = '', String mobileNumber = '', String opPin = ''}) =>
       withTokenRetry(() async {
-        final owner = userId ?? '';
-        final op = opPin.isEmpty ? null : encryptOperatePassword(opPin, token);
-        String? lastErr;
-        final variants = <String, List<String>>{
-          'R1-del-cc-hmac': ['sharecar/deletesharecar', 'hmac', 'camel'],
-          'R2-del-lc-hmac': ['sharecar/deletesharecar', 'hmac', 'lower'],
-          'R3-del-cc-up': ['sharecar/deletesharecar', 'up', 'camel'],
-          'R4-del-lc-up': ['sharecar/deletesharecar', 'up', 'lower'],
-          'R5-cancel-cc-up': ['sharecar/cancelsharecar', 'up', 'camel'],
-          'R6-cancel-lc-up': ['sharecar/cancelsharecar', 'up', 'lower'],
-          'R9-del-invertidos': ['invert', 'hmac', 'camel'],
-          'R10-del-invertidos-full': ['invertfull', 'hmac', 'camel'],
-          'R11-modify-type1': ['modify1', 'hmac', 'camel'],
-          'R12-del-email': ['delemail', 'hmac', 'camel'],
-          'R13-del-mobile': ['delmobile', 'hmac', 'camel'],
-        };
-        for (final e in variants.entries) {
-          final path = e.value[0], sign = e.value[1], cs = e.value[2];
-          final String realPath;
-          final Map<String, String> body;
-          if (path == 'invert') {
-            realPath = 'sharecar/deletesharecar';
-            body = {'carCode': vin, 'userid': shareUserId, 'shareUserid': owner};
-          } else if (path == 'invertfull') {
-            realPath = 'sharecar/deletesharecar';
-            body = {'carCode': vin, 'userid': shareUserId, 'type': '0', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
-          } else if (path == 'modify1') {
-            realPath = 'sharecar/modify/shared';
-            body = {'carCode': vin, 'userid': shareUserId, 'type': '1', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
-          } else if (path == 'delemail') {
-            realPath = 'sharecar/deletesharecar';
-            body = {'carCode': vin, 'email': email, 'userid': shareUserId, 'shareUserid': owner};
-          } else if (path == 'delmobile') {
-            realPath = 'sharecar/deletesharecar';
-            body = {'carCode': vin, 'mobileNumber': mobileNumber, 'userid': shareUserId, 'shareUserid': owner};
-          } else {
-            realPath = path;
-            body = cs == 'lower'
-              ? {'carcode': vin, 'shareuserid': shareUserId, 'userid': owner}
-              : {'carCode': vin, 'shareUserId': shareUserId, 'userId': owner};
-          }
-          try {
-            if (op != null) body['operatePassword'] = op;
-            final headers = _signedHeaders(bodyParams: body, useHmac: sign == 'hmac')
-              ..addAll(_authHeaders());
-            final resp = await _accountClient!.post(
-              Uri.parse('$kBaseUrl/carownerservice/oversea/$realPath'),
-              headers: headers,
-              body: body.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
-            );
-            _parseBody(resp.statusCode, resp.body, 'revoke ${e.key}');
-            await Future.delayed(const Duration(seconds: 2));
-            final list = await getSharedUsers(vin);
-            final gone = !list.any((u) => u.shareUserId == shareUserId);
-            if (gone) {
-              CarLogBridge.log('SHARE-OWN REVOKE OK con ${e.key}');
-              return;
-            }
-            lastErr = '${e.key}: code0 pero sigue en la lista';
-            CarLogBridge.log('SHARE-OWN revoke fallo ${e.key}: code0 pero NO borro');
-          } catch (err) {
-            lastErr = '${e.key}: $err';
-            CarLogBridge.log('SHARE-OWN revoke fallo ${e.key}: $err');
-          }
+        if (opPin.isNotEmpty) {
+          final vbody = <String, String>{
+            'operatePassword': encryptOperatePassword(opPin, token),
+            'vin': vin,
+          };
+          final vheaders = _signedHeaders(bodyParams: vbody)..addAll(_authHeaders());
+          final vresp = await _accountClient!.post(
+            Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/operPwd/verify'),
+            headers: vheaders,
+            body: vbody.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+          );
+          _parseBody(vresp.statusCode, vresp.body, 'verificar PIN');
         }
-        throw Exception('revoke: ninguna variante borro de verdad. $lastErr');
+        final body = <String, String>{
+          'carCode': vin,
+          'userId': shareUserId,
+          'shareUserId': userId ?? '',
+        };
+        final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/deletesharecar'),
+          headers: headers,
+          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+        );
+        _parseBody(resp.statusCode, resp.body, 'revocar acceso');
       });
 
   /// URL de la imagen oficial del coche (carpicture/key): la misma foto
