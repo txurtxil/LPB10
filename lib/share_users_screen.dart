@@ -32,8 +32,10 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
 
   Future<void> _revoke(SharedUser u) async {
     final es = Localizations.localeOf(context).languageCode == 'es';
+    final pin = await _askOpPin(context);
+    if (pin == null || pin.isEmpty) return;
     try {
-      await widget.client.shareCarRevoke(widget.vehicle.vin, u.shareUserId, email: u.email, mobileNumber: u.mobileNumber);
+      await widget.client.shareCarRevoke(widget.vehicle.vin, u.shareUserId, email: u.email, mobileNumber: u.mobileNumber, opPin: pin);
       CarLogBridge.log('SHARE-OWN revocado: ${u.shareUserId}');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -157,4 +159,23 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
       ),
     );
   }
+}
+
+Future<String?> _askOpPin(BuildContext context) async {
+  final c = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Contraseña de operación'),
+      content: TextField(
+        controller: c, obscureText: true, keyboardType: TextInputType.number,
+        maxLength: 6,
+        decoration: const InputDecoration(hintText: 'PIN de 4-6 dígitos'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Aceptar')),
+      ],
+    ),
+  );
 }

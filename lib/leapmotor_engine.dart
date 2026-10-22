@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/io_client.dart';
+
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:pointycastle/export.dart' as pc;
 import 'car_log_bridge.dart';
@@ -1603,7 +1604,7 @@ class LeapmotorApiClient {
   /// respondio 'duplication' => params correctos). userid=invitado,
   /// shareUserid=propietario, type=0.
   Future<void> shareCarInvite(String vin, String invitee,
-          {String moduleRights = '100,200,300,400', int durationType = 0}) =>
+          {String moduleRights = '100,200,300,400', int durationType = 0, String opPin = ''}) =>
       withTokenRetry(() async {
         String? foundId;
         String? lastErr;
@@ -1638,6 +1639,7 @@ class LeapmotorApiClient {
           'shareUserid': userId ?? '',
           'moduleRights': moduleRights,
           'durationType': '$durationType',
+          if (opPin.isNotEmpty) 'operatePassword': encryptOperatePassword(opPin, token),
         };
         final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
         final resp = await _accountClient!.post(
@@ -1663,9 +1665,10 @@ class LeapmotorApiClient {
   /// v236: revoke DIAGNOSTICO con autovalidacion: prueba combinaciones de
   /// path/sign/case y valida reales con la lista (code 0 no basta). La que
   /// SÍ borra queda fijada tras el test.
-  Future<void> shareCarRevoke(String vin, String shareUserId, {String email = '', String mobileNumber = ''}) =>
+  Future<void> shareCarRevoke(String vin, String shareUserId, {String email = '', String mobileNumber = '', String opPin = ''}) =>
       withTokenRetry(() async {
         final owner = userId ?? '';
+        final op = opPin.isEmpty ? null : encryptOperatePassword(opPin, token);
         String? lastErr;
         final variants = <String, List<String>>{
           'R1-del-cc-hmac': ['sharecar/deletesharecar', 'hmac', 'camel'],
@@ -1706,6 +1709,7 @@ class LeapmotorApiClient {
               : {'carCode': vin, 'shareUserId': shareUserId, 'userId': owner};
           }
           try {
+            if (op != null) body['operatePassword'] = op;
             final headers = _signedHeaders(bodyParams: body, useHmac: sign == 'hmac')
               ..addAll(_authHeaders());
             final resp = await _accountClient!.post(
