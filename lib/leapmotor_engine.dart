@@ -1599,8 +1599,9 @@ class LeapmotorApiClient {
 
   /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
   /// v219). Endpoints candidatos en kShareInviteCandidates.
-  /// v235d: flujo 2 pasos con DIAGNOSTICO de sendshare (prueba variantes y
-  /// loguea cada intento al carlog; para en la primera que devuelve code 0).
+  /// v236: invite con el formato real (H4 del diagnostico v235d: el server
+  /// respondio 'duplication' => params correctos). userid=invitado,
+  /// shareUserid=propietario, type=0.
   Future<void> shareCarInvite(String vin, String invitee,
           {String moduleRights = '100,200,300,400', int durationType = 0}) =>
       withTokenRetry(() async {
@@ -1630,41 +1631,23 @@ class LeapmotorApiClient {
         if (foundId == null || foundId!.isEmpty) {
           throw Exception('No se encontro usuario con ese email ($lastErr)');
         }
-        final carType = _vehicles
-                .where((v) => v.vin.toUpperCase() == vin.toUpperCase())
-                .map((v) => v.carType)
-                .firstOrNull ??
-            'B10';
-        final ownerId = userId ?? '';
-        final variants = <String, Map<String, String>>{
-          'H1-actual': {'carCode': vin, 'carType': carType, 'durationType': '$durationType', 'email': invitee, 'moduleRights': moduleRights, 'shareUserid': foundId!, 'userId': ownerId},
-          'H2-minusculas': {'carcode': vin, 'cartype': carType, 'durationtype': '$durationType', 'email': invitee, 'modulerights': moduleRights, 'shareuserid': foundId!, 'userid': ownerId},
-          'H4-ids-invertidos': {'carCode': vin, 'userid': foundId!, 'type': '0', 'shareUserid': ownerId, 'moduleRights': moduleRights, 'durationType': '$durationType'},
-          'H5-minimal': {'carCode': vin, 'shareUserid': foundId!, 'userId': ownerId},
-          'H6-con-rightList': {'carCode': vin, 'carType': carType, 'shareUserid': foundId!, 'userId': ownerId, 'durationType': '$durationType', 'moduleRights': moduleRights, 'rightList': '190,180,170,280,192,171'},
+        final body = <String, String>{
+          'carCode': vin,
+          'userid': foundId!,
+          'type': '0',
+          'shareUserid': userId ?? '',
+          'moduleRights': moduleRights,
+          'durationType': '$durationType',
         };
-        String lastInfo = '';
-        for (final e in variants.entries) {
-          try {
-            final headers = _signedHeaders(bodyParams: e.value)..addAll(_authHeaders());
-            final resp = await _accountClient!.post(
-              Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
-              headers: headers,
-              body: e.value.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
-            );
-            _parseBody(resp.statusCode, resp.body, 'invite ${e.key}');
-            CarLogBridge.log('SHARE-OWN invite OK con ${e.key}');
-            return;
-          } catch (err) {
-            lastInfo = '${e.key}: $err';
-            CarLogBridge.log('SHARE-OWN invite fallo ${e.key}: $err');
-          }
-        }
-        throw Exception('sendshare: ninguna variante funciono. $lastInfo');
+        final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
+          headers: headers,
+          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+        );
+        _parseBody(resp.statusCode, resp.body, 'invitar a compartir');
       });
 
-  /// Usuarios con acceso a un coche de ESTA cuenta (owner-side, v219).
-  /// Endpoints candidatos en kShareListCandidates.
   Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
     final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
     final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
@@ -1677,20 +1660,52 @@ class LeapmotorApiClient {
     return parseSharedUsers(data);
   });
 
-  /// Revoca el acceso de un usuario a un coche de ESTA cuenta (owner-side,
-  /// v219). Endpoints candidatos en kShareRevokeCandidates.
-  Future<void> shareCarRevoke(String vin, String shareUserId) => withTokenRetry(() async {
-    final bodyParams = {'carCode': vin, 'userId': userId ?? '', 'shareUserId': shareUserId};
-    final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-    final response = await _accountClient!.post(
-      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/deletesharecar'),
-      headers: headers,
-      body: bodyParams,
-    );
-    _parseBody(response.statusCode, response.body, 'revocar acceso');
-  });
-
-
+  /// v236: revoke DIAGNOSTICO con autovalidacion: prueba combinaciones de
+  /// path/sign/case y valida reales con la lista (code 0 no basta). La que
+  /// SÍ borra queda fijada tras el test.
+  Future<void> shareCarRevoke(String vin, String shareUserId) =>
+      withTokenRetry(() async {
+        final owner = userId ?? '';
+        String? lastErr;
+        final variants = <String, List<String>>{
+          'R1-del-cc-hmac': ['sharecar/deletesharecar', 'hmac', 'camel'],
+          'R2-del-lc-hmac': ['sharecar/deletesharecar', 'hmac', 'lower'],
+          'R3-del-cc-up': ['sharecar/deletesharecar', 'up', 'camel'],
+          'R4-del-lc-up': ['sharecar/deletesharecar', 'up', 'lower'],
+          'R5-cancel-cc-up': ['sharecar/cancelsharecar', 'up', 'camel'],
+          'R6-cancel-lc-up': ['sharecar/cancelsharecar', 'up', 'lower'],
+          'R7-cancel-cc-hmac': ['sharecar/cancelsharecar', 'hmac', 'camel'],
+          'R8-cancel-lc-hmac': ['sharecar/cancelsharecar', 'hmac', 'lower'],
+        };
+        for (final e in variants.entries) {
+          final path = e.value[0], sign = e.value[1], cs = e.value[2];
+          final body = cs == 'lower'
+              ? {'carcode': vin, 'shareuserid': shareUserId, 'userid': owner}
+              : {'carCode': vin, 'shareUserId': shareUserId, 'userId': owner};
+          try {
+            final headers = _signedHeaders(bodyParams: body, useHmac: sign == 'hmac')
+              ..addAll(_authHeaders());
+            final resp = await _accountClient!.post(
+              Uri.parse('$kBaseUrl/carownerservice/oversea/$path'),
+              headers: headers,
+              body: body.entries.map((x) => '${x.key}=${Uri.encodeQueryComponent(x.value)}').join('&'),
+            );
+            _parseBody(resp.statusCode, resp.body, 'revoke ${e.key}');
+            final list = await getSharedUsers(vin);
+            final gone = !list.any((u) => u.shareUserId == shareUserId);
+            if (gone) {
+              CarLogBridge.log('SHARE-OWN REVOKE OK con ${e.key}');
+              return;
+            }
+            lastErr = '${e.key}: code0 pero sigue en la lista';
+            CarLogBridge.log('SHARE-OWN revoke fallo ${e.key}: code0 pero NO borro');
+          } catch (err) {
+            lastErr = '${e.key}: $err';
+            CarLogBridge.log('SHARE-OWN revoke fallo ${e.key}: $err');
+          }
+        }
+        throw Exception('revoke: ninguna variante borro de verdad. $lastErr');
+      });
 
   /// URL de la imagen oficial del coche (carpicture/key): la misma foto
   /// que muestra la app oficial, con el color y la configuracion reales.
