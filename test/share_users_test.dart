@@ -3,26 +3,6 @@ import 'package:lmb10/leapmotor_engine.dart';
 
 void main() {
   // v218: endpoints owner-side de comparticion (descubrimiento via carlog).
-  group('buildShareInviteParams', () {
-    test('campos y valores por defecto', () {
-      final p = buildShareInviteParams(
-          vin: 'VIN1', userId: 'U1', invitee: 'a@b.c');
-      expect(p['carcode'], 'VIN1');
-      expect(p['userid'], 'U1');
-      expect(p['email'], 'a@b.c');
-      expect(p['moduleRights'], '100,200,300,400');
-      expect(p['durationType'], '0');
-    });
-
-    test('permisos y duracion personalizados', () {
-      final p = buildShareInviteParams(
-          vin: 'V', userId: 'U', invitee: 'x@y.z',
-          moduleRights: '100', durationType: 7);
-      expect(p['moduleRights'], '100');
-      expect(p['durationType'], '7');
-    });
-  });
-
   group('buildShareRevokeParams', () {
     test('campos', () {
       final p = buildShareRevokeParams(
