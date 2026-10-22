@@ -1679,16 +1679,16 @@ class LeapmotorApiClient {
         };
         for (final e in variants.entries) {
           final path = e.value[0], sign = e.value[1], cs = e.value[2];
+          final String realPath;
           final Map<String, String> body;
           if (path == 'invert') {
-            // v237: ids invertidos como en el invite (userid=objetivo,
-            // shareUserid=propietario) - el comando real capturado lo usa.
+            realPath = 'sharecar/deletesharecar';
             body = {'carCode': vin, 'userid': shareUserId, 'shareUserid': owner};
-            e.value[0] = 'sharecar/deletesharecar';
           } else if (path == 'invertfull') {
+            realPath = 'sharecar/deletesharecar';
             body = {'carCode': vin, 'userid': shareUserId, 'type': '0', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
-            e.value[0] = 'sharecar/deletesharecar';
           } else {
+            realPath = path;
             body = cs == 'lower'
               ? {'carcode': vin, 'shareuserid': shareUserId, 'userid': owner}
               : {'carCode': vin, 'shareUserId': shareUserId, 'userId': owner};
