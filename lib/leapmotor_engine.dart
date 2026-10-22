@@ -1533,15 +1533,17 @@ class LeapmotorApiClient {
   Future<void> answerShareInvitation(ShareInvitation inv,
           {required bool accept}) =>
       withTokenRetry(() async {
-        final state = accept ? 'yes' : 'no';
+        // v241: mapeo REAL (decompilado + trafico capturado): userId=INVITADOR,
+        // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         final bodyParams = <String, String>{
-          'shareUserId': inv.shareUserId,
-          'userId': userId ?? '',
           'carCode': inv.vin,
-          'state': state,
+          'userId': inv.shareUserId,
+          'shareUserId': userId ?? '',
+          'receive': accept ? '1' : '0',
         };
         final headers =
-            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+            _signedHeaders(bodyParams: bodyParams, useHmac: false)
+              ..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
           headers: headers,

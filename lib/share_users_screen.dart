@@ -18,6 +18,7 @@ class ShareUsersScreen extends StatefulWidget {
 
 class _ShareUsersScreenState extends State<ShareUsersScreen> {
   late Future<List<SharedUser>> _future;
+  late Future<List<ShareInvitation>> _invFuture;
 
   @override
   void initState() {
@@ -28,6 +29,61 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
   void _reload() {
     CarLogBridge.log('SHARE-OWN peticion getsharelist vin=${widget.vehicle.vin}');
     _future = widget.client.getSharedUsers(widget.vehicle.vin);
+    _invFuture = widget.client.getShareInvitations();
+  }
+
+  Future<void> _answer(ShareInvitation inv, bool accept) async {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    try {
+      await widget.client.answerShareInvitation(inv, accept: accept);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(accept
+              ? (es ? 'Invitacion aceptada' : 'Invitation accepted')
+              : (es ? 'Invitacion rechazada' : 'Invitation rejected'))));
+      setState(_reload);
+    } catch (e) {
+      CarLogBridge.log('SHARE-OWN FALLO answer: \$e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: \$e')));
+    }
+  }
+
+  Widget _buildInvitations() {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return FutureBuilder<List<ShareInvitation>>(
+      future: _invFuture,
+      builder: (context, snap) {
+        if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(es ? 'Invitaciones pendientes' : 'Pending invitations',
+                style: Theme.of(context).textTheme.titleSmall),
+          ),
+          for (final inv in snap.data!)
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: Text(inv.ownerName.isNotEmpty ? inv.ownerName : inv.carAlias),
+                subtitle: Text(inv.vin),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(
+                      icon: const Icon(Icons.check, color: Colors.green),
+                      tooltip: es ? 'Aceptar' : 'Accept',
+                      onPressed: () => _answer(inv, true)),
+                  IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      tooltip: es ? 'Rechazar' : 'Reject',
+                      onPressed: () => _answer(inv, false)),
+                ]),
+              ),
+            ),
+        ]);
+      },
+    );
   }
 
   Future<void> _revoke(SharedUser u) async {
@@ -98,7 +154,10 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
         icon: const Icon(Icons.person_add),
         label: Text(es ? 'Invitar' : 'Invite'),
       ),
-      body: FutureBuilder<List<SharedUser>>(
+      body: Column(children: [
+        _buildInvitations(),
+        Expanded(
+          child: FutureBuilder<List<SharedUser>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -156,7 +215,8 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
             },
           );
         },
-      ),
+        )),
+      ]),
     );
   }
 }
