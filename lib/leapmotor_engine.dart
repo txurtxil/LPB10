@@ -1517,11 +1517,17 @@ class LeapmotorApiClient {
   /// Invitaciones pendientes de comparticion de coche recibidas por esta
   /// cuenta (sharecar/getsharemsg, v217). Devuelve la lista de invitaciones.
   Future<List<ShareInvitation>> getShareInvitations() => withTokenRetry(() async {
-        final headers = _signedHeaders(bodyParams: {})..addAll(_authHeaders());
+        // v241b: el oficial usa getRequestMap (sign NO-HMAC, como setokmsg) y
+        // la ruta getRouteQueryOtherShareMsg. Probamos getsharemsg con
+        // sha256-upper + log RAW del body para diagnosticar en el carlog.
+        final headers = _signedHeaders(bodyParams: {}, useHmac: false)
+          ..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
           headers: headers,
         );
+        final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
+        CarLogBridge.log('SHARE-OWN getsharemsg HTTP \${response.statusCode}: \${raw.length > 300 ? raw.substring(0, 300) : raw}');
         final data = _parseBody(
             response.statusCode, response.body, 'invitaciones de comparticion');
         return parseShareInvitations(data);
