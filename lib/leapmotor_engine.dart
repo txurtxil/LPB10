@@ -857,6 +857,7 @@ Map<String, String> buildShareInviteParams({
 /// que el de invitaciones recibidas). v219 confirmo que 7 nombres bajo
 /// sharecar/ dan 404; la familia de nombres debe ser otra.
 /// Candidatos owner-side (v221): tras 20 intentos 404 en sharecar/ sin
+/// v232: getsharevechiclelist CONFIRMADO (respondio del server, code 112).
 /// versionar, se prueba el versionado estilo casa (vehicle/v1/list ->
 /// sharecar/v1/...), la inversion carshare/, y paginacion. Si todo falla,
 /// el owner-side no es REST descubrible y toca la captura de la app
@@ -868,12 +869,16 @@ const List<String> kShareListCandidates = [
   'sharecar/query', 'sharecar/page',
 ];
 const List<String> kShareInviteCandidates = [
+  // v232: nombre CONFIRMADO en strings del DEX.
+  'sharecar/sendshare',
   'sharecar/v1/addshare', 'sharecar/v1/invite', 'sharecar/v1/create',
   'sharecar/v1/addsharemsg', 'sharecar/v1/sendmsg', 'sharecar/v1/add',
   'carshare/v1/addshare', 'carshare/v1/invite', 'carshare/v1/create',
   'share/v1/addshare', 'sharedcar/v1/addshare', 'carshare/addshare',
 ];
 const List<String> kShareRevokeCandidates = [
+  // v232: nombres CONFIRMADOS en strings del DEX (canon Z10).
+  'sharecar/deletesharecar',
   'sharecar/v1/cancelshare', 'sharecar/v1/delshare', 'sharecar/v1/delete',
   'sharecar/v1/remove', 'sharecar/v1/cancel',
   'carshare/v1/cancelshare', 'carshare/v1/delshare', 'carshare/cancelshare',
