@@ -1674,14 +1674,25 @@ class LeapmotorApiClient {
           'R4-del-lc-up': ['sharecar/deletesharecar', 'up', 'lower'],
           'R5-cancel-cc-up': ['sharecar/cancelsharecar', 'up', 'camel'],
           'R6-cancel-lc-up': ['sharecar/cancelsharecar', 'up', 'lower'],
-          'R7-cancel-cc-hmac': ['sharecar/cancelsharecar', 'hmac', 'camel'],
-          'R8-cancel-lc-hmac': ['sharecar/cancelsharecar', 'hmac', 'lower'],
+          'R9-del-invertidos': ['invert', 'hmac', 'camel'],
+          'R10-del-invertidos-full': ['invertfull', 'hmac', 'camel'],
         };
         for (final e in variants.entries) {
           final path = e.value[0], sign = e.value[1], cs = e.value[2];
-          final body = cs == 'lower'
+          final Map<String, String> body;
+          if (path == 'invert') {
+            // v237: ids invertidos como en el invite (userid=objetivo,
+            // shareUserid=propietario) - el comando real capturado lo usa.
+            body = {'carCode': vin, 'userid': shareUserId, 'shareUserid': owner};
+            e.value[0] = 'sharecar/deletesharecar';
+          } else if (path == 'invertfull') {
+            body = {'carCode': vin, 'userid': shareUserId, 'type': '0', 'shareUserid': owner, 'moduleRights': '100', 'durationType': '0'};
+            e.value[0] = 'sharecar/deletesharecar';
+          } else {
+            body = cs == 'lower'
               ? {'carcode': vin, 'shareuserid': shareUserId, 'userid': owner}
               : {'carCode': vin, 'shareUserId': shareUserId, 'userId': owner};
+          }
           try {
             final headers = _signedHeaders(bodyParams: body, useHmac: sign == 'hmac')
               ..addAll(_authHeaders());
