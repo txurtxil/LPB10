@@ -1,9 +1,11 @@
+import 'tsp_sharecar.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/io_client.dart';
+
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:pointycastle/export.dart' as pc;
 import 'car_log_bridge.dart';
@@ -759,6 +761,17 @@ class ShareInvitation {
 /// Parser puro y testeable de getsharemsg (v217). Tolerante con campos
 /// ausentes o con tipos distintos.
 List<ShareInvitation> parseShareInvitations(dynamic data) {
+  // v244: el sobre de getsharemsg puede variar: data, data.list, data.data,
+  // data.records. Normalizar a la lista de items.
+  if (data is Map) {
+    final d = data['data'];
+    if (d is List) data = d;
+    else if (d is Map) {
+      data = d['list'] ?? d['data'] ?? d['records'] ?? const [];
+    } else {
+      data = const [];
+    }
+  }
   if (data is! List) return const [];
   final out = <ShareInvitation>[];
   for (final e in data) {
@@ -766,20 +779,139 @@ List<ShareInvitation> parseShareInvitations(dynamic data) {
     final m = Map<String, dynamic>.from(e);
     out.add(ShareInvitation(
       msgId: _toIntSafe(m['msgid']),
-      shareUserId: (m['shareUserid'] as String? ?? '').trim(),
-      vin: (m['carCode'] as String? ?? '').trim(),
-      carId: (m['carId'] as String? ?? '').trim(),
-      carType: (m['carType'] as String? ?? '').trim(),
-      carAlias: (m['carAlias'] as String? ?? '').trim(),
-      ownerName: ((m['nickName'] ?? m['email'] ?? m['mobileNumber']) as String? ??
-              '')
+      shareUserId: (m['shareUserid']?.toString() ?? '').trim(),
+      vin: (m['carCode']?.toString() ?? '').trim(),
+      carId: (m['carId']?.toString() ?? '').trim(),
+      carType: (m['carType']?.toString() ?? '').trim(),
+      carAlias: (m['carAlias']?.toString() ?? '').trim(),
+      ownerName: (m['nickName'] ?? m['email'] ?? m['mobileNumber'] ?? '')
+          .toString()
           .trim(),
-      moduleRights: (m['moduleRights'] as String? ?? '').trim(),
+      moduleRights: (m['moduleRights']?.toString() ?? '').trim(),
       shareTimeMs: _toIntSafe(m['shareTime']),
     ));
   }
   return out;
 }
+
+/// Usuario con acceso compartido a un coche de ESTA cuenta (owner-side,
+/// v218). Campos defensivos: la API aun no esta confirmada.
+class SharedUser {
+  final String shareUserId;
+  final String nickName;
+  final String email;
+  final String mobileNumber;
+  final String moduleRights;
+  final int expireTimeMs;
+  const SharedUser({
+    required this.shareUserId,
+    required this.nickName,
+    required this.email,
+    required this.mobileNumber,
+    required this.moduleRights,
+    required this.expireTimeMs,
+  });
+
+  String get displayName => nickName.isNotEmpty
+      ? nickName
+      : (email.isNotEmpty ? email : (mobileNumber.isNotEmpty ? mobileNumber : '?'));
+
+  bool get hasBasic => moduleRights.split(',').contains('100');
+  bool get hasVehicleControl => moduleRights.split(',').contains('200');
+  bool get hasPositioning => moduleRights.split(',').contains('300');
+  bool get hasMileageEnergy => moduleRights.split(',').contains('400');
+}
+
+/// Parser tolerante del listado owner-side (v218).
+List<SharedUser> parseSharedUsers(dynamic data) {
+  // v234: el server devuelve el sobre completo {"code":0,"data":[...]}.
+  // Aceptar sobre o lista directa (los mocks antiguos pasaban la lista).
+  if (data is Map) data = data['data'];
+  if (data is! List) return const [];
+  final out = <SharedUser>[];
+  for (final e in data) {
+    if (e is! Map) continue;
+    final m = Map<String, dynamic>.from(e);
+    out.add(SharedUser(
+      shareUserId: (m['shareUserid'] ?? m['shareUserId'] ?? m['shareuserid'] ?? m['userid'] ?? m['userId'] ?? '')
+          .toString(),
+      nickName: (m['nickName'] ?? m['nickname'] ?? '').toString(),
+      email: (m['email'] ?? '').toString(),
+      mobileNumber: (m['mobileNumber'] ?? m['mobile'] ?? '').toString(),
+      moduleRights: (m['moduleRights'] ?? '').toString(),
+      expireTimeMs: _toIntSafe(m['expireTime']),
+    ));
+  }
+  return out;
+}
+
+/// Parametros de invitacion owner-side (v218). Puro y testeable.
+Map<String, String> buildShareInviteParams({
+  required String vin,
+  required String userId,
+  required String invitee,
+  String moduleRights = '100,200,300,400',
+  int durationType = 0,
+}) =>
+    {
+      'carCode': vin,
+      'durationType': '$durationType',
+      'email': invitee,
+      'moduleRights': moduleRights,
+      'userId': userId,
+    };
+
+/// Candidatos owner-side de comparticion (v219). Se prueban en orden
+/// hasta que uno no devuelva HTTP 404; el ganador se cachea en sesion.
+/// Confirmado el 17/10: getsharelist -> 404 (el gateway enruta, el
+/// nombre no existe). La respuesta cruda de cada intento va al carlog.
+/// Candidatos owner-side (v220): rutas RELATIVAS completas bajo
+/// /carownerservice/oversea/. Formato "ruta" o "ruta|extra=valor"
+/// (para variantes del endpoint EXISTENTE getsharemsg con parametros
+/// de direccion: el listado owner-side podria salir del mismo endpoint
+/// que el de invitaciones recibidas). v219 confirmo que 7 nombres bajo
+/// sharecar/ dan 404; la familia de nombres debe ser otra.
+/// Candidatos owner-side (v221): tras 20 intentos 404 en sharecar/ sin
+/// v232: getsharevechiclelist CONFIRMADO (respondio del server, code 112).
+/// versionar, se prueba el versionado estilo casa (vehicle/v1/list ->
+/// sharecar/v1/...), la inversion carshare/, y paginacion. Si todo falla,
+/// el owner-side no es REST descubrible y toca la captura de la app
+/// oficial (RPI/Waydroid) o la issue a markoceri.
+const List<String> kShareListCandidates = [
+  // SIN /v1/ (getsharemsg funciona asi, v217). Nombres del DEX.
+  'sharecar/getsharevechiclelist', 'sharecar/getsharevehiclelist',
+  'sharecar/getsharelist', 'sharecar/getlist', 'sharecar/list',
+  'sharecar/query', 'sharecar/page',
+];
+const List<String> kShareFindEmailCandidates = [
+  // v235: CONFIRMADO en dump caliente (el TSP usaba payload 'email=').
+  'sharecar/email/find',
+];
+
+const List<String> kShareInviteCandidates = [
+  // v232: nombre CONFIRMADO en strings del DEX.
+  'sharecar/sendshare',
+  'sharecar/v1/addshare', 'sharecar/v1/invite', 'sharecar/v1/create',
+  'sharecar/v1/addsharemsg', 'sharecar/v1/sendmsg', 'sharecar/v1/add',
+  'carshare/v1/addshare', 'carshare/v1/invite', 'carshare/v1/create',
+  'share/v1/addshare', 'sharedcar/v1/addshare', 'carshare/addshare',
+];
+const List<String> kShareRevokeCandidates = [
+  // v232: nombres CONFIRMADOS en strings del DEX (canon Z10).
+  'sharecar/deletesharecar',
+  'sharecar/v1/cancelshare', 'sharecar/v1/delshare', 'sharecar/v1/delete',
+  'sharecar/v1/remove', 'sharecar/v1/cancel',
+  'carshare/v1/cancelshare', 'carshare/v1/delshare', 'carshare/cancelshare',
+  'share/v1/cancelshare', 'sharedcar/v1/cancelshare',
+];
+
+/// Parametros de revocacion owner-side (v218). Puro y testeable.
+Map<String, String> buildShareRevokeParams({
+  required String vin,
+  required String userId,
+  required String shareUserId,
+}) =>
+    {'carcode': vin, 'shareuserid': shareUserId, 'userid': userId}; // v235d: case real del bean DeleteShareCarBean
 
 DateTime? _epochMsToLocal(dynamic v) {
   final ms = _toIntSafe(v);
@@ -1197,6 +1329,14 @@ class LeapmotorApiClient {
         return vehicles;
       });
 
+  /// v245: inyecta un vehiculo virtual (cuenta solo-compartida) para que
+  /// _findVehicle no falle en el dashboard de una cuenta invitada.
+  void injectVehicle(Vehicle v) {
+    if (!_vehicles.any((x) => x.vin.toUpperCase() == v.vin.toUpperCase())) {
+      _vehicles = [..._vehicles, v];
+    }
+  }
+
   Vehicle _findVehicle(String vin) =>
       _vehicles.firstWhere((v) => v.vin == vin, orElse: () => throw LeapmotorApiException(0, 'Vehicle not found for VIN $vin'));
 
@@ -1395,12 +1535,36 @@ class LeapmotorApiClient {
 
   /// Invitaciones pendientes de comparticion de coche recibidas por esta
   /// cuenta (sharecar/getsharemsg, v217). Devuelve la lista de invitaciones.
+  /// Firma DOMESTICA (getRequestMap del oficial): mapa con
+  /// timestamp+nonce+phoneID+token+params, sign=md5hex(concat valores
+  /// ordenados), y el TOKEN SE ELIMINA del mapa enviado. La bandeja
+  /// (getsharemsg) usa ESTE modo, no el abroad HMAC.
+  Map<String, String> _domesticSignedParams(Map<String, String> params) {
+    final map = <String, String>{
+      'timestamp': _ts(),
+      'nonce': (10000 + (DateTime.now().millisecondsSinceEpoch % 9000000)).toString(),
+      'phoneID': deviceId,
+      'token': token ?? '',
+      ...params,
+    };
+    final sorted = map.keys.toList()..sort();
+    final concat = sorted.map((k) => map[k]!).join();
+    final sign = crypto.md5.convert(utf8.encode(concat)).toString().substring(8, 24);
+    map.remove('token');
+    map['sign'] = sign;
+    return map;
+  }
+
   Future<List<ShareInvitation>> getShareInvitations() => withTokenRetry(() async {
+        // v244: HMAC (confirmado por captura: sign sha256 64hex en headers,
+        // nonce double). El experimento domestico fue un desvio. Log RAW.
         final headers = _signedHeaders(bodyParams: {})..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
           headers: headers,
         );
+        final raw = utf8.decode(response.bodyBytes, allowMalformed: true);
+        CarLogBridge.log('SHARE-OWN getsharemsg HTTP ' + response.statusCode.toString() + ': ' + (raw.length > 400 ? raw.substring(0, 400) : raw));
         final data = _parseBody(
             response.statusCode, response.body, 'invitaciones de comparticion');
         return parseShareInvitations(data);
@@ -1409,28 +1573,209 @@ class LeapmotorApiClient {
   /// Acepta (accept=true) o rechaza (accept=false) una invitacion de
   /// comparticion (sharecar/setokmsg, v217). Solo lectura/escritura de la
   /// relacion de comparticion; no manda nada al coche.
-  Future<void> answerShareInvitation(ShareInvitation inv,
-          {required bool accept}) =>
+    /// Fetch de detalle de invitacion (pantalla de permisos; la oficial lo
+  /// hace antes del accept - prepara estado server-side).
+  Future<ShareInvitation?> getShareInvitationDetail(int msgId) =>
       withTokenRetry(() async {
-        final state = accept ? 'yes' : 'no';
-        final bodyParams = <String, String>{
-          'shareUserId': inv.shareUserId,
-          'userId': userId ?? '',
-          'carCode': inv.vin,
-          'state': state,
-        };
-        final headers =
-            _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
+        final headers = _signedHeaders(bodyParams: {'msgid': msgId.toString()})
+          ..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
           headers: headers,
-          body: bodyParams.entries
-              .map((e) =>
-                  '${e.key}=${Uri.encodeComponent(e.value)}')
-              .join('&'),
+          body: 'msgid=${Uri.encodeComponent(msgId.toString())}',
         );
-        _parseBody(response.statusCode, response.body,
-            'respuesta a invitacion de comparticion');
+        final data = _parseBody(resp.statusCode, resp.body, 'detalle invitacion');
+        final list = parseShareInvitations(data);
+        return list.isEmpty ? null : list.first;
+      });
+
+Future<void> answerShareInvitation(ShareInvitation inv,
+          {required bool accept, int durationType = 0, String moduleRights = ''}) =>
+      withTokenRetry(() async {
+        // v241: mapeo REAL (decompilado + trafico capturado): userId=INVITADOR,
+        // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
+        // v249: claves REALES resueltas en la tabla del dump tras el aceptar
+        // oficial: inviterUserID + accountId + carCode + receive (HMAC).
+                                // v256: HMAC-headers OK (domestico=39 descartado). El -1 con todo
+        // correcto = el controller probablemente espera @RequestBody JSON.
+        // Variantes: JSON body / form body, receive=true/1.
+        final me = userId ?? '';
+        final base = <String, String>{
+          'inviterUserID': inv.shareUserId,
+          'accountId': me,
+          'carCode': inv.vin,
+        };
+        String last = '';
+        for (final asJson in <bool>[true, false]) {
+          for (final rcv in <String>[accept ? 'true' : 'false', accept ? '1' : '0']) {
+            try {
+              final body = <String, String>{...base, 'receive': rcv};
+              final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+              late final String payload;
+              if (asJson) {
+                headers['Content-Type'] = 'application/json';
+                payload = jsonEncode(body);
+              } else {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                payload = body.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&');
+              }
+              final resp = await _accountClient!.post(
+                Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
+                headers: headers,
+                body: payload,
+              );
+              _parseBody(resp.statusCode, resp.body, 'answer json=$asJson receive=$rcv');
+              CarLogBridge.log('SHARE-OWN answer OK json=$asJson receive=$rcv');
+              return;
+            } catch (err) {
+              last = 'json=$asJson/$rcv: $err';
+              CarLogBridge.log('SHARE-OWN answer fallo json=$asJson receive=$rcv: $err');
+            }
+          }
+        }
+        throw Exception('setokmsg: json y form fallaron. $last');
+      });
+
+  /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
+  /// hasta que uno no devuelva HTTP 404 (el gateway enruta cualquier ruta
+  /// sharecar/* y responde 404 JSON cuando el nombre no existe). Cada
+  /// intento se registra crudo en el carlog para el descubrimiento.
+  Future<String> _shareOwnCall(String label, List<String> candidates,
+      String cacheKey, Map<String, String> bodyParams) async {
+    final errors = <String>[];
+    final cached = _shareOwnPaths[cacheKey];
+    final paths = cached != null ? [cached] : candidates;
+    for (final p in paths) {
+      // Formato candidato: "ruta/relativa" o "ruta/relativa|extra=valor".
+      final segs = p.split('|');
+      final relPath = segs[0];
+      final params = Map<String, String>.from(bodyParams);
+      if (segs.length > 1) {
+        for (final kv in segs[1].split('&')) {
+          final i = kv.indexOf('=');
+          if (i > 0) params[kv.substring(0, i)] = kv.substring(i + 1);
+        }
+      }
+      final headers = _signedHeaders(bodyParams: params)
+        ..addAll(_authHeaders());
+      final response = await _accountClient!.post(
+        Uri.parse('$kBaseUrl/carownerservice/oversea/$relPath'),
+        headers: headers,
+        body: params.entries
+            .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+            .join('&'),
+      );
+      CarLogBridge.log(
+          'SHARE-OWN $label $p HTTP ${response.statusCode}: ${response.body.substring(0, response.body.length < 300 ? response.body.length : 300)}');
+      if (response.statusCode == 404) {
+        errors.add('$p:404');
+        continue;
+      }
+      _shareOwnPaths[cacheKey] = p;
+      return response.body;
+    }
+    throw LeapmotorApiException(
+        404, '$label: sin endpoint valido (${errors.join(" | ")})');
+  }
+
+  static final Map<String, String> _shareOwnPaths = {};
+
+  /// Invita a otro usuario a compartir un coche de ESTA cuenta (owner-side,
+  /// v219). Endpoints candidatos en kShareInviteCandidates.
+  /// v236: invite con el formato real (H4 del diagnostico v235d: el server
+  /// respondio 'duplication' => params correctos). userid=invitado,
+  /// shareUserid=propietario, type=0.
+  Future<void> shareCarInvite(String vin, String invitee,
+          {String moduleRights = '100,200,300,400', int durationType = 0, String opPin = ''}) =>
+      withTokenRetry(() async {
+        String? foundId;
+        String? lastErr;
+        for (final path in kShareFindEmailCandidates) {
+          try {
+            final headers = _signedHeaders(bodyParams: {'email': invitee})
+              ..addAll(_authHeaders());
+            final resp = await _accountClient!.post(
+              Uri.parse('$kBaseUrl/carownerservice/oversea/$path'),
+              headers: headers,
+              body: 'email=${Uri.encodeQueryComponent(invitee)}',
+            );
+            final data = _parseBody(resp.statusCode, resp.body, 'buscar email $path');
+            final d = data['data'];
+            if (d is Map) {
+              foundId = (d['id'] ?? d['userId'] ?? d['userid'] ?? d['shareUserid'] ?? d['shareUserId'] ?? d['accountId'])?.toString();
+            } else if (d is List && d.isNotEmpty && d.first is Map) {
+              foundId = (d.first['id'] ?? d.first['userId'] ?? d.first['userid'] ?? d.first['shareUserid'])?.toString();
+            }
+            if (foundId != null && foundId!.isNotEmpty) break;
+          } catch (e) {
+            lastErr = 'e:$e';
+          }
+        }
+        if (foundId == null || foundId!.isEmpty) {
+          throw Exception('No se encontro usuario con ese email ($lastErr)');
+        }
+        final body = <String, String>{
+          'carCode': vin,
+          'userid': foundId!,
+          'type': '0',
+          'shareUserid': userId ?? '',
+          'moduleRights': moduleRights,
+          'durationType': '$durationType',
+          if (opPin.isNotEmpty) 'operatePassword': encryptOperatePassword(opPin, token),
+        };
+        final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/sendshare'),
+          headers: headers,
+          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+        );
+        _parseBody(resp.statusCode, resp.body, 'invitar a compartir');
+      });
+
+  Future<List<SharedUser>> getSharedUsers(String vin) => withTokenRetry(() async {
+    final bodyParams = {'carCode': vin, 'userId': userId ?? ''};
+    final headers = _signedHeaders(bodyParams: bodyParams)..addAll(_authHeaders());
+    final response = await _accountClient!.post(
+      Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharevechiclelist'),
+      headers: headers,
+      body: bodyParams,
+    );
+    final data = _parseBody(response.statusCode, response.body, 'usuarios con acceso');
+    return parseSharedUsers(data);
+  });
+
+  /// v240: revoke REAL capturado del trafico oficial (22-oct noche):
+  /// 1) verifica el PIN: POST vehicle/v1/operPwd/verify (operatePassword+vin)
+  /// 2) borra: POST sharecar/deletesharecar
+  ///    body: carCode + userId=<OBJETIVO> + shareUserId=<PROPIETARIO>
+  /// (ids INVERTIDOS vs lo intuitivo; camelCase; sin operatePassword aqui).
+  Future<void> shareCarRevoke(String vin, String shareUserId, {String email = '', String mobileNumber = '', String opPin = ''}) =>
+      withTokenRetry(() async {
+        if (opPin.isNotEmpty) {
+          final vbody = <String, String>{
+            'operatePassword': encryptOperatePassword(opPin, token),
+            'vin': vin,
+          };
+          final vheaders = _signedHeaders(bodyParams: vbody)..addAll(_authHeaders());
+          final vresp = await _accountClient!.post(
+            Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/operPwd/verify'),
+            headers: vheaders,
+            body: vbody.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+          );
+          _parseBody(vresp.statusCode, vresp.body, 'verificar PIN');
+        }
+        final body = <String, String>{
+          'carCode': vin,
+          'userId': shareUserId,
+          'shareUserId': userId ?? '',
+        };
+        final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/deletesharecar'),
+          headers: headers,
+          body: body.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&'),
+        );
+        _parseBody(resp.statusCode, resp.body, 'revocar acceso');
       });
 
   /// URL de la imagen oficial del coche (carpicture/key): la misma foto

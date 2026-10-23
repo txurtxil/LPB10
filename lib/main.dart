@@ -1180,10 +1180,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
       final client = await crearClienteConSesion(session);
 
-      final vehicles = await client.getVehicleList();
+      var vehicles = await client.getVehicleList();
       // v213: autologin con exito -> resetea el contador de fallos de token.
       try { await _storage.delete(key: _fallosTokenKey); } catch (_) {}
-      if (vehicles.isEmpty) throw Exception('Sin vehiculos');
+      if (vehicles.isEmpty) {
+        // v246: cuenta solo-compartida: vehiculo virtual desde la bandeja
+        final invs = await client.getShareInvitations();
+        if (invs.isEmpty) throw Exception('Sin vehiculos');
+        vehicles = [
+          Vehicle.fromDict({
+            'vin': invs.first.vin,
+            'carType': invs.first.carType,
+            'carname': invs.first.carAlias,
+          })
+        ];
+        client.injectVehicle(vehicles.first);
+      }
 
       final savedVin = await _storage.read(key: _vinKey);
       final vehicle = vehicles.firstWhere((v) => v.vin == savedVin, orElse: () => vehicles.first);
@@ -1301,8 +1313,24 @@ class _LoginScreenState extends State<LoginScreen> {
       final staticClient = await createStaticClient();
       final client = LeapmotorApiClient(staticClient);
       await client.login(_emailCtrl.text.trim(), _passCtrl.text.trim());
-      final vehicles = await client.getVehicleList();
-      if (vehicles.isEmpty) throw Exception('No se encontro ningun vehiculo asociado a la cuenta.');
+      var vehicles = await client.getVehicleList();
+      if (vehicles.isEmpty) {
+        // v242: cuenta solo compartida (sin vehiculo propio). Si tiene
+        // invitaciones pendientes, entramos con un vehiculo virtual desde
+        // la primera invitacion para poder llegar a la bandeja.
+        final invs = await client.getShareInvitations();
+        if (invs.isEmpty) {
+          throw Exception('No se encontro ningun vehiculo asociado a la cuenta.');
+        }
+        vehicles = [
+          Vehicle.fromDict({
+            'vin': invs.first.vin,
+            'carType': invs.first.carType,
+            'carname': invs.first.carAlias,
+          })
+        ];
+        client.injectVehicle(vehicles.first);
+      }
 
       final session = client.exportSession();
       await _storage.write(key: _sessionKey, value: json.encode(session.toMap()));
@@ -1506,6 +1534,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadStatus({bool retryOnTransient = true}) async {
+    // v247: timeout global de 30s en la carga inicial. Una cuenta compartida
+    // puede colgar alguna llamada (retry silencioso) -> degrada a panel
+    // parcial en vez de reloj de arena eterno.
+    try {
+      await _loadStatusImpl(retryOnTransient: retryOnTransient)
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      CarLogBridge.log('DASHBOARD TIMEOUT carga inicial -> panel parcial');
+      if (mounted) setState(() { _refreshing = false; });
+    }
+  }
+
+  Future<void> _loadStatusImpl({bool retryOnTransient = true}) async {
+    CarLogBridge.log('DASHBOARD loadStatus inicio');
     setState(() { _refreshing = true; _transientError = null; });
     try {
       final status = await widget.client.getVehicleStatus(widget.vehicle.vin);
@@ -1521,6 +1563,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await Future.delayed(const Duration(seconds: 3));
         if (!mounted) return;
         await _loadStatus(retryOnTransient: false);
+        return;
+      }
+      // v246: cuenta compartida sin permiso para este dato -> degrada en
+      // silencio y mantiene el panel con lo ultimo conocido.
+      if (e.toString().contains('No such permission') ||
+          e.toString().contains('Error 40')) {
+        setState(() {
+          _refreshing = false;
+          _transientError = null;
+        });
         return;
       }
       // Mantiene el ultimo estado conocido visible; solo muestra un aviso discreto
@@ -1549,15 +1601,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<String?> _resolvePin() async {
     if (_sessionPin.isNotEmpty) return _sessionPin;
     final ctrl = TextEditingController();
+    var _obsc = true;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.pinDialogTitle),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'PIN'),
+        content: StatefulBuilder(
+          builder: (ctx2, setSt) => TextField(
+            controller: ctrl,
+            obscureText: _obsc,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'PIN',
+              suffixIcon: IconButton(
+                icon: Icon(_obsc ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setSt(() => _obsc = !_obsc),
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context)!.pinDialogCancel)),
