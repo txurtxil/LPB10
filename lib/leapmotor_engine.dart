@@ -1596,10 +1596,9 @@ Future<void> answerShareInvitation(ShareInvitation inv,
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         // v249: claves REALES resueltas en la tabla del dump tras el aceptar
         // oficial: inviterUserID + accountId + carCode + receive (HMAC).
-                        // v255: dos modos de firma. (a) HMAC-headers + body crudo (=-1).
-        // (b) DOMESTICO: timestamp+nonce+phoneID en el body, sign=md5hex[8:24],
-        // token FIRMADO pero REMOVIDO del body (va por header) - como hace
-        // postWithRoute internamente. receive probado en true/1.
+                                // v256: HMAC-headers OK (domestico=39 descartado). El -1 con todo
+        // correcto = el controller probablemente espera @RequestBody JSON.
+        // Variantes: JSON body / form body, receive=true/1.
         final me = userId ?? '';
         final base = <String, String>{
           'inviterUserID': inv.shareUserId,
@@ -1607,39 +1606,34 @@ Future<void> answerShareInvitation(ShareInvitation inv,
           'carCode': inv.vin,
         };
         String last = '';
-        // modo b: body domestico firmado
-        for (final rcv in <String>[accept ? 'true' : 'false', accept ? '1' : '0']) {
-          try {
-            final map = <String, String>{
-              ...base,
-              'receive': rcv,
-              'timestamp': _ts(),
-              'nonce': _nonce(),
-              'phoneID': deviceId,
-              'token': token ?? '',
-            };
-            final sorted = map.keys.toList()..sort();
-            final concat = sorted.map((x) => map[x]!).join();
-            final sign = crypto.md5.convert(utf8.encode(concat)).toString().substring(8, 24);
-            map.remove('token');
-            map['sign'] = sign;
-            final resp = await _accountClient!.post(
-              Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                ..._authHeaders(),
-              },
-              body: map.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
-            );
-            _parseBody(resp.statusCode, resp.body, 'answer-domestico receive=$rcv');
-            CarLogBridge.log('SHARE-OWN answer OK DOMESTICO receive=$rcv');
-            return;
-          } catch (err) {
-            last = 'domestico/$rcv: $err';
-            CarLogBridge.log('SHARE-OWN answer fallo DOMESTICO receive=$rcv: $err');
+        for (final asJson in <bool>[true, false]) {
+          for (final rcv in <String>[accept ? 'true' : 'false', accept ? '1' : '0']) {
+            try {
+              final body = <String, String>{...base, 'receive': rcv};
+              final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+              late final String payload;
+              if (asJson) {
+                headers['Content-Type'] = 'application/json';
+                payload = jsonEncode(body);
+              } else {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                payload = body.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&');
+              }
+              final resp = await _accountClient!.post(
+                Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
+                headers: headers,
+                body: payload,
+              );
+              _parseBody(resp.statusCode, resp.body, 'answer json=$asJson receive=$rcv');
+              CarLogBridge.log('SHARE-OWN answer OK json=$asJson receive=$rcv');
+              return;
+            } catch (err) {
+              last = 'json=$asJson/$rcv: $err';
+              CarLogBridge.log('SHARE-OWN answer fallo json=$asJson receive=$rcv: $err');
+            }
           }
         }
-        throw Exception('setokmsg: ambos modos fallaron. $last');
+        throw Exception('setokmsg: json y form fallaron. $last');
       });
 
   /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
