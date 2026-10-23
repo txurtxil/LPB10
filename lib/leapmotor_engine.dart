@@ -1596,42 +1596,50 @@ Future<void> answerShareInvitation(ShareInvitation inv,
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         // v249: claves REALES resueltas en la tabla del dump tras el aceptar
         // oficial: inviterUserID + accountId + carCode + receive (HMAC).
-                // v254: los params V4 YA eran los correctos (receiveRejectShareCar
-        // confirmado en jadx: 4486/4502/string2/1783 -> inviterUserID/
-        // accountId/carCode/receive). El -1 era el VALOR de receive: el
-        // oficial envia getString2(572/3880) - NO '1'. Probamos formatos.
-        final mid = inv.msgId.toString();
+                        // v255: dos modos de firma. (a) HMAC-headers + body crudo (=-1).
+        // (b) DOMESTICO: timestamp+nonce+phoneID en el body, sign=md5hex[8:24],
+        // token FIRMADO pero REMOVIDO del body (va por header) - como hace
+        // postWithRoute internamente. receive probado en true/1.
         final me = userId ?? '';
-        final rcvVals = accept
-            ? <String>['true', '1', 'yes', 'Y', 'accept']
-            : <String>['false', '0', 'no', 'N', 'reject'];
-        final rights0 = moduleRights.isEmpty ? '100,200,300,400' : moduleRights;
-        final rightList0 =
-            (rights0 == '100,200,300,400') ? '190,180,170,280,192,171' : '';
+        final base = <String, String>{
+          'inviterUserID': inv.shareUserId,
+          'accountId': me,
+          'carCode': inv.vin,
+        };
         String last = '';
-        for (final rcv in rcvVals) {
+        // modo b: body domestico firmado
+        for (final rcv in <String>[accept ? 'true' : 'false', accept ? '1' : '0']) {
           try {
-            final body = <String, String>{
-              'carCode': inv.vin,
-              'inviterUserID': inv.shareUserId,
-              'accountId': me,
+            final map = <String, String>{
+              ...base,
               'receive': rcv,
+              'timestamp': _ts(),
+              'nonce': _nonce(),
+              'phoneID': deviceId,
+              'token': token ?? '',
             };
-            final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
+            final sorted = map.keys.toList()..sort();
+            final concat = sorted.map((x) => map[x]!).join();
+            final sign = crypto.md5.convert(utf8.encode(concat)).toString().substring(8, 24);
+            map.remove('token');
+            map['sign'] = sign;
             final resp = await _accountClient!.post(
               Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
-              headers: headers,
-              body: body.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                ..._authHeaders(),
+              },
+              body: map.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
             );
-            _parseBody(resp.statusCode, resp.body, 'answer receive=$rcv');
-            CarLogBridge.log('SHARE-OWN answer OK con receive=$rcv');
+            _parseBody(resp.statusCode, resp.body, 'answer-domestico receive=$rcv');
+            CarLogBridge.log('SHARE-OWN answer OK DOMESTICO receive=$rcv');
             return;
           } catch (err) {
-            last = 'receive=$rcv: $err';
-            CarLogBridge.log('SHARE-OWN answer fallo receive=$rcv: $err');
+            last = 'domestico/$rcv: $err';
+            CarLogBridge.log('SHARE-OWN answer fallo DOMESTICO receive=$rcv: $err');
           }
         }
-        throw Exception('setokmsg: ningun valor de receive. $last');
+        throw Exception('setokmsg: ambos modos fallaron. $last');
       });
 
   /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
