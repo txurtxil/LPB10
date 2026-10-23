@@ -1596,43 +1596,42 @@ Future<void> answerShareInvitation(ShareInvitation inv,
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         // v249: claves REALES resueltas en la tabla del dump tras el aceptar
         // oficial: inviterUserID + accountId + carCode + receive (HMAC).
-        // v253: el accept REAL pasa por la ventana de permisos. Fetch de
-        // detalle previo + setokmsg con consentimiento completo
-        // (moduleRights + rightList + durationType). rightList=null en la
-        // invitacion puede ser el motivo del -1 (lookup falla sin derechos).
-        try {
-          await getShareInvitationDetail(inv.msgId);
-        } catch (_) {}
+                // v254: los params V4 YA eran los correctos (receiveRejectShareCar
+        // confirmado en jadx: 4486/4502/string2/1783 -> inviterUserID/
+        // accountId/carCode/receive). El -1 era el VALOR de receive: el
+        // oficial envia getString2(572/3880) - NO '1'. Probamos formatos.
         final mid = inv.msgId.toString();
         final me = userId ?? '';
-        final rcv = accept ? '1' : '0';
+        final rcvVals = accept
+            ? <String>['true', '1', 'yes', 'Y', 'accept']
+            : <String>['false', '0', 'no', 'N', 'reject'];
         final rights0 = moduleRights.isEmpty ? '100,200,300,400' : moduleRights;
         final rightList0 =
             (rights0 == '100,200,300,400') ? '190,180,170,280,192,171' : '';
-        final variants = <String, Map<String, String>>{
-          'W1-consent': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'rightList': rightList0, 'durationType': '$durationType'},
-          'W2-msgid': {'msgid': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'rightList': rightList0, 'durationType': '$durationType'},
-          'W3-min': {'msgId': mid, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'durationType': '$durationType'},
-        };
         String last = '';
-        for (final e in variants.entries) {
+        for (final rcv in rcvVals) {
           try {
-            final body = Map<String, String>.from(e.value)..removeWhere((k, v) => v.isEmpty);
+            final body = <String, String>{
+              'carCode': inv.vin,
+              'inviterUserID': inv.shareUserId,
+              'accountId': me,
+              'receive': rcv,
+            };
             final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
             final resp = await _accountClient!.post(
               Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
               headers: headers,
               body: body.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
             );
-            _parseBody(resp.statusCode, resp.body, 'answer ${e.key}');
-            CarLogBridge.log('SHARE-OWN answer OK con ${e.key}');
+            _parseBody(resp.statusCode, resp.body, 'answer receive=$rcv');
+            CarLogBridge.log('SHARE-OWN answer OK con receive=$rcv');
             return;
           } catch (err) {
-            last = '${e.key}: $err';
-            CarLogBridge.log('SHARE-OWN answer fallo ${e.key}: $err');
+            last = 'receive=$rcv: $err';
+            CarLogBridge.log('SHARE-OWN answer fallo receive=$rcv: $err');
           }
         }
-        throw Exception('setokmsg: ninguna variante. $last');
+        throw Exception('setokmsg: ningun valor de receive. $last');
       });
 
   /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
