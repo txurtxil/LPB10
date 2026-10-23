@@ -223,14 +223,23 @@ class _ShareUsersScreenState extends State<ShareUsersScreen> {
 
 Future<String?> _askOpPin(BuildContext context) async {
   final c = TextEditingController();
+  var obsc = true;
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('Contraseña de operación'),
-      content: TextField(
-        controller: c, obscureText: true, keyboardType: TextInputType.number,
-        maxLength: 6,
-        decoration: const InputDecoration(hintText: 'PIN de 4-6 dígitos'),
+      content: StatefulBuilder(
+        builder: (ctx2, setSt) => TextField(
+          controller: c, obscureText: obsc, keyboardType: TextInputType.number,
+          maxLength: 6,
+          decoration: InputDecoration(
+            hintText: 'PIN de 4-6 dígitos',
+            suffixIcon: IconButton(
+              icon: Icon(obsc ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setSt(() => obsc = !obsc),
+            ),
+          ),
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),

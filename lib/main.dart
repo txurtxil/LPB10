@@ -1269,6 +1269,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  bool _obscurePass = true;
+  bool _obscurePin = true;
   final _pinCtrl = TextEditingController();
   bool _loading = false;
   bool _rememberPin = false;
@@ -1361,15 +1363,29 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             TextField(controller: _emailCtrl, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.emailLabel)),
             const SizedBox(height: 16),
-            TextField(controller: _passCtrl, obscureText: true, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.passwordLabel)),
+            TextField(
+              controller: _passCtrl,
+              obscureText: _obscurePass,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.passwordLabel,
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: _pinCtrl,
-              obscureText: true,
+              obscureText: _obscurePin,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context)!.pinLabel,
                 helperText: AppLocalizations.of(context)!.pinHelper,
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
               ),
             ),
             CheckboxListTile(
@@ -1586,15 +1602,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<String?> _resolvePin() async {
     if (_sessionPin.isNotEmpty) return _sessionPin;
     final ctrl = TextEditingController();
+    var _obsc = true;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.pinDialogTitle),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'PIN'),
+        content: StatefulBuilder(
+          builder: (ctx2, setSt) => TextField(
+            controller: ctrl,
+            obscureText: _obsc,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'PIN',
+              suffixIcon: IconButton(
+                icon: Icon(_obsc ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setSt(() => _obsc = !_obsc),
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context)!.pinDialogCancel)),
