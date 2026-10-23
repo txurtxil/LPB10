@@ -1578,10 +1578,12 @@ class LeapmotorApiClient {
       withTokenRetry(() async {
         // v241: mapeo REAL (decompilado + trafico capturado): userId=INVITADOR,
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
+        // v249: claves REALES resueltas en la tabla del dump tras el aceptar
+        // oficial: inviterUserID + accountId + carCode + receive (HMAC).
         final bodyParams = <String, String>{
           'carCode': inv.vin,
-          'userId': inv.shareUserId,
-          'shareUserId': userId ?? '',
+          'inviterUserID': inv.shareUserId,
+          'accountId': userId ?? '',
           'receive': accept ? '1' : '0',
         };
         final headers = _signedHeaders(bodyParams: bodyParams)
