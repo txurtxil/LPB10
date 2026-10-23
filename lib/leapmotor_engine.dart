@@ -1580,24 +1580,36 @@ class LeapmotorApiClient {
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         // v249: claves REALES resueltas en la tabla del dump tras el aceptar
         // oficial: inviterUserID + accountId + carCode + receive (HMAC).
-        final bodyParams = <String, String>{
-          'carCode': inv.vin,
-          'inviterUserID': inv.shareUserId,
-          'accountId': userId ?? '',
-          'receive': accept ? '1' : '0',
+        // v252: -1 con sign OK = fallo de aplicacion (lookup). Diagnostico
+        // con el bean completo ShareCarMsgBean + msgId. Primera en code 0 gana.
+        final mid = inv.msgId.toString();
+        final me = userId ?? '';
+        final rcv = accept ? '1' : '0';
+        final variants = <String, Map<String, String>>{
+          'V5-msgId-acct': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv},
+          'V6-msgId-shuser': {'msgId': mid, 'shareUserid': inv.shareUserId, 'carCode': inv.vin, 'receive': rcv},
+          'V7-msgId-acct-rights': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'durationType': '0', 'moduleRights': '100,200,300,400'},
+          'V8-full-bean': {'carCode': inv.vin, 'carId': inv.carId, 'carType': inv.carType, 'carAlias': inv.carAlias, 'msgid': mid, 'shareUserid': inv.shareUserId, 'nickName': inv.ownerName, 'moduleRights': inv.moduleRights, 'durationType': '0', 'receive': rcv},
         };
-        final headers = _signedHeaders(bodyParams: bodyParams)
-          ..addAll(_authHeaders());
-        final response = await _accountClient!.post(
-          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
-          headers: headers,
-          body: bodyParams.entries
-              .map((e) =>
-                  '${e.key}=${Uri.encodeComponent(e.value)}')
-              .join('&'),
-        );
-        _parseBody(response.statusCode, response.body,
-            'respuesta a invitacion de comparticion');
+        String last = '';
+        for (final e in variants.entries) {
+          try {
+            final headers = _signedHeaders(bodyParams: e.value)
+              ..addAll(_authHeaders());
+            final resp = await _accountClient!.post(
+              Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
+              headers: headers,
+              body: e.value.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
+            );
+            _parseBody(resp.statusCode, resp.body, 'answer ${e.key}');
+            CarLogBridge.log('SHARE-OWN answer OK con ${e.key}');
+            return;
+          } catch (err) {
+            last = '${e.key}: $err';
+            CarLogBridge.log('SHARE-OWN answer fallo ${e.key}: $err');
+          }
+        }
+        throw Exception('setokmsg: ninguna variante funciono. $last');
       });
 
   /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
