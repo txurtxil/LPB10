@@ -1573,33 +1573,56 @@ class LeapmotorApiClient {
   /// Acepta (accept=true) o rechaza (accept=false) una invitacion de
   /// comparticion (sharecar/setokmsg, v217). Solo lectura/escritura de la
   /// relacion de comparticion; no manda nada al coche.
-  Future<void> answerShareInvitation(ShareInvitation inv,
-          {required bool accept}) =>
+    /// Fetch de detalle de invitacion (pantalla de permisos; la oficial lo
+  /// hace antes del accept - prepara estado server-side).
+  Future<ShareInvitation?> getShareInvitationDetail(int msgId) =>
+      withTokenRetry(() async {
+        final headers = _signedHeaders(bodyParams: {'msgid': msgId.toString()})
+          ..addAll(_authHeaders());
+        final resp = await _accountClient!.post(
+          Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/getsharemsg'),
+          headers: headers,
+          body: 'msgid=${Uri.encodeComponent(msgId.toString())}',
+        );
+        final data = _parseBody(resp.statusCode, resp.body, 'detalle invitacion');
+        final list = parseShareInvitations(data);
+        return list.isEmpty ? null : list.first;
+      });
+
+Future<void> answerShareInvitation(ShareInvitation inv,
+          {required bool accept, int durationType = 0, String moduleRights = ''}) =>
       withTokenRetry(() async {
         // v241: mapeo REAL (decompilado + trafico capturado): userId=INVITADOR,
         // shareUserId=cuenta actual (invitado), receive=1/0. Sign SHA256-UPPER.
         // v249: claves REALES resueltas en la tabla del dump tras el aceptar
         // oficial: inviterUserID + accountId + carCode + receive (HMAC).
-        // v252: -1 con sign OK = fallo de aplicacion (lookup). Diagnostico
-        // con el bean completo ShareCarMsgBean + msgId. Primera en code 0 gana.
+        // v253: el accept REAL pasa por la ventana de permisos. Fetch de
+        // detalle previo + setokmsg con consentimiento completo
+        // (moduleRights + rightList + durationType). rightList=null en la
+        // invitacion puede ser el motivo del -1 (lookup falla sin derechos).
+        try {
+          await getShareInvitationDetail(inv.msgId);
+        } catch (_) {}
         final mid = inv.msgId.toString();
         final me = userId ?? '';
         final rcv = accept ? '1' : '0';
+        final rights0 = moduleRights.isEmpty ? '100,200,300,400' : moduleRights;
+        final rightList0 =
+            (rights0 == '100,200,300,400') ? '190,180,170,280,192,171' : '';
         final variants = <String, Map<String, String>>{
-          'V5-msgId-acct': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv},
-          'V6-msgId-shuser': {'msgId': mid, 'shareUserid': inv.shareUserId, 'carCode': inv.vin, 'receive': rcv},
-          'V7-msgId-acct-rights': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'durationType': '0', 'moduleRights': '100,200,300,400'},
-          'V8-full-bean': {'carCode': inv.vin, 'carId': inv.carId, 'carType': inv.carType, 'carAlias': inv.carAlias, 'msgid': mid, 'shareUserid': inv.shareUserId, 'nickName': inv.ownerName, 'moduleRights': inv.moduleRights, 'durationType': '0', 'receive': rcv},
+          'W1-consent': {'msgId': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'rightList': rightList0, 'durationType': '$durationType'},
+          'W2-msgid': {'msgid': mid, 'accountId': me, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'rightList': rightList0, 'durationType': '$durationType'},
+          'W3-min': {'msgId': mid, 'carCode': inv.vin, 'receive': rcv, 'moduleRights': rights0, 'durationType': '$durationType'},
         };
         String last = '';
         for (final e in variants.entries) {
           try {
-            final headers = _signedHeaders(bodyParams: e.value)
-              ..addAll(_authHeaders());
+            final body = Map<String, String>.from(e.value)..removeWhere((k, v) => v.isEmpty);
+            final headers = _signedHeaders(bodyParams: body)..addAll(_authHeaders());
             final resp = await _accountClient!.post(
               Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
               headers: headers,
-              body: e.value.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
+              body: body.entries.map((x) => '${x.key}=${Uri.encodeComponent(x.value)}').join('&'),
             );
             _parseBody(resp.statusCode, resp.body, 'answer ${e.key}');
             CarLogBridge.log('SHARE-OWN answer OK con ${e.key}');
@@ -1609,7 +1632,7 @@ class LeapmotorApiClient {
             CarLogBridge.log('SHARE-OWN answer fallo ${e.key}: $err');
           }
         }
-        throw Exception('setokmsg: ninguna variante funciono. $last');
+        throw Exception('setokmsg: ninguna variante. $last');
       });
 
   /// Motor de la cadena de candidatos owner-side (v219). Prueba cada path
