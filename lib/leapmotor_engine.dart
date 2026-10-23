@@ -1584,9 +1584,8 @@ class LeapmotorApiClient {
           'shareUserId': userId ?? '',
           'receive': accept ? '1' : '0',
         };
-        final headers =
-            _signedHeaders(bodyParams: bodyParams, useHmac: false)
-              ..addAll(_authHeaders());
+        final headers = _signedHeaders(bodyParams: bodyParams)
+          ..addAll(_authHeaders());
         final response = await _accountClient!.post(
           Uri.parse('$kBaseUrl/carownerservice/oversea/sharecar/setokmsg'),
           headers: headers,
