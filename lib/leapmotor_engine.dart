@@ -29,7 +29,6 @@ const String kOperpwdAesIv = '6b6a1fe94e133fd7';
 // Nombres de las abilities del vehicle list (ability IDs).
 // Mapeo tomado de markoceri/leapmotor-api (models.py, enum VehicleAbility),
 // cruzado con el analisis de la APK oficial 1.15.3 (18/09/2026).
-// Las que interesan a la investigacion BLE-KEY: 16, 30, 49 y 53.
 // ============================================================
 const Map<int, String> kAbilityNames = {
   1: 'BASE',
@@ -104,9 +103,6 @@ const Map<int, String> kAbilityNames = {
   70: 'B10_NUEVA_70',
 };
 
-// Abilities que la sonda BLE-KEY marca como pistas.
-const Set<int> kAbilityPistas = {16, 30, 49, 53};
-
 /// Informe legible de la lista `abilities` del vehicle list.
 /// Funcion pura (testeable sin red). Acepta la lista cruda del JSON, que
 /// puede traer ints o strings, o cualquier otra cosa (entonces lo dice).
@@ -125,14 +121,7 @@ String abilitiesReport(dynamic abilities) {
   buf.writeln('abilities (' + ids.length.toString() + '):');
   for (final id in ids) {
     final nombre = kAbilityNames[id] ?? 'DESCONOCIDA';
-    final pista = kAbilityPistas.contains(id) ? '   <== PISTA BLE-KEY' : '';
-    buf.writeln('  ' + id.toString() + ' = ' + nombre + pista);
-  }
-  buf.writeln('');
-  for (final p in const [16, 30, 49, 53]) {
-    buf.writeln((ids.contains(p) ? '[SI] ' : '[NO] ') +
-        p.toString() + ' ' + (kAbilityNames[p] ?? '') +
-        (ids.contains(p) ? ' declarada' : ' NO declarada'));
+    buf.writeln('  ' + id.toString() + ' = ' + nombre);
   }
   return buf.toString();
 }
@@ -1048,7 +1037,6 @@ const String kCmdSunshade = '240';
 const String kCmdWindows = '230';
 // cmdId 430 = BLE_KEY_RESTART: reinicia el modulo de llave Bluetooth del
 // coche. Documentado en markoceri/leapmotor-api y confirmado en el B10 real
-// (sonda BLE-KEY v164: ability 53 declarada, getAppointment 430 code 0).
 // Util cuando la llave BT de la app oficial deja de responder.
 const String kCmdBleKeyRestart = '430';
 // cmdId 440 = REARVIEW_MIRROR_HEAT (calefaccion de retrovisores).
@@ -2427,132 +2415,12 @@ Future<void> answerShareInvitation(ShareInvitation inv,
     return buf.toString();
   });
 
-  // ============================================================
-  // SONDA: llave Bluetooth (BLE-KEY) v1.
-  //
-  // Origen: analisis estatico de la APK oficial 1.15.3 (18/09/2026). La app
-  // oficial tiene llave digital BLE (desbloqueo por proximidad, bloqueo al
-  // alejarse) y el ecosistema open source documenta el cmdId 430 =
-  // BLE_KEY_RESTART (reinicio del modulo de llave BT del coche), que ESTA en
-  // la rightList de la cuenta compartida del dueno.
-  //
-  // Esta sonda es SOLO LECTURA. No ejecuta el 430: lo que busca es decidir si
-  // merece la pena el boton "Reiniciar llave BT" en la siguiente release:
-  //   1. vehicle/list: vuelca las abilities del coche y marca 16 (BLE_KEY),
-  //      30 (GPS_SHARING), 49 (PARKING_PHOTO) y 53 (BLE_KEY_RESTART); vuelca
-  //      la rightList si el coche esta en sharedcars y mira si esta el 430.
-  //   2. getAppointment cmdId=430: intento de CONSULTA (igual que la consulta
-  //      392 de FOTA resulto ser solo lectura). Si responde code 0 hay camino;
-  //      code 40 = sin derechos en esta cuenta; otro code = no existe consulta.
-  // ============================================================
-  Future<String> probeBleKeyRaw(String vin) => withTokenRetry(() async {
-    if (_accountClient == null) throw Exception('Not logged in');
-    final buf = StringBuffer();
-    buf.writeln('SONDA BLE-KEY v1 - llave Bluetooth del coche (solo lectura)');
-    buf.writeln('Hora local: ' + DateTime.now().toIso8601String());
-    buf.writeln('');
-
-    // 1. abilities + rightList del vehicle list.
-    try {
-      final headers = _signedHeaders()..addAll(_authHeaders());
-      final r = await _accountClient!.post(
-        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/list'),
-        headers: headers,
-        body: '',
-      );
-      buf.writeln('### 1. vehicle/list -> HTTP ' + r.statusCode.toString());
-      dynamic body;
-      try {
-        body = json.decode(r.body);
-      } catch (_) {
-        body = null;
-      }
-      final data = body is Map ? body['data'] : null;
-      final propios = data is Map ? (data['bindcars'] as List? ?? const []) : const [];
-      final compartidos = data is Map ? (data['sharedcars'] as List? ?? const []) : const [];
-      buf.writeln('bindcars: ' + propios.length.toString() +
-          '  |  sharedcars: ' + compartidos.length.toString());
-      final coches = <dynamic>[...propios, ...compartidos];
-      dynamic coche;
-      for (final c in coches) {
-        if (c is Map && c['vin']?.toString() == vin) { coche = c; break; }
-      }
-      coche ??= coches.isNotEmpty && coches.first is Map ? coches.first : null;
-      if (coche is Map) {
-        final v = coche;
-        final esCompartido = compartidos.contains(v);
-        buf.writeln('coche inspeccionado: ' + (v['vin']?.toString() ?? '?') +
-            (esCompartido ? '  (COMPARTIDO)' : '  (PROPIETARIO)'));
-        buf.writeln('');
-        buf.writeln(abilitiesReport(v['abilities']));
-        final derechos = v['rightList'];
-        if (derechos is List) {
-          buf.writeln('rightList (' + derechos.length.toString() + '): ' + derechos.toString());
-          buf.writeln(derechos.contains(430) || derechos.contains('430')
-              ? '>>> 430 (BLE_KEY_RESTART) PRESENTE en la rightList: el boton de reinicio deberia funcionar en esta cuenta.'
-              : '>>> 430 NO esta en la rightList: el reinicio solo iria con la cuenta propietaria.');
-        } else {
-          buf.writeln('sin rightList (cuenta propietaria: todos los derechos implicitos, 430 incluido).');
-        }
-      } else {
-        var cuerpo = r.body;
-        if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
-        buf.writeln('estructura inesperada, cuerpo crudo:');
-        buf.writeln(cuerpo);
-      }
-    } catch (e) {
-      buf.writeln('### 1. vehicle/list -> EXCEPCION: ' + e.toString());
-    }
-    buf.writeln('');
-
-    // 2. getAppointment cmdId=430 como intento de consulta de solo lectura.
-    //    Nadie ha probado si 430 tiene consulta asociada; la respuesta real
-    //    decide (code 0 / code 40 sin derechos / otro = no existe).
-    try {
-      final headers = _signedHeaders(vin: vin, bodyParams: {'cmdId': '430'})..addAll(_authHeaders());
-      final r = await _accountClient!.post(
-        Uri.parse('$kBaseUrl/carownerservice/oversea/vehicle/v1/app/remote/ctl/getAppointment'),
-        headers: headers,
-        body: 'vin=${Uri.encodeComponent(vin)}&cmdId=430',
-      );
-      buf.writeln('### 2. getAppointment cmdId=430 (intento de consulta BLE-KEY) -> HTTP ' + r.statusCode.toString());
-      var cuerpo = r.body;
-      if (cuerpo.length > 1500) cuerpo = cuerpo.substring(0, 1500) + '...(recortado)';
-      buf.writeln(cuerpo);
-      dynamic body;
-      try {
-        body = json.decode(r.body);
-      } catch (_) {
-        body = null;
-      }
-      if (body is Map) {
-        final code = body['code'] ?? body['result'];
-        if (code == 0) {
-          buf.writeln('>>> code 0: el 430 responde en esta cuenta. Luz verde para el boton de reinicio de la llave BT.');
-        } else if (code == 40) {
-          buf.writeln('>>> code 40: sin derechos en esta cuenta. Probar con la cuenta propietaria.');
-        } else {
-          buf.writeln('>>> code ' + code.toString() + ': el 430 no tiene consulta asociada (normal). El boton se probaria a ciegas con la sonda de ejecucion.');
-        }
-      }
-    } catch (e) {
-      buf.writeln('### 2. getAppointment cmdId=430 -> EXCEPCION: ' + e.toString());
-    }
-    buf.writeln('');
-    buf.writeln('Leyenda abilities: 16=BLE_KEY (llave bluetooth), 30=GPS_SHARING (posicion en tiempo real), '
-        '49=PARKING_PHOTO (foto de aparcamiento), 53=UNLOCK_CHARGE_GUN (desbloquear cable de carga; corregido en v168: '
-        'la etiqueta BLE_KEY_RESTART de leapmotor-api era un error, el reinicio de la llave BT es el cmdId 430). '
-        '57/59/60/69/70 = funciones nuevas del B10 sin identificar (candidatas: centinela, V2L).');
-
-    return buf.toString();
-  });
 
   // ============================================================
   // SONDA: derechos sin documentar (cmdIds 161/280/340/440/460).
   //
   // La rightList de la comparticion incluye estos cinco derechos que NADIE
   // del ecosistema open source tiene identificados (contexto §4). La sonda
-  // BLE-KEY de v164 demostro que getAppointment es una consulta de SOLO
   // LECTURA que responde code 0 aunque el comando no tenga programacion
   // (430), code 40 si faltan derechos (392 en la secundaria) y otro code si
   // el cmdId no existe. Eso la convierte en el detector perfecto: para cada

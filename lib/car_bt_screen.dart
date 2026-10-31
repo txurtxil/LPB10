@@ -9,7 +9,7 @@ import 'leapmotor_engine.dart';
 /// antiguo), asi que esta pantalla es opcional, no obligatoria.
 class CarBtScreen extends StatefulWidget {
   /// Opcionales: habilitan la seccion "Llave Bluetooth del coche"
-  /// (reinicio del modulo BLE-KEY, cmdId 430, confirmado en el B10 en v164).
+  /// (reinicio de la llave Bluetooth del coche, cmdId 430).
   final LeapmotorApiClient? client;
   final Vehicle? vehicle;
   const CarBtScreen({super.key, this.client, this.vehicle});
