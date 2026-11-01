@@ -132,8 +132,8 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
                           const SizedBox(height: 6),
                           Text(
                             es
-                                ? 'Referencia de nuevo: ${gBatteryKwh.toStringAsFixed(1)} kWh -> salud ${(cap / gBatteryKwh * 100).toStringAsFixed(1)} %'
-                                : 'As-new reference: ${gBatteryKwh.toStringAsFixed(1)} kWh -> health ${(cap / gBatteryKwh * 100).toStringAsFixed(1)} %',
+                                ? 'Referencia de nuevo: ${gBatteryKwh.toStringAsFixed(1)} kWh -> salud ${(cap / gBatteryKwh * 100).clamp(0.0, 100.0).toDouble().toStringAsFixed(1)} %'
+                                : 'As-new reference: ${gBatteryKwh.toStringAsFixed(1)} kWh -> health ${(cap / gBatteryKwh * 100).clamp(0.0, 100.0).toDouble().toStringAsFixed(1)} %',
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                           ),

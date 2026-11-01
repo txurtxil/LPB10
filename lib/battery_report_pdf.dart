@@ -95,7 +95,7 @@ Future<File> informeSaludPdf(ResumenSalud salud, ResumenDescarga desc,
         else ...[
           pw.Text(
               'Capacidad util estimada: ${cap.toStringAsFixed(1)} kWh '
-              '(${(cap / gBatteryKwh * 100).toStringAsFixed(1)} % de la referencia de nuevo, ${gBatteryKwh.toStringAsFixed(1)} kWh)'),
+              '(${(cap / gBatteryKwh * 100).clamp(0.0, 100.0).toDouble().toStringAsFixed(1)} % de la referencia de nuevo, ${gBatteryKwh.toStringAsFixed(1)} kWh)'),
           pw.Text(
               'Dispersion entre cargas: ±${salud.dispersionPct?.toStringAsFixed(1) ?? '--'} % · '
               '${salud.numEstimaciones} cargas medidas'
