@@ -1055,6 +1055,8 @@ Future<void> widgetActionCallback(Uri? uri) async {
     try {
       await LmWidget.saveWidgetData<String>('qw_status', t);
       await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
+      // v240: el widget de bloqueo muestra el mismo estado.
+      await LmWidget.updateWidget(androidName: 'LockWidgetProvider');
     } catch (_) {}
   }
   await aviso('enviando...');
