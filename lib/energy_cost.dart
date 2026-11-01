@@ -17,6 +17,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'charge_cost.dart';
 import 'daily_stats.dart';
+import 'day_history_screen.dart';
 import 'price_screen.dart';
 import 'pvpc.dart';
 import 'maintenance.dart';
@@ -412,6 +413,15 @@ class _EnergyCostCardState extends State<EnergyCostCard> {
             _fila(es ? 'Ayer' : 'Yesterday', _kwhAyer, _kmAyer, _eurAyer),
             _fila(es ? 'Ultimos 7 dias' : 'Last 7 days', _kwh7, _km7, _eur7),
             _fila(es ? 'Este mes' : 'This month', _kwhMes, _kmMes, _eurMes),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: const Icon(Icons.calendar_view_month, size: 18),
+                label: Text(es ? 'Ver todos los dias' : 'View all days'),
+                onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const DayHistoryScreen())),
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               es

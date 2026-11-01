@@ -62,6 +62,7 @@ class TripListScreen extends StatefulWidget {
 class _TripListScreenState extends State<TripListScreen> {
   bool _loading = true;
   List<RouteTrip> _rutas = [];
+  String? _mesSel;
 
   @override
   void initState() {
@@ -73,19 +74,65 @@ class _TripListScreenState extends State<TripListScreen> {
     final rutas = await TripRebuild.fromTrips();
     if (!mounted) return;
     setState(() {
-      // Ultimas 30, ya vienen ordenadas de mas reciente a mas antigua.
-      _rutas = rutas.length > 30 ? rutas.sublist(0, 30) : rutas;
+      // Historial completo: el tope de 30 impedia consultar rutas antiguas
+      // (peticion de Luck). Ya vienen ordenadas de mas reciente a mas antigua.
+      _rutas = rutas;
       _loading = false;
     });
+  }
+
+  static String _mesDeTs(int ts) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ts);
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+  }
+
+  List<RouteTrip> get _visibles => _mesSel == null
+      ? _rutas
+      : _rutas.where((r) => _mesDeTs(r.startTs) == _mesSel).toList();
+
+  Widget _chipsMeses(bool es) {
+    final meses = <String>[];
+    for (final r in _rutas) {
+      final m = _mesDeTs(r.startTs);
+      if (!meses.contains(m)) meses.add(m);
+    }
+    if (meses.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              label: Text(es ? 'Todas' : 'All'),
+              selected: _mesSel == null,
+              onSelected: (_) => setState(() => _mesSel = null),
+            ),
+          ),
+          for (final m in meses)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                label: Text(m),
+                selected: _mesSel == m,
+                onSelected: (_) => setState(() => _mesSel = m),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
+    final vis = _visibles;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: _cBlue,
-        title: Text(es ? 'Ultimas rutas' : 'Recent trips'),
+        title: Text(es ? 'Rutas' : 'Trips'),
         actions: [
           IconButton(
             icon: const Icon(Icons.alt_route),
@@ -124,10 +171,11 @@ class _TripListScreenState extends State<TripListScreen> {
                 )
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _rutas.length,
+                  itemCount: vis.length + 1,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
-                    final r = _rutas[i];
+                    if (i == 0) return _chipsMeses(es);
+                    final r = vis[i - 1];
                     final consumo = r.kwh100 != null
                         ? '${r.kwh100!.toStringAsFixed(1)} kWh/100km'
                         : (es ? 'consumo no fiable' : 'unreliable consumption');

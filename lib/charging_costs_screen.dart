@@ -54,6 +54,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
   List<SesionCarga> _sesiones = [];
   List<MuestraBat> _muestras = const [];
   Map<String, MesCarga> _meses = {};
+  String? _mesSel;
   final _ac = TextEditingController();
   final _dc = TextEditingController();
   final _hpc = TextEditingController();
@@ -76,6 +77,51 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
       ac: double.tryParse(_ac.text.replaceAll(',', '.')),
       dc: double.tryParse(_dc.text.replaceAll(',', '.')),
       hpc: double.tryParse(_hpc.text.replaceAll(',', '.')));
+
+  // Filtro por mes sobre el historial COMPLETO de sesiones (antes take(30)).
+  String _mesDeMs(int ms) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+  }
+
+  List<SesionCarga> _sesFiltro() {
+    if (_mesSel == null) return _sesiones;
+    return _sesiones.where((s) => _mesDeMs(s.iniMs) == _mesSel).toList();
+  }
+
+  Widget _chipsMeses(bool es) {
+    final meses = <String>[];
+    for (final s in _sesiones) {
+      final m = _mesDeMs(s.iniMs);
+      if (!meses.contains(m)) meses.add(m);
+    }
+    if (meses.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              label: Text(es ? 'Todas' : 'All'),
+              selected: _mesSel == null,
+              onSelected: (_) => setState(() => _mesSel = null),
+            ),
+          ),
+          for (final m in meses)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                label: Text(m),
+                selected: _mesSel == m,
+                onSelected: (_) => setState(() => _mesSel = m),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _cargar() async {
     // Tarifas guardadas
@@ -380,10 +426,12 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                 ),
                 if (_sesiones.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(es ? 'Sesiones de carga (mas recientes)' : 'Charging sessions (most recent)',
+                  Text(es ? 'Sesiones de carga (${_sesFiltro().length})' : 'Charging sessions (${_sesFiltro().length})',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  for (final s in _sesiones.reversed.take(30))
+                  _chipsMeses(es),
+                  const SizedBox(height: 4),
+                  for (final s in _sesFiltro().reversed)
                     Card(
                       child: ListTile(
                         dense: true,
