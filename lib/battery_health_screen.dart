@@ -127,8 +127,8 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
                             style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
                           ),
                           Text(es
-                              ? 'capacidad util estimada (media de las cargas recientes)'
-                              : 'estimated usable capacity (recent charges average)'),
+                              ? 'capacidad util estimada (media robusta de las cargas recientes)'
+                              : 'estimated usable capacity (robust recent-charges average)'),
                           const SizedBox(height: 6),
                           Text(
                             es
@@ -136,6 +136,16 @@ class _BatteryHealthScreenState extends State<BatteryHealthScreen> {
                                 : 'As-new reference: ${gBatteryKwh.toStringAsFixed(1)} kWh -> health ${(cap / gBatteryKwh * 100).clamp(0.0, 100.0).toDouble().toStringAsFixed(1)} %',
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              es
+                                  ? 'Nota: en cargas AC los kWh incluyen perdidas del cargador; valores sueltos muy altos se descartan del calculo.'
+                                  : 'Note: AC charge kWh includes charger losses; single very high values are discarded from the estimate.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(

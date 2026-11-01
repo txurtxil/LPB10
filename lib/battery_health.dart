@@ -197,29 +197,49 @@ ResumenSalud resumirSalud(List<EstimacionCarga> estimaciones,
     {int ultimas = 30}) {
   if (estimaciones.isEmpty) return const ResumenSalud();
   final validas = estimaciones.where((e) => !e.excluida).toList();
-  final rec =
+  var rec =
       validas.length > ultimas ? validas.sublist(validas.length - ultimas) : validas;
-  var sumW = 0.0, sumX = 0.0;
-  for (final e in rec) {
-    final w = e.cobertura > 0 ? e.cobertura : 1.0;
-    sumW += w;
-    sumX += e.capacidadKwh * w;
+  double mediaPonderada(List<EstimacionCarga> l) {
+    var sumW = 0.0, sumX = 0.0;
+    for (final e in l) {
+      final w = e.cobertura > 0 ? e.cobertura : 1.0;
+      sumW += w;
+      sumX += e.capacidadKwh * w;
+    }
+    return sumW > 0 ? sumX / sumW : 0;
   }
-  final media = sumW > 0 ? sumX / sumW : null;
+
+  // v242: recorte robusto de outliers. Cargas AC con perdidas en el
+  // cargador (y ruido en la telemetria de tension/corriente) pueden
+  // extrapolar un 30-40 % por encima de lo plausible y arrastrar la media
+  // (caso real: 72.5 kWh estimados frente a 67.1 de referencia). Se
+  // descartan iterativamente las estimaciones que se desvian mas del
+  // 12 % de la media ponderada.
+  var media = mediaPonderada(rec);
+  for (var pasada = 0; pasada < 2 && rec.length > 3; pasada++) {
+    final limite = media * 0.12;
+    final filtradas =
+        rec.where((e) => (e.capacidadKwh - media).abs() <= limite).toList();
+    if (filtradas.length == rec.length) break;
+    rec = filtradas;
+    media = mediaPonderada(rec);
+  }
+
   double? disp;
-  if (media != null && rec.length > 1) {
-    var sumVar = 0.0;
+  if (rec.length > 1) {
+    var sumVar = 0.0, sumW = 0.0;
     for (final e in rec) {
       final w = e.cobertura > 0 ? e.cobertura : 1.0;
       final d = e.capacidadKwh - media;
       sumVar += w * d * d;
+      sumW += w;
     }
     disp = sumW > 0 ? (sumVar / sumW) / (media * media) * 100.0 : null;
   }
   return ResumenSalud(
     capacidadKwh: media,
     dispersionPct: disp,
-    numEstimaciones: estimaciones.length,
+    numEstimaciones: rec.length,
     excluidasFrio: estimaciones.where((e) => e.excluida).length,
     estimaciones: estimaciones,
   );
