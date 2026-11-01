@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'history_archive.dart';
 
@@ -78,6 +79,54 @@ class BackupHelper {
 
   /// Version del JSON como String, para subir a Drive sin pasar por disco
   /// local primero. Reutiliza _collect(), no reinventa el formato.
+  // v239: canal nativo para elegir carpeta (SAF) y escribir la copia en
+  // una ubicacion del usuario que sobrevive a la desinstalacion.
+  static const MethodChannel _ch = MethodChannel('lmb10/backup');
+  static const String folderKey = 'lm_backup_folder_uri';
+  static const String intervalKey = 'lm_backup_interval_days';
+
+  /// Carpeta elegida (persistida en secure storage; si no, la del canal).
+  static Future<String?> folderActual(
+      Future<String?> Function(String) readPref) async {
+    try {
+      final saved = await readPref(folderKey);
+      if (saved != null && saved.isNotEmpty) return saved;
+      return await _ch.invokeMethod<String>('getFolder');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Abre el selector SAF de carpeta (requiere actividad en primer plano).
+  static Future<String?> elegirCarpeta() async {
+    try {
+      return await _ch.invokeMethod<String>('pickFolder');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> quitarCarpeta() async {
+    try {
+      return await _ch.invokeMethod<bool>('clearFolder') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> _escribirEnCarpeta(String uri) async {
+    try {
+      return await _ch.invokeMethod<bool>('writeBackup', {
+            'uri': uri,
+            'fileName': 'lmb10_backup.json',
+            'content': await contenidoJson(),
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<String> contenidoParaSubir() async {
     final data = await _collect();
     return const JsonEncoder.withIndent('  ').convert(data);
@@ -91,6 +140,16 @@ class BackupHelper {
     return f.path;
   }
 
+  /// Intervalo en dias (por defecto 1 = diario).
+  static Future<int> intervaloDias(
+      Future<String?> Function(String) readPref) async {
+    final d = int.tryParse((await readPref(intervalKey)) ?? '');
+    return (d == null || d < 1) ? 1 : d;
+  }
+
+  static Future<String> contenidoJson() async =>
+      const JsonEncoder.withIndent('  ').convert(await _collect());
+
   static Future<void> autoBackupIfDue(
       Future<String?> Function(String) readPref,
       Future<void> Function(String, String) writePref) async {
@@ -98,7 +157,14 @@ class BackupHelper {
       final lastRaw = await readPref(_lastBackupKey);
       final last = int.tryParse(lastRaw ?? '') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (now - last < 24 * 3600 * 1000) return;
+      final dias = await intervaloDias(readPref);
+      if (now - last < dias * 24 * 3600 * 1000) return;
+      // v239: si hay carpeta elegida (SAF), escribir alli.
+      final folder = await folderActual(readPref);
+      if (folder != null && await _escribirEnCarpeta(folder)) {
+        await writePref(_lastBackupKey, now.toString());
+        return;
+      }
       await writeNow();
       await writePref(_lastBackupKey, now.toString());
     } catch (_) {}

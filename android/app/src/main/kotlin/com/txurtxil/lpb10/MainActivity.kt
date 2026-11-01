@@ -9,6 +9,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.content.Intent
+import android.net.Uri
+import android.provider.DocumentsContract
+import java.io.FileNotFoundException
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -18,6 +21,9 @@ class MainActivity : FlutterActivity() {
     private val channel = "lmb10/rawbt"
     private val rawbtPackage = "ru.a402d.rawbtprinter"
     private val btChannel = "lmb10/btcar"
+    private val backupChannel = "lmb10/backup"
+    private var pendingFolderPick: MethodChannel.Result? = null
+    private val REQ_PICK_BACKUP_FOLDER = 4123
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -48,6 +54,24 @@ class MainActivity : FlutterActivity() {
                         CarBtConfig.setCarMacs(this, macs)
                         result.success(true)
                     }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // v239: backup programado en carpeta SAF elegida por el usuario.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, backupChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "pickFolder" -> pickBackupFolder(result)
+                    "getFolder" -> result.success(backupFolderUri())
+                    "clearFolder" -> result.success(clearBackupFolder())
+                    "writeBackup" -> result.success(
+                        writeBackupToFolder(
+                            call.argument<String>("uri") ?: "",
+                            call.argument<String>("fileName") ?: "lmb10_backup.json",
+                            call.argument<String>("content") ?: ""
+                        )
+                    )
                     else -> result.notImplemented()
                 }
             }
@@ -140,6 +164,92 @@ class MainActivity : FlutterActivity() {
             }
             startActivity(intent)
             true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // ---- v239: backup programado en carpeta SAF elegida por el usuario ----
+
+    private fun pickBackupFolder(result: MethodChannel.Result) {
+        pendingFolderPick = result
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+            )
+        }
+        startActivityForResult(intent, REQ_PICK_BACKUP_FOLDER)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_PICK_BACKUP_FOLDER) return
+        val res = pendingFolderPick
+        pendingFolderPick = null
+        if (res == null) return
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            res.success(null)
+            return
+        }
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        } catch (e: SecurityException) {
+            // algunos proveedores no dejan persistir; se intenta igual
+        }
+        getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("folder_uri", uri.toString())
+            .apply()
+        res.success(uri.toString())
+    }
+
+    private fun backupFolderUri(): String? =
+        getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
+            .getString("folder_uri", null)
+
+    private fun clearBackupFolder(): Boolean {
+        val prefs = getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
+        prefs.getString("folder_uri", null)?.let { uri ->
+            try {
+                contentResolver.releasePersistableUriPermission(
+                    Uri.parse(uri),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (e: SecurityException) {
+            }
+        }
+        prefs.edit().remove("folder_uri").apply()
+        return true
+    }
+
+    private fun writeBackupToFolder(treeUriStr: String, fileName: String, content: String): Boolean {
+        return try {
+            val treeUri = Uri.parse(treeUriStr)
+            val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+            val target = DocumentsContract.buildDocumentUriUsingTree(
+                treeUri, "$treeDocId/$fileName"
+            )
+            try {
+                contentResolver.openOutputStream(target, "wt")
+                    ?.use { it.write(content.toByteArray()) } != null
+            } catch (e: FileNotFoundException) {
+                // El documento aun no existe: crearlo dentro del arbol.
+                val parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId)
+                val created = DocumentsContract.createDocument(
+                    contentResolver, parent, "application/json", fileName
+                ) ?: return false
+                contentResolver.openOutputStream(created, "wt")
+                    ?.use { it.write(content.toByteArray()) } != null
+            }
         } catch (e: Exception) {
             false
         }

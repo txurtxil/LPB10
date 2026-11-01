@@ -49,11 +49,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _geoHome = false;
   bool _pvpcAlert = true;
   bool _loading = true;
+  int _backupDias = 1;
+  String? _backupFolder;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _cargarPrefsBackup();
   }
 
   Future<void> _load() async {
@@ -126,6 +129,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await IosDriveDetector.desactivar();
     }
     if (mounted) setState(() => _iosDrive = v);
+  }
+
+  Future<void> _cargarPrefsBackup() async {
+    final d = int.tryParse(
+        await _storage.read(key: BackupHelper.intervalKey) ?? '');
+    final f = await BackupHelper.folderActual((k) => _storage.read(key: k));
+    if (!mounted) return;
+    setState(() {
+      _backupDias = d ?? 1;
+      _backupFolder = f;
+    });
+  }
+
+  String _backupSub(bool es) {
+    final f = (_backupFolder == null || _backupFolder!.isEmpty)
+        ? (es ? 'carpeta interna de la app' : "app's internal folder")
+        : _backupFolder!;
+    return es
+        ? 'Cada $_backupDias dia(s) -> $f'
+        : 'Every $_backupDias day(s) -> $f';
+  }
+
+  Future<void> _dialogoBackup(BuildContext context, bool es) async {
+    var dias = _backupDias;
+    var folder = _backupFolder;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(es ? 'Copia automatica' : 'Auto backup'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(es ? 'Frecuencia:' : 'Frequency:'),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final d in const [1, 3, 7, 15, 30])
+                      ChoiceChip(
+                        label: Text(es ? '$d dias' : '$d days'),
+                        selected: dias == d,
+                        onSelected: (_) async {
+                          setD(() => dias = d);
+                          await _storage.write(
+                              key: BackupHelper.intervalKey, value: '$d');
+                          if (mounted) setState(() => _backupDias = d);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(es ? 'Carpeta de destino:' : 'Destination folder:'),
+                const SizedBox(height: 4),
+                Text(
+                  (folder == null || folder!.isEmpty)
+                      ? (es
+                          ? '(interna: se borra al desinstalar la app)'
+                          : '(internal: lost if you uninstall)')
+                      : folder!,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 4,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.folder_open, size: 18),
+                      label: Text(es ? 'Elegir carpeta' : 'Choose folder'),
+                      onPressed: () async {
+                        final uri = await BackupHelper.elegirCarpeta();
+                        if (uri == null || uri.isEmpty) return;
+                        await _storage.write(
+                            key: BackupHelper.folderKey, value: uri);
+                        setD(() => folder = uri);
+                        if (mounted) setState(() => _backupFolder = uri);
+                      },
+                    ),
+                    if (folder != null && folder!.isNotEmpty)
+                      TextButton(
+                        onPressed: () async {
+                          await BackupHelper.quitarCarpeta();
+                          await _storage.delete(key: BackupHelper.folderKey);
+                          setD(() => folder = null);
+                          if (mounted) setState(() => _backupFolder = null);
+                        },
+                        child: Text(es ? 'Quitar' : 'Remove'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(es ? 'Cerrar' : 'Close'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -417,11 +525,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const DriveBackupScreen())),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.schedule),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Copia automatica programada'
+                      : 'Scheduled auto backup'),
+                  subtitle: Text(_backupSub(
+                      Localizations.localeOf(context).languageCode == 'es')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _dialogoBackup(
+                      context, Localizations.localeOf(context).languageCode == 'es'),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     Localizations.localeOf(context).languageCode == 'es'
-                        ? 'La app guarda una copia automatica cada dia en su carpeta de archivos. IMPORTANTE: esa copia se borra si desinstalas la app. Antes de desinstalar, exporta tu copia con el boton de arriba y guardala donde quieras (Drive, Telegram, etc.).'
+                        ? 'La app guarda una copia automatica (por defecto cada dia). IMPORTANTE: la copia en la carpeta interna se borra si desinstalas la app. Usa "Copia automatica programada" para elegir tu propia carpeta (p. ej. Documentos) que sobrevive a la desinstalacion, o exporta con el boton de arriba y guardala donde quieras (Drive, Telegram, etc.).'
                         : 'The app saves an automatic daily backup in its files folder. IMPORTANT: that copy is deleted if you uninstall the app. Before uninstalling, export your backup with the button above and save it somewhere safe (Drive, Telegram, etc.).',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
