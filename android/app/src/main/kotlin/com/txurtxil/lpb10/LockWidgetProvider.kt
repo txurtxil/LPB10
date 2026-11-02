@@ -89,26 +89,21 @@ class LockWidgetProvider : AppWidgetProvider() {
         // Ejecutar: lock siempre directo; el resto al confirmar (2o toque).
         prefs.edit().remove(KEY_ARMED).remove(KEY_ARMED_TS)
             .putLong(KEY_PENDING_UNTIL, now + 45_000L).apply()
-        enqueueQuickAction(context, cmd)
+        // v250 (decision owner, patron app oficial): abrir la app y ejecutar
+        // la orden en PRIMER PLANO (se esquivan los limites de background).
+        writeResult(context, "Abriendo app...")
+        launchAppWithCmd(context, cmd)
         setResetAlarm(context, widgetId, 20_000L)
         render(context, mgr, widgetId)
     }
 
-    private fun enqueueQuickAction(context: Context, cmd: String) {
+    private fun launchAppWithCmd(context: Context, cmd: String) {
         try {
-            val datos = Data.Builder()
-                .putString(BackgroundWorker.DART_TASK_KEY, "lmQuickActionTask")
-                .putString("cmd", cmd)
-                .build()
-            // v246: expedited -> ejecucion inmediata si hay cuota (API 31+);
-            // fuera de cuota corre como trabajo normal. Sin esto, WorkManager
-            // puede aplazar la tarea minutos (ahorro de bateria agresivo).
-            val req = OneTimeWorkRequest.Builder(BackgroundWorker::class.java)
-                .setInputData(datos)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                "lm_quick_action", ExistingWorkPolicy.REPLACE, req)
+            val i = Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra("lmb10_widget_cmd", cmd)
+            }
+            context.startActivity(i)
         } catch (e: Exception) {}
     }
 
@@ -178,6 +173,12 @@ class LockWidgetProvider : AppWidgetProvider() {
         return PendingIntent.getBroadcast(
             context, reqCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    private fun writeResult(context: Context, text: String) {
+        try {
+            File(context.filesDir, RESULT_FILE).writeText(text.take(60))
+        } catch (e: Exception) {}
     }
 
     private fun readResult(context: Context): String? {

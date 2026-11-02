@@ -369,6 +369,32 @@ Future<void> refreshVehicleDataInBackground() async {
 
 const String kDrivePollTaskName = 'lmDrivePollTask';
 const String kQuickActionTaskName = 'lmQuickActionTask';
+
+/// Canal v250: el widget de bloqueo abre la app con la orden y se ejecuta
+/// aqui, en primer plano (patron de la app oficial).
+const MethodChannel _widgetCmdChannel = MethodChannel('lmb10/widgetcmd');
+final GlobalKey<ScaffoldMessengerState> kCmdMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+Future<void> _handleWidgetCmdCall(MethodCall call) async {
+  if (call.method != 'widgetCmd') return;
+  final action = (call.arguments as String?) ?? '';
+  if (action.isEmpty) return;
+  final ok = await carQuickAction(action);
+  final es = Localizations.localeOf(kCmdMessengerKey.currentContext!).languageCode == 'es';
+  final nombre = switch (action) {
+    'lock' => es ? 'Cerrar' : 'Lock',
+    'unlock' => es ? 'Abrir' : 'Unlock',
+    'trunk' => es ? 'Maletero' : 'Trunk',
+    'openall' => es ? 'Abrir todo' : 'Open all',
+    _ => action,
+  };
+  final detalle = ok
+      ? (es ? 'OK' : 'OK')
+      : (es ? 'fallo' : 'failed');
+  kCmdMessengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('$nombre: $detalle')));
+}
 const String kDrivePollUniqueName = 'lm_drive_poll';
 const Duration kDrivePollInterval = Duration(seconds: 90);
 
@@ -1149,6 +1175,9 @@ void main() async {
     LmWidget.registerInteractivityCallback(widgetActionCallback);
   } catch (_) {}
   try {
+    _widgetCmdChannel.setMethodCallHandler(_handleWidgetCmdCall);
+  } catch (_) {}
+  try {
     final cmd0 = _actionFromUri(await LmWidget.initiallyLaunchedFromHomeWidget());
     if (cmd0 != null) {
       await CarLogBridge.log('VIA-ARRANQUE ' + cmd0);
@@ -1187,6 +1216,7 @@ class LPB10App extends StatelessWidget {
     return MaterialApp(
       title: 'LMB10',
       theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: Colors.black),
+      scaffoldMessengerKey: kCmdMessengerKey,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const SplashScreen(),

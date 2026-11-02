@@ -23,6 +23,8 @@ class MainActivity : FlutterActivity() {
     private val btChannel = "lmb10/btcar"
     private val backupChannel = "lmb10/backup"
     private var pendingFolderPick: MethodChannel.Result? = null
+    private val widgetCmdChannelName = "lmb10/widgetcmd"
+    private var widgetCmdToDart: MethodChannel? = null
     private val REQ_PICK_BACKUP_FOLDER = 4123
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -57,6 +59,13 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // v250: ordenes del widget de bloqueo -> se reenvian a Dart (UI).
+        widgetCmdToDart = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger, widgetCmdChannelName)
+        intent?.getStringExtra("lmb10_widget_cmd")?.let { cmd ->
+            widgetCmdToDart?.invokeMethod("widgetCmd", cmd)
+        }
 
         // v239: backup programado en carpeta SAF elegida por el usuario.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, backupChannel)
@@ -182,6 +191,14 @@ class MainActivity : FlutterActivity() {
             )
         }
         startActivityForResult(intent, REQ_PICK_BACKUP_FOLDER)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent?.getStringExtra("lmb10_widget_cmd")?.let { cmd ->
+            widgetCmdToDart?.invokeMethod("widgetCmd", cmd)
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
