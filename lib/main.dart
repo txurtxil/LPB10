@@ -422,12 +422,25 @@ void backgroundCallbackDispatcher() {
       // para diagnosticar donde muere el flujo sin adb.
       String res = 'error';
       Object? err;
+      String extra = '';
       try {
         _widgetTrace('ini $cmd');
         await carQuickAction(cmd).timeout(const Duration(seconds: 25));
         res = 'OK';
       } catch (e) {
         err = e;
+        // v248: fallos de red -> mensaje claro en el widget (antes moria en
+        // silencio y parecia "no hace nada"). ClientException/SocketException
+        // cubren DNS, sin cobertura y cortes de datos en segundo plano.
+        if (e is TimeoutException) {
+          extra = ' (timeout)';
+        } else if (e.toString().contains('SocketException') ||
+            e.toString().contains('ClientException') ||
+            e.toString().contains('host lookup')) {
+          extra = ' SIN INTERNET';
+        } else {
+          extra = ' (${e.runtimeType})';
+        }
       }
       try {
         final icono = cmd == 'lock'
@@ -438,7 +451,7 @@ void backgroundCallbackDispatcher() {
         final n = DateTime.now();
         final hhmm =
             '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
-        _widgetTrace('$icono $hhmm $res${err != null ? ' (${err.runtimeType})' : ''}');
+        _widgetTrace('$icono $hhmm $res$extra');
       } catch (_) {}
       return true;
     }
