@@ -1,9 +1,9 @@
-// lock_widget provider: widget 2x1 con dos botones: cerrar y abrir el coche.
-// Los botones usan HomeWidgetBackgroundIntent (interactividad home_widget), que
-// recoge HomeWidgetBackgroundReceiver y entrega el URI al callback de fondo
-// registrado en Dart (widgetActionCallback -> carQuickAction, con doble toque
-// de seguridad para abrir). El estado se lee del dato qw_status que el lado
-// Dart escribe tras cada accion (aviso()).
+// lock_widget provider v243: widget 2x2 con cuatro botones: cerrar (directo),
+// abrir, maletero y abrir-todo (estos tres con confirmacion por doble toque,
+// gestionada ya en Dart por widgetActionCallback). Los botones usan
+// HomeWidgetBackgroundIntent (interactividad home_widget): el broadcast lo recoge
+// HomeWidgetBackgroundReceiver y llega al callback de fondo. El estado se lee
+// del dato qw_status que escribe el lado Dart tras cada accion (aviso()).
 package com.txurtxil.lpb10
 
 import android.appwidget.AppWidgetManager
@@ -46,6 +46,16 @@ class LockWidgetProvider : AppWidgetProvider() {
             R.id.lw_btn_unlock,
             HomeWidgetBackgroundIntent.getBroadcast(
                 context, Uri.parse("lmb10://action?cmd=unlock"))
+        )
+        v.setOnClickPendingIntent(
+            R.id.lw_btn_trunk,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=trunk"))
+        )
+        v.setOnClickPendingIntent(
+            R.id.lw_btn_openall,
+            HomeWidgetBackgroundIntent.getBroadcast(
+                context, Uri.parse("lmb10://action?cmd=openall"))
         )
         try { mgr.updateAppWidget(widgetId, v) } catch (_: Exception) {}
     }
