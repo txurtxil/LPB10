@@ -368,6 +368,7 @@ Future<void> refreshVehicleDataInBackground() async {
 }
 
 const String kDrivePollTaskName = 'lmDrivePollTask';
+const String kQuickActionTaskName = 'lmQuickActionTask';
 const String kDrivePollUniqueName = 'lm_drive_poll';
 const Duration kDrivePollInterval = Duration(seconds: 90);
 
@@ -408,6 +409,32 @@ void backgroundCallbackDispatcher() {
     }
     if (task == kSentryAutoDisarmTaskName) {
       await ejecutarAutoDesarmado();
+      return true;
+    }
+
+    // Rama del widget de bloqueo v244: el provider nativo encola el comando
+    // (cmd via inputData) tras la confirmacion por doble toque. El resultado
+    // se escribe a fichero para que el repintado nativo del widget lo lea.
+    if (task == kQuickActionTaskName) {
+      final cmd = (inputData?['cmd'] ?? '') as String;
+      if (cmd.isEmpty) return true;
+      String res = 'error';
+      try {
+        await carQuickAction(cmd);
+        res = 'OK';
+      } catch (_) {}
+      try {
+        final icono = cmd == 'lock'
+            ? 'Cerrado'
+            : (cmd == 'unlock'
+                ? 'Abierto'
+                : (cmd == 'trunk' ? 'Maletero' : 'Todo abierto'));
+        final n = DateTime.now();
+        final hhmm =
+            '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+        File('/data/data/com.txurtxil.lpb10/files/lmb_widget_result.txt')
+            .writeAsString('$icono $hhmm $res');
+      } catch (_) {}
       return true;
     }
 
