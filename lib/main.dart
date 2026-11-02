@@ -417,6 +417,7 @@ void backgroundCallbackDispatcher() {
     // se escribe a fichero para que el repintado nativo del widget lo lea.
     if (task == kQuickActionTaskName) {
       final cmd = (inputData?['cmd'] ?? '') as String;
+      await CarLogBridge.log('QA-WIDGET cmd=$cmd recibido');
       if (cmd.isEmpty) return true;
       // v247 TRAZADOR: cada paso escribe en el fichero que el widget lee,
       // para diagnosticar donde muere el flujo sin adb.
@@ -452,6 +453,7 @@ void backgroundCallbackDispatcher() {
         final hhmm =
             '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
         _widgetTrace('$icono $hhmm $res$extra');
+        await CarLogBridge.log('QA-WIDGET resultado: $icono $res$extra');
       } catch (_) {}
       return true;
     }
