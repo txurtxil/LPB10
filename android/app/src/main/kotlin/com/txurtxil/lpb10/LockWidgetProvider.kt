@@ -19,6 +19,7 @@ import android.widget.RemoteViews
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import dev.fluttercommunity.workmanager.BackgroundWorker
 import java.io.File
@@ -35,6 +36,7 @@ class LockWidgetProvider : AppWidgetProvider() {
         private const val RESULT_FILE = "lmb_widget_result.txt"
         private const val ARM_MS = 10_000L
         private const val RESULT_FRESH_MS = 120_000L
+        private const val KEY_PENDING_UNTIL = "pending_until"
     }
 
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
@@ -85,9 +87,10 @@ class LockWidgetProvider : AppWidgetProvider() {
             return
         }
         // Ejecutar: lock siempre directo; el resto al confirmar (2o toque).
-        prefs.edit().remove(KEY_ARMED).remove(KEY_ARMED_TS).apply()
+        prefs.edit().remove(KEY_ARMED).remove(KEY_ARMED_TS)
+            .putLong(KEY_PENDING_UNTIL, now + 45_000L).apply()
         enqueueQuickAction(context, cmd)
-        setResetAlarm(context, widgetId, 15_000L)
+        setResetAlarm(context, widgetId, 20_000L)
         render(context, mgr, widgetId)
     }
 
@@ -97,9 +100,12 @@ class LockWidgetProvider : AppWidgetProvider() {
                 .putString(BackgroundWorker.DART_TASK_KEY, "lmQuickActionTask")
                 .putString("cmd", cmd)
                 .build()
+            // v246: expedited -> ejecucion inmediata si hay cuota (API 31+);
+            // fuera de cuota corre como trabajo normal. Sin esto, WorkManager
+            // puede aplazar la tarea minutos (ahorro de bateria agresivo).
             val req = OneTimeWorkRequest.Builder(BackgroundWorker::class.java)
                 .setInputData(datos)
-                .setInitialDelay(0, TimeUnit.SECONDS)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 "lm_quick_action", ExistingWorkPolicy.REPLACE, req)
@@ -134,9 +140,11 @@ class LockWidgetProvider : AppWidgetProvider() {
 
         val v = RemoteViews(context.packageName, R.layout.lock_widget)
         val result = readResult(context)
+        val pendingUntil = prefs.getLong(KEY_PENDING_UNTIL, 0)
         v.setTextViewText(R.id.lw_status, when {
             armedFresh -> "Confirmar ${labelOf(armed)}: toca otra vez"
             result != null -> result
+            now < pendingUntil -> "Ejecutando..."
             else -> ""
         })
         v.setTextViewText(R.id.lw_lbl_lock, if (armedFresh) "Cerrar" else "Cerrar")
