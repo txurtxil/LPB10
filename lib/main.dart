@@ -418,11 +418,17 @@ void backgroundCallbackDispatcher() {
     if (task == kQuickActionTaskName) {
       final cmd = (inputData?['cmd'] ?? '') as String;
       if (cmd.isEmpty) return true;
+      // v247 TRAZADOR: cada paso escribe en el fichero que el widget lee,
+      // para diagnosticar donde muere el flujo sin adb.
       String res = 'error';
+      Object? err;
       try {
-        await carQuickAction(cmd);
+        _widgetTrace('ini $cmd');
+        await carQuickAction(cmd).timeout(const Duration(seconds: 25));
         res = 'OK';
-      } catch (_) {}
+      } catch (e) {
+        err = e;
+      }
       try {
         final icono = cmd == 'lock'
             ? 'Cerrado'
@@ -432,8 +438,7 @@ void backgroundCallbackDispatcher() {
         final n = DateTime.now();
         final hhmm =
             '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
-        File('/data/data/com.txurtxil.lpb10/files/lmb_widget_result.txt')
-            .writeAsString('$icono $hhmm $res');
+        _widgetTrace('$icono $hhmm $res${err != null ? ' (${err.runtimeType})' : ''}');
       } catch (_) {}
       return true;
     }
@@ -642,6 +647,16 @@ Future<String> _carTypeForVin(LeapmotorApiClient c, String vin) async {
     }
   } catch (_) {}
   return '';
+}
+
+Future<void> _widgetTrace(String msg) async {
+  try {
+    final n = DateTime.now();
+    final hhmm =
+        '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+    await File('/data/data/com.txurtxil.lpb10/files/lmb_widget_result.txt')
+        .writeAsString('$hhmm $msg');
+  } catch (_) {}
 }
 
 Future<bool> carQuickAction(String action) async {
