@@ -1090,48 +1090,7 @@ Future<void> widgetActionCallback(Uri? uri) async {
   if (cmd == null) return;
   await CarLogBridge.log('VIA-FONDO ' + cmd);
 
-  // Doble toque para lo que abre el coche: el primero arma y avisa, el
-  // segundo, dentro de 8 segundos, ejecuta.
-  if (const ['unlock', 'trunk', 'openall'].contains(cmd)) {
-    final ahora = DateTime.now().millisecondsSinceEpoch;
-    if (gWidgetArmado != cmd || ahora - gWidgetArmadoTs > 8000) {
-      gWidgetArmado = cmd;
-      gWidgetArmadoTs = ahora;
-      var aviso2 = 'Pulsa otra vez';
-      try {
-        final lat = double.tryParse(
-            await LmWidget.getWidgetData<String>('lat') ?? '');
-        final lon = double.tryParse(
-            await LmWidget.getWidgetData<String>('lon') ?? '');
-        if (lat != null && lon != null) {
-          final pos = await Geolocator.getLastKnownPosition();
-          if (pos != null) {
-            final m = Geolocator.distanceBetween(
-                pos.latitude, pos.longitude, lat, lon);
-            if (m > 300) {
-              aviso2 = m > 1500
-                  ? 'A ' + (m / 1000).toStringAsFixed(1) + ' km. Confirmar?'
-                  : 'A ' + m.round().toString() + ' m. Confirmar?';
-            }
-          }
-        }
-      } catch (_) {}
-      await CarLogBridge.log('widget armado: ' + cmd);
-      try {
-        await LmWidget.saveWidgetData<String>('qw_status', aviso2);
-        await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
-        await Future.delayed(const Duration(seconds: 8));
-        if (gWidgetArmado == cmd && gWidgetArmadoTs == ahora) {
-          gWidgetArmado = null;
-          await LmWidget.saveWidgetData<String>('qw_status', '');
-          await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
-        }
-      } catch (_) {}
-      return;
-    }
-    gWidgetArmado = null;
-    await CarLogBridge.log('widget confirmado: ' + cmd);
-  }
+  // v251 (decision owner): ejecucion DIRECTA, sin armado/confirmacion.
   // El comando tarda: hay que verificar el PIN contra el servidor y luego
   // esperar al resultado. Sin aviso, el widget parece roto.
   Future<void> aviso(String t) async {
