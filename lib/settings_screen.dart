@@ -17,6 +17,7 @@ import 'trip_list_screen.dart';
 import 'maintenance_screen.dart';
 import 'abrp_screen.dart';
 import 'drive_backup_screen.dart';
+import 'feedback_screen.dart';
 import 'ios_drive_detector.dart';
 import 'notif_settings.dart';
 import 'main.dart' show modoSoloLectura, setModoSoloLectura, confirmarComandos, setConfirmarComandos, geoHomeActivo, geoHomeGuardar, geoHomeDesactivar, pvpcAlertActivo, setPvpcAlert;
@@ -535,6 +536,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _dialogoBackup(
                       context, Localizations.localeOf(context).languageCode == 'es'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Enviar feedback / reportar'
+                      : 'Send feedback / report'),
+                  subtitle: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Publica directamente en el repositorio del proyecto'
+                      : 'Publishes directly to the project repository'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const FeedbackScreen())),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16),

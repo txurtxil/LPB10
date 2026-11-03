@@ -45,3 +45,6 @@ _scripts_viejos/
 # Cache del compilador de Kotlin, generada en cada build.
 # Sin esto, el "git add -A" de release_apk.sh la mete en el repositorio.
 android/.kotlin/
+
+# Token de feedback a GitHub (secreto, no subir)
+lib/feedback_token.dart
