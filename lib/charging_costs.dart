@@ -11,6 +11,28 @@
 // Modulo puro (testable, sin IO): las tarifas se guardan fuera.
 
 import 'battery_health.dart' show MuestraBat, kMinAmperiosCarga;
+import 'charge_cost.dart' show ChargeCost;
+
+/// Eficiencia de carga AC observada (energia al paquete / energia de red),
+/// MEDIANA de las sesiones anotadas con kWh de red (y no gratuitas). Necesita
+/// al menos 3 cargas; null si no hay datos suficientes. v254: corrige la
+/// estimacion de coste por las perdidas del cargador.
+({double efic, int n})? eficienciaCargadorObservada(
+    List<SesionCarga> sesiones, Map<int, ChargeCost> costes) {
+  final ratios = <double>[];
+  for (final ses in sesiones) {
+    if (ses.tipo != TipoCarga.ac || ses.energiaKwh <= 0) continue;
+    final cc = costes[ses.iniMs];
+    if (cc == null || cc.gratuita) continue;
+    final red = cc.kwhCargador;
+    if (red == null || red <= 0) continue;
+    ratios.add(ses.energiaKwh / red);
+  }
+  if (ratios.length < 3) return null;
+  ratios.sort();
+  final mediana = ratios[ratios.length ~/ 2];
+  return (efic: mediana.clamp(0.60, 0.99), n: ratios.length);
+}
 
 /// Tipo de carga por potencia pico (mismos cortes que Mate).
 enum TipoCarga { ac, dc, hpc }
@@ -64,10 +86,17 @@ TipoCarga clasificar(double potMaxKw) =>
     potMaxKw <= kKwAcMax ? TipoCarga.ac : (potMaxKw < kKwHpcMin ? TipoCarga.dc : TipoCarga.hpc);
 
 /// Coste de una sesion con las tarifas dadas, o null si la tarifa de su
-/// tipo no esta configurada.
-double? costeSesion(SesionCarga s, Tarifas t) {
+/// tipo no esta configurada. [eficienciaAc] (0-1, energia al paquete /
+/// energia de red) corrige las cargas AC por las perdidas del cargador,
+/// estimadas de las cargas anotadas con kWh de red (v254).
+double? costeSesion(SesionCarga s, Tarifas t, {double? eficienciaAc}) {
   final tarifa = t.para(s.tipo);
-  return tarifa == null ? null : s.energiaKwh * tarifa;
+  if (tarifa == null) return null;
+  var eur = s.energiaKwh * tarifa;
+  if (s.tipo == TipoCarga.ac && eficienciaAc != null && eficienciaAc > 0) {
+    eur /= eficienciaAc;
+  }
+  return eur;
 }
 
 /// Detecta sesiones de carga: tramos consecutivos con corriente por encima
@@ -175,7 +204,7 @@ class MesCarga {
 }
 
 /// Agrupa las sesiones por mes ('2026-09' -> totales).
-Map<String, MesCarga> agregarPorMes(List<SesionCarga> sesiones, Tarifas t) {
+Map<String, MesCarga> agregarPorMes(List<SesionCarga> sesiones, Tarifas t, {double? eficienciaAc}) {
   final out = <String, MesCarga>{};
   for (final s in sesiones) {
     final d = DateTime.fromMillisecondsSinceEpoch(s.finMs);
@@ -189,7 +218,7 @@ Map<String, MesCarga> agregarPorMes(List<SesionCarga> sesiones, Tarifas t) {
     } else {
       mes.kwhHpc += s.energiaKwh;
     }
-    final c = costeSesion(s, t);
+    final c = costeSesion(s, t, eficienciaAc: eficienciaAc);
     if (c != null) mes.coste = (mes.coste ?? 0) + c;
   }
   return out;

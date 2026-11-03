@@ -55,6 +55,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
   List<MuestraBat> _muestras = const [];
   Map<String, MesCarga> _meses = {};
   String? _mesSel;
+  ({double efic, int n})? _eficiencia;
   final _ac = TextEditingController();
   final _dc = TextEditingController();
   final _hpc = TextEditingController();
@@ -138,10 +139,15 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
     final muestras = await HistoryArchive.cargarMuestrasBat();
     _muestras = muestras;
     final sesiones = detectarSesiones(muestras);
+    try {
+      _eficiencia = eficienciaCargadorObservada(
+          sesiones, await ChargeCostStore.loadAll());
+    } catch (_) {}
     if (!mounted) return;
     setState(() {
       _sesiones = sesiones;
-      _meses = agregarPorMes(sesiones, _tarifasActuales());
+      _meses = agregarPorMes(sesiones, _tarifasActuales(),
+          eficienciaAc: _eficiencia?.efic);
       _cargando = false;
     });
   }
@@ -157,7 +163,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
       }));
     } catch (_) {}
     if (!mounted) return;
-    setState(() => _meses = agregarPorMes(_sesiones, _tarifasActuales()));
+    setState(() => _meses = agregarPorMes(_sesiones, _tarifasActuales(), eficienciaAc: _eficiencia?.efic));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(Localizations.localeOf(context).languageCode == 'es'
           ? 'Tarifas guardadas'
@@ -194,7 +200,8 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (ctx) {
-        final estimado = costeSesion(s, _tarifasActuales());
+        final estimado = costeSesion(s, _tarifasActuales(),
+            eficienciaAc: _eficiencia?.efic);
         return StatefulBuilder(
           builder: (ctx, setSheet) {
             final kwhCargador =
@@ -391,12 +398,22 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                                       border: const OutlineInputBorder(),
                                     ),
                                     onChanged: (_) => setState(
-                                        () => _meses = agregarPorMes(_sesiones, _tarifasActuales())),
+                                        () => _meses = agregarPorMes(_sesiones, _tarifasActuales(), eficienciaAc: _eficiencia?.efic)),
                                   ),
                                 ),
                               ),
                           ],
                         ),
+                        if (_eficiencia != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              es
+                                  ? 'Eficiencia de tu cargador (observada en ${_eficiencia!.n} cargas anotadas): ~${(_eficiencia!.efic * 100).toStringAsFixed(0)} % - las estimaciones AC ya incluyen estas perdidas'
+                                  : 'Your charger efficiency (observed in ${_eficiencia!.n} annotated charges): ~${(_eficiencia!.efic * 100).toStringAsFixed(0)} % - AC estimates include these losses',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                            ),
+                          ),
                         const SizedBox(height: 8),
                         Align(
                           alignment: Alignment.centerRight,
@@ -461,9 +478,9 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                         subtitle: Text(
                             '${_fecha(s.iniMs)} · ${s.socIni.toStringAsFixed(0)}>${s.socFin.toStringAsFixed(0)} %'),
                         trailing: Text(
-                          costeSesion(s, tarifas) == null
+                          costeSesion(s, tarifas, eficienciaAc: _eficiencia?.efic) == null
                               ? '--'
-                              : '${costeSesion(s, tarifas)!.toStringAsFixed(2)} EUR',
+                              : '${costeSesion(s, tarifas, eficienciaAc: _eficiencia?.efic)!.toStringAsFixed(2)} EUR',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         // Detalle: curva de potencia + coste real anotado.
