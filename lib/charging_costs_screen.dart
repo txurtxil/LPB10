@@ -183,6 +183,7 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
     final curva = curvaPotencia(_muestras, s.iniMs, s.finMs);
     final costes = await ChargeCostStore.loadAll();
     final guardado = costes[s.iniMs];
+    var gratuita = guardado?.gratuita ?? false;
     if (!mounted) return;
     final eurCtrl = TextEditingController(
         text: guardado?.eur?.toString() ?? '');
@@ -279,6 +280,14 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                         ),
                       ],
                     ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(es ? 'Carga gratuita' : 'Free charge'),
+                      value: gratuita,
+                      onChanged: (v) => setSheet(() => gratuita = v ?? false),
+                    ),
                     const SizedBox(height: 6),
                     if (efic != null)
                       Text(
@@ -288,7 +297,13 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                         style: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600),
                       ),
-                    if (eurReal != null)
+                    if (gratuita)
+                      Text(
+                        es ? 'Coste real: GRATIS' : 'Real cost: FREE',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      )
+                    else if (eurReal != null)
                       Text(
                         es
                             ? 'Coste real: ${eurReal.toStringAsFixed(2)} EUR'
@@ -303,9 +318,10 @@ class _ChargingCostsScreenState extends State<ChargingCostsScreen> {
                         onPressed: () async {
                           await ChargeCostStore.put(ChargeCost(
                             ts: s.iniMs,
-                            eur: eurReal,
-                            kwhCargador: kwhCargador,
+                            eur: gratuita ? 0.0 : eurReal,
+                            kwhCargador: gratuita ? null : kwhCargador,
                             tipo: s.tipo == TipoCarga.ac ? 'casa' : 'publica',
+                            gratuita: gratuita,
                           ));
                           if (ctx.mounted) Navigator.of(ctx).pop();
                         },

@@ -26,6 +26,7 @@ class ChargeCost {
   final double? eurKwh; // precio por kWh del punto
   final double? kwhCargador; // kWh que marco el cargador
   final String tipo; // 'casa' | 'publica'
+  final bool gratuita; // v253: carga gratuita
 
   const ChargeCost({
     required this.ts,
@@ -33,6 +34,7 @@ class ChargeCost {
     this.eurKwh,
     this.kwhCargador,
     this.tipo = 'casa',
+    this.gratuita = false,
   });
 
   bool get vacio => eur == null && eurKwh == null && kwhCargador == null;
@@ -43,6 +45,7 @@ class ChargeCost {
         'eurKwh': eurKwh,
         'kwhCargador': kwhCargador,
         'tipo': tipo,
+        'gratuita': gratuita,
       };
 
   static ChargeCost? fromMap(Map<String, dynamic> m) {
@@ -55,6 +58,7 @@ class ChargeCost {
       eurKwh: d(m['eurKwh']),
       kwhCargador: d(m['kwhCargador']),
       tipo: (m['tipo'] as String?) ?? 'casa',
+      gratuita: m['gratuita'] == true,
     );
   }
 }
