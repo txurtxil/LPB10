@@ -70,22 +70,13 @@
              recoge nadie: los botones del widget no hacian absolutamente nada
              y el log no registraba ni un intento. Lo declara el propio ejemplo
              del plugin, no se fusiona solo. -->
-        <receiver android:name=".MiniLockWidgetProvider" android:exported="false" android:label="LMB10 coche mini 2x1">
+        <receiver android:name=".MiniLockWidgetProvider" android:exported="false" android:label="LMB10 coche">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/mini_lock_widget_info" />
-        </receiver>
-
-        <receiver android:name=".LockWidgetProvider" android:exported="false" android:label="LMB10 coche 2x2">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/lock_widget_info" />
         </receiver>
 
         <receiver
