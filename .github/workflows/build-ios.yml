@@ -40,8 +40,28 @@ jobs:
           xcodebuild -list -project ios/Runner.xcodeproj | grep LmBatteryWidget
 
       # Compila los bundles de iOS en modo release sin firma
+      # flutter build ios --no-codesign falla de forma intermitente con la
+      # extension del widget (LmBatteryWidget): xcodebuild termina OK pero
+      # flutter_tools exige Development Team despues ("Building a deployable
+      # iOS app requires..."). v255-v260 fallaron asi; v249-v254 pasaron
+      # con el mismo arbol/imagen/flutter. Fix: --config-only solo prepara
+      # (podfile, pod install, xcconfig) y compilamos con xcodebuild directo
+      # con el signing desactivado a bajo nivel (sin check de flutter_tools).
+      - name: Prepare iOS build (pod install + config)
+        run: flutter build ios --release --no-codesign --config-only
+
       - name: Build iOS App
-        run: flutter build ios --release --no-codesign
+        run: |
+          set -e
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/xc \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          mkdir -p build/ios/iphoneos
+          cp -R build/xc/Build/Products/Release-iphoneos/Runner.app build/ios/iphoneos/
 
       # Construye el Payload empaquetando adecuadamente la estructura de iOS
       # La extension del widget debe viajar dentro de Runner.app/PlugIns
