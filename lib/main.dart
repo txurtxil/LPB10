@@ -1865,7 +1865,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
                       child: Text(_transientError!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
                     ),
-                  _CarImageCard(client: widget.client, vehicle: widget.vehicle),
+                  _CarImageCard(
+                    client: widget.client,
+                    vehicle: widget.vehicle,
+                    soc: s.preciseSoc ?? s.soc?.toDouble(),
+                  ),
                   (_showMap && s.latitude != null && s.longitude != null)
                       ? Column(children: [
                           LocationCard(latitude: s.latitude!, longitude: s.longitude!),
@@ -4720,7 +4724,8 @@ class _ActionBtn {
 class _CarImageCard extends StatefulWidget {
   final LeapmotorApiClient client;
   final Vehicle vehicle;
-  const _CarImageCard({required this.client, required this.vehicle});
+  final double? soc;
+  const _CarImageCard({required this.client, required this.vehicle, this.soc});
 
   @override
   State<_CarImageCard> createState() => _CarImageCardState();
@@ -4762,7 +4767,14 @@ class _CarImageCardState extends State<_CarImageCard> {
       padding: const EdgeInsets.only(bottom: 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Image.network(
+        child: SizedBox(
+          height: 170,
+          width: double.infinity,
+          child: Stack(alignment: Alignment.center, children: [
+            if (widget.soc != null)
+              Positioned.fill(
+                  child: CustomPaint(painter: _SocArcPainter(widget.soc!))),
+            Image.network(
           url,
           height: 170,
           fit: BoxFit.contain,
@@ -4773,8 +4785,55 @@ class _CarImageCardState extends State<_CarImageCard> {
                   child: Center(child: CircularProgressIndicator()),
                 ),
           errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+            ),
+          ]),
         ),
       ),
     );
   }
+}
+
+// v257: arco de carga + aura suave detras del coche (coloreado por SoC).
+class _SocArcPainter extends CustomPainter {
+  final double soc;
+  _SocArcPainter(this.soc);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.88);
+    final r = (size.width < size.height ? size.width : size.height) * 0.52;
+    canvas.drawCircle(
+        c,
+        r * 1.2,
+        Paint()
+          ..shader = RadialGradient(colors: [
+            const Color(0xFF8B7CF6).withOpacity(0.20),
+            const Color(0xFF8B7CF6).withOpacity(0.0)
+          ]).createShader(Rect.fromCircle(center: c, radius: r * 1.2)));
+    final rect = Rect.fromCircle(center: c, radius: r);
+    canvas.drawArc(
+        rect,
+        3.1416,
+        3.1416,
+        false,
+        Paint()
+          ..color = const Color(0xFF24242E)
+          ..strokeWidth = 7
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round);
+    final color = soc >= 50
+        ? const Color(0xFF4CC38A)
+        : (soc >= 20 ? const Color(0xFFE5A04C) : const Color(0xFFE5484D));
+    canvas.drawArc(
+        rect,
+        3.1416,
+        3.1416 * (soc / 100).clamp(0.0, 1.0),
+        false,
+        Paint()
+          ..color = color
+          ..strokeWidth = 7
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round);
+  }
+  @override
+  bool shouldRepaint(covariant _SocArcPainter old) => old.soc != soc;
 }

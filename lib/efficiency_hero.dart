@@ -123,8 +123,8 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
             const SizedBox(height: 8),
             Text(
               es
-                  ? 'electricidad $_eurTotal€ · un térmico (${_litros.toStringAsFixed(1)} L/100km a ${_precio.toStringAsFixed(2)}€/L) habría costado ${_eur(_termicoEur)}€'
-                  : 'electricity ${_eurTotal}€ · a thermal (${_litros.toStringAsFixed(1)} L/100km at ${_precio.toStringAsFixed(2)}€/L) would have cost ${_eur(_termicoEur)}€',
+                  ? 'electricidad ${_eurTotal.toStringAsFixed(2)}€ · un térmico (${_litros.toStringAsFixed(1)} L/100km a ${_precio.toStringAsFixed(2)}€/L) habría costado ${_eur(_termicoEur)}€'
+                  : 'electricity ${_eurTotal.toStringAsFixed(2)}€ · a thermal (${_litros.toStringAsFixed(1)} L/100km at ${_precio.toStringAsFixed(2)}€/L) would have cost ${_eur(_termicoEur)}€',
               style: TextStyle(fontSize: 10, color: Colors.grey[600]),
             ),
           ]),
