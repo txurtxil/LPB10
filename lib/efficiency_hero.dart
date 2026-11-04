@@ -1,10 +1,13 @@
 // efficiency_hero.dart — v256: resumen de eficiencia en la pantalla principal.
-// Tarjeta héroe (ahorro vs térmico acumulado, CO2 evitado, odómetro) +
-// comparativa del mes (elec vs térmico) + sparkline de consumo 14 días.
-// Datos: DailyStats (km/kWh por dia) + preciosPorDia + Pvpc.termico()
-// (consumo y precio del térmico, editables en la pantalla de precio).
-import 'package:flutter/material.dart';
+// v259: CACHE stale-while-revalidate (se pinta al instante con lo ultimo
+// calculado y se recalcula en segundo plano con cargas PARALELAS) + tick de
+// refresco enganchado al boton de recarga de la barra.
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'battery_health.dart' show MuestraBat;
 import 'daily_stats.dart';
 import 'energy_cost.dart' show preciosPorDia, totalizar;
 import 'history_archive.dart';
@@ -12,11 +15,20 @@ import 'pvpc.dart';
 
 class EfficiencyHero extends StatefulWidget {
   const EfficiencyHero({super.key});
+
+  /// Tick global: al incrementarlo, el héroe se recalcula (lo dispara el
+  /// boton de refresco de la barra principal).
+  static final ValueNotifier<int> refreshTick = ValueNotifier<int>(0);
+
   @override
   State<EfficiencyHero> createState() => _EfficiencyHeroState();
 }
 
 class _EfficiencyHeroState extends State<EfficiencyHero> {
+  static const String _cacheKey = 'effhero_cache_v1';
+  static const double _co2TermicoGkm = 140.0;
+  static const double _co2RedGkwh = 150.0;
+
   bool _cargando = true;
   double? _odo;
   double _ahorro = 0, _co2 = 0, _eurTotal = 0, _termicoEur = 0;
@@ -24,24 +36,70 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
   double _litros = 7.0, _precio = 1.7;
   final List<double> _spark = [];
 
-  static const double _co2TermicoGkm = 140.0; // gasolina, g/km
-  static const double _co2RedGkwh = 150.0; // intensidad media red ES, g/kWh
-
   @override
   void initState() {
     super.initState();
-    _cargar();
+    EfficiencyHero.refreshTick.addListener(_recalc);
+    _iniciar();
   }
 
-  Future<void> _cargar() async {
+  @override
+  void dispose() {
+    EfficiencyHero.refreshTick.removeListener(_recalc);
+    super.dispose();
+  }
+
+  Future<void> _iniciar() async {
+    // 1) Cache: pintar al INSTANTE con lo ultimo calculado.
     try {
-      final days = await DailyStats.sync();
-      final precios = await preciosPorDia();
-      final term = await Pvpc.termico();
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cacheKey);
+      if (raw != null) {
+        final m = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+        _ahorro = (m['ahorro'] ?? 0).toDouble();
+        _co2 = (m['co2'] ?? 0).toDouble();
+        _eurTotal = (m['eurTotal'] ?? 0).toDouble();
+        _termicoEur = (m['termicoEur'] ?? 0).toDouble();
+        _kmMes = (m['kmMes'] ?? 0).toDouble();
+        _eurMes = (m['eurMes'] ?? 0).toDouble();
+        _termicoMes = (m['termicoMes'] ?? 0).toDouble();
+        _litros = (m['litros'] ?? 7).toDouble();
+        _precio = (m['precio'] ?? 1.7).toDouble();
+        final o = m['odo'];
+        _odo = o == null ? null : (o).toDouble();
+        _spark
+          ..clear()
+          ..addAll((m['spark'] as List? ?? [])
+              .map((e) => (e).toDouble()));
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _cargando = false);
+    // 2) Recalcular en segundo plano (cache stale-while-revalidate).
+    _recalc();
+  }
+
+  void _recalc() {
+    _calcular();
+  }
+
+  Future<void> _calcular() async {
+    try {
+      // Cargas PARALELAS (antes secuenciales -> lento).
+      final res = await Future.wait<dynamic>([
+        DailyStats.sync(),
+        preciosPorDia(),
+        Pvpc.termico(),
+        HistoryArchive.cargarMuestrasBat()
+            .catchError((_) => <MuestraBat>[]),
+      ]);
+      final days = res[0] as List<DayAgg>;
+      final precios = res[1] as Map<String, double>;
+      final term = res[2] as ({double litros, double precio});
+      final muestras = res[3] as List<MuestraBat>;
       _litros = term.litros > 0 ? term.litros.toDouble() : 7.0;
       _precio = term.precio > 0 ? term.precio.toDouble() : 1.7;
 
-      double km = 0, eur = 0, kwh = 0;
+      double km = 0, eur = 0, kwh = 0, kmMes = 0, eurMes = 0;
       final mesActual = DateTime.now().toIso8601String().substring(0, 7);
       for (final a in days) {
         final t = totalizar([a], precios);
@@ -49,45 +107,68 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
         kwh += t.kwh;
         if (t.hayEur) eur += t.eur;
         if (a.d.startsWith(mesActual)) {
-          _kmMes += t.km;
-          if (t.hayEur) _eurMes += t.eur;
+          kmMes += t.km;
+          if (t.hayEur) eurMes += t.eur;
         }
       }
 
-      // Sparkline: ultimos 14 dias con al menos 0,5 km (kWh del dia via
-      // totalizar, no depende de precios).
       final conKm = days.where((a) => a.kmAll >= 0.5).toList();
-      final ult = conKm.length > 14 ? conKm.sublist(conKm.length - 14) : conKm;
+      final ult =
+          conKm.length > 14 ? conKm.sublist(conKm.length - 14) : conKm;
+      final spark = <double>[];
       for (final a in ult) {
         final td = totalizar([a], precios);
-        if (td.km >= 0.5) _spark.add(td.kwh * 100 / td.km);
+        if (td.km >= 0.5) spark.add(td.kwh * 100 / td.km);
       }
 
-      // Odómetro real: máximo km registrado en el archivo de muestras.
       double odo = 0;
-      try {
-        final m = await HistoryArchive.cargarMuestrasBat();
-        for (final x in m) {
-          if (x.km > odo) odo = x.km.toDouble();
-        }
-      } catch (_) {}
-      _odo = odo > 0 ? odo : null;
+      for (final x in muestras) {
+        if (x.km > odo) odo = x.km.toDouble();
+      }
 
-      // Ahorro acumulado y CO2 (sobre el odómetro real; el coste eléctrico
-      // cubre los dias con precio disponible).
-      _eurTotal = eur;
-      _termicoEur = (_odo ?? km) * _litros / 100 * _precio;
-      _ahorro = _termicoEur - _eurTotal;
+      final ahorro = odo * _litros / 100 * _precio - eur;
       final kwhKm = km > 10 ? kwh / km : 0.18;
-      _co2 = (_co2TermicoGkm - _co2RedGkwh * kwhKm) * (_odo ?? km) / 1000;
-      _termicoMes = _kmMes * _litros / 100 * _precio;
+      final co2 = (_co2TermicoGkm - _co2RedGkwh * kwhKm) * odo / 1000;
+
+      if (!mounted) return;
+      setState(() {
+        _odo = odo > 0 ? odo : null;
+        _eurTotal = eur;
+        _termicoEur = odo * _litros / 100 * _precio;
+        _ahorro = ahorro;
+        _co2 = co2;
+        _kmMes = kmMes;
+        _eurMes = eurMes;
+        _termicoMes = kmMes * _litros / 100 * _precio;
+        _spark
+          ..clear()
+          ..addAll(spark);
+      });
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_cacheKey, jsonEncode({
+          'ahorro': _ahorro,
+          'co2': _co2,
+          'eurTotal': _eurTotal,
+          'termicoEur': _termicoEur,
+          'kmMes': _kmMes,
+          'eurMes': _eurMes,
+          'termicoMes': _termicoMes,
+          'litros': _litros,
+          'precio': _precio,
+          'odo': _odo,
+          'spark': _spark,
+        }));
+      } catch (_) {}
     } catch (_) {}
-    if (mounted) setState(() => _cargando = false);
   }
 
   String _eur(double v) => v
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+
+  double _promedio() =>
+      _spark.isEmpty ? 0 : _spark.reduce((a, b) => a + b) / _spark.length;
 
   @override
   Widget build(BuildContext context) {
@@ -170,9 +251,6 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
       const SizedBox(height: 8),
     ]);
   }
-
-  double _promedio() =>
-      _spark.isEmpty ? 0 : _spark.reduce((a, b) => a + b) / _spark.length;
 
   Widget _barra(String label, double valor, double max, Color color) {
     final w = max > 0 ? (valor / max).clamp(0.0, 1.0) : 0.0;

@@ -1763,7 +1763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: _refreshing
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.refresh),
-            onPressed: _refreshing ? null : () => _loadStatus(),
+            onPressed: _refreshing ? null : () { _loadStatus(); EfficiencyHero.refreshTick.value++; },
             tooltip: AppLocalizations.of(context)!.refreshTooltip,
           ),
           IconButton(
