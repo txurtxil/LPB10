@@ -236,10 +236,17 @@ ResumenSalud resumirSalud(List<EstimacionCarga> estimaciones,
     }
     disp = sumW > 0 ? (sumVar / sumW) / (media * media) * 100.0 : null;
   }
+  // v260: restaurar contrato pre-v242 (tests battery_health_test.dart):
+  // - capacidadKwh null cuando no queda ninguna estimacion valida (antes de
+  //   v242 media era null; con 'todas frias' la pantalla mostraba 0.0 kWh y
+  //   la guarda del PDF dejaba de proteger).
+  // - numEstimaciones = estimaciones.length (conteo total, coherente con la
+  //   leyenda 'N cargas medidas · M con bateria fria fuera del computo');
+  //   v242 lo habia cambiado a rec.length sin actualizar los tests.
   return ResumenSalud(
-    capacidadKwh: media,
+    capacidadKwh: rec.isEmpty ? null : media,
     dispersionPct: disp,
-    numEstimaciones: rec.length,
+    numEstimaciones: estimaciones.length,
     excluidasFrio: estimaciones.where((e) => e.excluida).length,
     estimaciones: estimaciones,
   );

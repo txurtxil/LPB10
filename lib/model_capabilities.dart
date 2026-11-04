@@ -10,16 +10,31 @@ library;
 const String kFeatSteeringHeat = 'steering_heat';
 const String kFeatMirrorHeat = 'mirror_heat';
 const String kFeatSeatHeat = 'seat_heat';
+const String kFeatSeatVent = 'seat_vent';
 const String kFeatSunshade = 'sunshade';
 const String kFeatWindows = 'windows';
 const String kFeatSentry = 'sentry';
+const String kFeatTrunkClose = 'trunk_close';
+const String kFeatTirePressure = 'tire_pressure';
 
 /// Modelo (mayusculas, como vehicle.carType) -> funciones no soportadas.
 const Map<String, Set<String>> kUnsupportedByModel = {
-  // B03X (Jose Manuel, issue #2): calefaccion de volante y de asientos no
-  // soportadas por el vehiculo (la API las rechaza). Nota: hoy la app no
-  // pinta botones de asientos/volante; cuando se anadan, usar esta tabla.
-  'B03X': {kFeatSteeringHeat, kFeatSeatHeat},
+  // B03X (Jose Manuel, issue #2, lista completa 4-nov-2026):
+  // - "No funcionan": calefaccion de volante y de asientos (la API las
+  //   rechaza). Hoy la app SI pinta esos controles; se ocultan con esta tabla.
+  // - "No aplican, no dispone del elemento": cerrar maletero (abrir SI va),
+  //   persianas, ventilacion de asientos conductor/copiloto, sensores de
+  //   presion de neumaticos.
+  // - "Por probar" (se dejan visibles a posta): centinela, limite de
+  //   velocidad.
+  'B03X': {
+    kFeatSteeringHeat,
+    kFeatSeatHeat,
+    kFeatSeatVent,
+    kFeatSunshade,
+    kFeatTrunkClose,
+    kFeatTirePressure,
+  },
 };
 
 /// true si el modelo (si se conoce) soporta la funcion.

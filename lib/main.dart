@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'leapmotor_engine.dart';
+import 'model_capabilities.dart';
 import 'efficiency_hero.dart';
 import 'weather.dart';
 import 'about_screen.dart';
@@ -2030,7 +2031,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 12),
                       PowerCard(status: s),
                       const SizedBox(height: 12),
-                      TirePressureCard(status: s),
+                      TirePressureCard(status: s, carType: widget.vehicle.carType),
                       const SizedBox(height: 16),
                 ],
               ),
@@ -2127,11 +2128,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         s.bbcmBackDoorStatus == true ? Icons.inventory_2 : Icons.inventory_2_outlined,
         s.bbcmBackDoorStatus == true ? t.openLabel : t.closedLabel,
         t.tileTrunk,
-        onTap: () => s.bbcmBackDoorStatus == true
-            ? _tileComando('Cerrar maletero', 'Close trunk',
-                (pin) => widget.client.closeTrunk(widget.vehicle.vin, pin))
-            : _tileComando('Abrir maletero', 'Open trunk',
-                (pin) => widget.client.openTrunk(widget.vehicle.vin, pin)),
+        onTap: s.bbcmBackDoorStatus == true &&
+                !modeloSoporta(widget.vehicle.carType, kFeatTrunkClose)
+            // B03X: el maletero se abre pero NO se cierra electricamente;
+            // con la puerta abierta el tile queda informativo (sin accion).
+            ? null
+            : () => s.bbcmBackDoorStatus == true
+                ? _tileComando('Cerrar maletero', 'Close trunk',
+                    (pin) => widget.client.closeTrunk(widget.vehicle.vin, pin))
+                : _tileComando('Abrir maletero', 'Open trunk',
+                    (pin) => widget.client.openTrunk(widget.vehicle.vin, pin)),
       ),
       _TileData(Icons.security, s.sentryMode == 1 ? t.activeShortLabel : t.inactiveLabel, t.tileSentry),
       _TileData(Icons.thermostat_outlined,
@@ -3374,7 +3380,8 @@ class PowerCard extends StatelessWidget {
 
 class TirePressureCard extends StatelessWidget {
   final VehicleStatus status;
-  const TirePressureCard({super.key, required this.status});
+  final String? carType;
+  const TirePressureCard({super.key, required this.status, this.carType});
 
   String _bar(int? kpa) => kpa == null ? '--' : (kpa / 100).toStringAsFixed(2);
 
@@ -3382,6 +3389,29 @@ class TirePressureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const bg = Color(0xFFBFE0FA);
     const textColor = Color(0xFF0D3B66);
+
+    if (!modeloSoporta(carType, kFeatTirePressure)) {
+      // B03X (Jose Manuel, issue #2): sin sensores de presion de fabrica;
+      // mejor un aviso claro que cuatro ruedas con '--'.
+      return Container(
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(AppLocalizations.of(context)!.tirePressureTitle,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 15)),
+            const SizedBox(height: 8),
+            Text(
+              Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Este modelo no dispone de sensores de presion de neumaticos.'
+                  : 'This model has no tire pressure sensors.',
+              style: const TextStyle(color: textColor, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
 
     Widget tile(String label, int? kpa) => Expanded(
           child: Column(
@@ -4529,7 +4559,8 @@ class _ControlsScreenState extends State<ControlsScreen> {
               _ActionBtn(AppLocalizations.of(context)!.actionLock, Icons.lock, () => _run(AppLocalizations.of(context)!.actionLock, () async { await markManualLockAction(); await c.lockVehicle(vin, pin); })),
               _ActionBtn(_armado == 'unlock' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionUnlock, Icons.lock_open, () => _run(AppLocalizations.of(context)!.actionUnlock, () async { await markManualLockAction(); await c.unlockVehicle(vin, pin); }, confirmId: 'unlock')),
               _ActionBtn(_armado == 'trunk' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionTrunkOpen, Icons.inventory_2, () => _run(AppLocalizations.of(context)!.actionTrunkOpen, () => c.openTrunk(vin, pin), confirmId: 'trunk')),
-              _ActionBtn(AppLocalizations.of(context)!.actionTrunkClose, Icons.inventory_2_outlined, () => _run(AppLocalizations.of(context)!.actionTrunkClose, () => c.closeTrunk(vin, pin))),
+              if (modeloSoporta(widget.vehicle.carType, kFeatTrunkClose))
+                _ActionBtn(AppLocalizations.of(context)!.actionTrunkClose, Icons.inventory_2_outlined, () => _run(AppLocalizations.of(context)!.actionTrunkClose, () => c.closeTrunk(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionFindCar, Icons.location_searching, () => _run(AppLocalizations.of(context)!.actionFindCar, () => c.findVehicle(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionUnlockCharger, Icons.ev_station, () => _run(AppLocalizations.of(context)!.actionUnlockCharger, () => c.unlockCharger(vin, pin))),
             ]),
@@ -4542,15 +4573,19 @@ class _ControlsScreenState extends State<ControlsScreen> {
             ]),
             _sectionTitle(AppLocalizations.of(context)!.sectionComfort),
             _actionGrid([
-              _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOn, Icons.back_hand, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOn, () => c.steeringWheelHeatOn(vin, pin))),
-              _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOff, Icons.back_hand_outlined, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOff, () => c.steeringWheelHeatOff(vin, pin))),
+              if (modeloSoporta(widget.vehicle.carType, kFeatSteeringHeat))
+                _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOn, Icons.back_hand, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOn, () => c.steeringWheelHeatOn(vin, pin))),
+              if (modeloSoporta(widget.vehicle.carType, kFeatSteeringHeat))
+                _ActionBtn(AppLocalizations.of(context)!.actionSteeringHeatOff, Icons.back_hand_outlined, () => _run(AppLocalizations.of(context)!.actionSteeringHeatOff, () => c.steeringWheelHeatOff(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionMirrorHeatOn, Icons.airline_seat_recline_extra, () => _run(AppLocalizations.of(context)!.actionMirrorHeatOn, () => c.mirrorHeatOn(vin, pin))),
               _ActionBtn(AppLocalizations.of(context)!.actionMirrorHeatOff, Icons.airline_seat_recline_normal, () => _run(AppLocalizations.of(context)!.actionMirrorHeatOff, () => c.mirrorHeatOff(vin, pin))),
             ]),
             _sectionTitle(AppLocalizations.of(context)!.sectionSunshadeWindows),
             _actionGrid([
-              _ActionBtn(AppLocalizations.of(context)!.actionSunshadeOpen, Icons.blinds, () => _run(AppLocalizations.of(context)!.actionSunshadeOpen, () => c.sunshadeOpen(vin, pin))),
-              _ActionBtn(AppLocalizations.of(context)!.actionSunshadeClose, Icons.blinds_closed, () => _run(AppLocalizations.of(context)!.actionSunshadeClose, () => c.sunshadeClose(vin, pin))),
+              if (modeloSoporta(widget.vehicle.carType, kFeatSunshade))
+                _ActionBtn(AppLocalizations.of(context)!.actionSunshadeOpen, Icons.blinds, () => _run(AppLocalizations.of(context)!.actionSunshadeOpen, () => c.sunshadeOpen(vin, pin))),
+              if (modeloSoporta(widget.vehicle.carType, kFeatSunshade))
+                _ActionBtn(AppLocalizations.of(context)!.actionSunshadeClose, Icons.blinds_closed, () => _run(AppLocalizations.of(context)!.actionSunshadeClose, () => c.sunshadeClose(vin, pin))),
               _ActionBtn(_armado == 'windows' ? (es ? '¿Confirmar?' : 'Confirm?') : AppLocalizations.of(context)!.actionWindowsOpen, Icons.window, () => _run(AppLocalizations.of(context)!.actionWindowsOpen, () => c.windowsOpen(vin, pin), confirmId: 'windows')),
               _ActionBtn(AppLocalizations.of(context)!.actionWindowsClose, Icons.window_outlined, () => _run(AppLocalizations.of(context)!.actionWindowsClose, () => c.windowsClose(vin, pin))),
             ]),
@@ -4616,20 +4651,26 @@ class _ControlsScreenState extends State<ControlsScreen> {
               },
             ),
             const SizedBox(height: 16),
-            _sectionTitle(AppLocalizations.of(context)!.sectionSeats),
-            _seatRow(AppLocalizations.of(context)!.seatDriverHeat, _driverSeatHeat, (v) {
+            if (modeloSoporta(widget.vehicle.carType, kFeatSeatHeat) ||
+                modeloSoporta(widget.vehicle.carType, kFeatSeatVent))
+              _sectionTitle(AppLocalizations.of(context)!.sectionSeats),
+            if (modeloSoporta(widget.vehicle.carType, kFeatSeatHeat))
+              _seatRow(AppLocalizations.of(context)!.seatDriverHeat, _driverSeatHeat, (v) {
               setState(() => _driverSeatHeat = v);
               _run('Asiento conductor calor', () => c.seatHeat(vin, pin, position: 3, level: v));
             }),
-            _seatRow(AppLocalizations.of(context)!.seatPassengerHeat, _passengerSeatHeat, (v) {
+            if (modeloSoporta(widget.vehicle.carType, kFeatSeatHeat))
+              _seatRow(AppLocalizations.of(context)!.seatPassengerHeat, _passengerSeatHeat, (v) {
               setState(() => _passengerSeatHeat = v);
               _run('Asiento copiloto calor', () => c.seatHeat(vin, pin, position: 2, level: v));
             }),
-            _seatRow(AppLocalizations.of(context)!.seatDriverVent, _driverSeatVent, (v) {
+            if (modeloSoporta(widget.vehicle.carType, kFeatSeatVent))
+              _seatRow(AppLocalizations.of(context)!.seatDriverVent, _driverSeatVent, (v) {
               setState(() => _driverSeatVent = v);
               _run('Asiento conductor vent.', () => c.seatVentilation(vin, pin, position: 3, level: v));
             }),
-            _seatRow(AppLocalizations.of(context)!.seatPassengerVent, _passengerSeatVent, (v) {
+            if (modeloSoporta(widget.vehicle.carType, kFeatSeatVent))
+              _seatRow(AppLocalizations.of(context)!.seatPassengerVent, _passengerSeatVent, (v) {
               setState(() => _passengerSeatVent = v);
               _run('Asiento copiloto vent.', () => c.seatVentilation(vin, pin, position: 2, level: v));
             }),
