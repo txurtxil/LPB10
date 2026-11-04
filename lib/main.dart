@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'leapmotor_engine.dart';
+import 'efficiency_hero.dart';
 import 'weather.dart';
 import 'about_screen.dart';
 import 'guard_mode_screen.dart';
@@ -1872,6 +1873,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ])
                       : (_showMap ? const SizedBox(height: 60, child: Center(child: Text('Sin datos de ubicacion'))) : const SizedBox.shrink()),
                   if (_showMap) const SizedBox(height: 6),
+                  const EfficiencyHero(),
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(_lastUpdatedLabel, style: const TextStyle(fontSize: 11, color: Colors.grey)),
