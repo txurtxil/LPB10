@@ -4799,11 +4799,13 @@ class _SocArcPainter extends CustomPainter {
   _SocArcPainter(this.soc);
   @override
   void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height * 0.88);
-    final r = (size.width < size.height ? size.width : size.height) * 0.52;
+    // v258: anillo MAS GRANDE que la silueta del coche para que asome por
+    // encima y a los lados (halo), centrado en la base de la imagen.
+    final c = Offset(size.width / 2, size.height * 0.98);
+    final r = size.width * 0.44;
     canvas.drawCircle(
         c,
-        r * 1.2,
+        r * 1.08,
         Paint()
           ..shader = RadialGradient(colors: [
             const Color(0xFF8B7CF6).withOpacity(0.20),
