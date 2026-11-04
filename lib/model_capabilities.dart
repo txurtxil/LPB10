@@ -17,9 +17,27 @@ const String kFeatSentry = 'sentry';
 const String kFeatTrunkClose = 'trunk_close';
 const String kFeatTirePressure = 'tire_pressure';
 
+/// Set de funciones no soportadas, verificado por Jose Manuel en su B03X
+/// (issue #2, lista completa 4-nov-2026).
+const Set<String> kB03xUnsupported = {
+  kFeatSteeringHeat,
+  kFeatSeatHeat,
+  kFeatSeatVent,
+  kFeatSunshade,
+  kFeatTrunkClose,
+  kFeatTirePressure,
+};
+
 /// Modelo (mayusculas, como vehicle.carType) -> funciones no soportadas.
 const Map<String, Set<String>> kUnsupportedByModel = {
-  // B03X (Jose Manuel, issue #2, lista completa 4-nov-2026):
+  // B03X: la clave directa, por si la API lo reportara como 'B03X'.
+  'B03X': kB03xUnsupported,
+  // v261: el B03X reporta carType 'a10' en la API (visto en carlogs,
+  // v3.60.208), NO 'B03X' — por eso en v260 el usuario no veia ningun
+  // cambio ("sigue todo igual", issue #2). Mismo set verificado en B03X.
+  // OJO: el T03 tambien reporta 'a10'; si un T03 difiere del B03X en
+  // alguna funcion, habra que separar el mapeo por VIN.
+  'A10': kB03xUnsupported,
   // - "No funcionan": calefaccion de volante y de asientos (la API las
   //   rechaza). Hoy la app SI pinta esos controles; se ocultan con esta tabla.
   // - "No aplican, no dispone del elemento": cerrar maletero (abrir SI va),
@@ -27,14 +45,6 @@ const Map<String, Set<String>> kUnsupportedByModel = {
   //   presion de neumaticos.
   // - "Por probar" (se dejan visibles a posta): centinela, limite de
   //   velocidad.
-  'B03X': {
-    kFeatSteeringHeat,
-    kFeatSeatHeat,
-    kFeatSeatVent,
-    kFeatSunshade,
-    kFeatTrunkClose,
-    kFeatTirePressure,
-  },
 };
 
 /// true si el modelo (si se conoce) soporta la funcion.
