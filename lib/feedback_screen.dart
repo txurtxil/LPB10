@@ -47,6 +47,35 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               : 'Fill in title and description.')));
       return;
     }
+    // v264: filtro anti-abuso (aviso de Luck + plan del owner): el
+    // feedback es texto plano (sin enlaces ni markdown) y con tope de
+    // longitud. Parabasico (el token del bot es extraible del APK igual
+    // que el anterior), pero corta el spam casual por la UI.
+    final txt = "${_titulo.text} ${_desc.text}".toLowerCase();
+    var conEnlace = txt.contains("http://") ||
+        txt.contains("https://") ||
+        txt.contains("www.") ||
+        txt.contains("](") ||
+        txt.contains("![");
+    if (!conEnlace) {
+      for (final tld in [".com", ".net", ".org", ".es", ".io", ".xyz", ".ru", ".cn"]) {
+        if (txt.contains(tld)) { conEnlace = true; break; }
+      }
+    }
+    if (conEnlace) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? "Feedback: enlaces no permitidos (texto plano)."
+              : "Feedback: links not allowed (plain text).")));
+      return;
+    }
+    if (_titulo.text.length > 120 || _desc.text.length > 4000) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? "Feedback: demasiado largo (max 120/4000 caracteres)."
+              : "Feedback: too long (max 120/4000 chars).")));
+      return;
+    }
     setState(() => _enviando = true);
     try {
       final info = await PackageInfo.fromPlatform();
