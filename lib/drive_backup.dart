@@ -30,6 +30,7 @@ class DriveBackup {
   static const _prefs = FlutterSecureStorage();
   static const _kAutomatico = 'lm_drive_auto_v1';
   static const _kLastAuto = 'lm_drive_last_auto_ms';
+  static const _kLastInter = 'drive_last_interactivo';
 
   static const _carpetaNombre = 'LMB10 backups';
   static const _maxCopias = 6;
@@ -75,8 +76,23 @@ class DriveBackup {
       final last = int.tryParse(lastRaw ?? '') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
       if (now - last < 24 * 3600 * 1000) return;
-      final cuenta = _cuenta ?? await conectarSilencioso();
-      if (cuenta == null) return;
+      var cuenta = _cuenta ?? await conectarSilencioso();
+      if (cuenta == null) {
+        // v263 (issue #7): el sign-in silencioso devuelve null cuando la
+        // sesion de Google caduca o el plugin pierde la cuenta (tipico
+        // tras actualizar la app o con Play Services frio). Antes se
+        // rendia en silencio y el backup automatico "nunca funcionaba"
+        // hasta un backup manual. Ahora: intento INTERACTIVO como mucho
+        // cada 6h (guardia anti-nag: el prompt solo reaparece si el
+        // usuario lo cancela, no en cada refresco).
+        final lastInt =
+            int.tryParse(await _prefs.read(key: _kLastInter) ?? '') ?? 0;
+        if (now - lastInt > 6 * 3600 * 1000) {
+          await _prefs.write(key: _kLastInter, value: now.toString());
+          cuenta = await conectar();
+        }
+        if (cuenta == null) return;
+      }
       final ok = await subirAhora();
       if (ok) await _prefs.write(key: _kLastAuto, value: now.toString());
     } catch (e) {
