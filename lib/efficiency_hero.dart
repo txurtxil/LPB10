@@ -99,13 +99,16 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
       _litros = term.litros > 0 ? term.litros.toDouble() : 7.0;
       _precio = term.precio > 0 ? term.precio.toDouble() : 1.7;
 
-      double km = 0, eur = 0, kwh = 0, kmMes = 0, eurMes = 0;
+      double km = 0, eur = 0, kwh = 0, kmMes = 0, eurMes = 0, kmEur = 0;
       final mesActual = DateTime.now().toIso8601String().substring(0, 7);
       for (final a in days) {
         final t = totalizar([a], precios);
         km += t.km;
         kwh += t.kwh;
-        if (t.hayEur) eur += t.eur;
+        if (t.hayEur) {
+          eur += t.eur;
+          kmEur += t.km;
+        }
         if (a.d.startsWith(mesActual)) {
           kmMes += t.km;
           if (t.hayEur) eurMes += t.eur;
@@ -126,7 +129,14 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
         if (x.km > odo) odo = x.km.toDouble();
       }
 
-      final ahorro = odo * _litros / 100 * _precio - eur;
+      // v262 (issue #4): el ahorro debe comparar AMBOS lados sobre el
+      // MISMO alcance. Antes el térmico usaba el odómetro completo (vida
+      // del coche) mientras el eléctrico solo sumaba los días con precio
+      // conocido: se mezclaba un periodo parcial con la vida entera y el
+      // ahorro salía inflado. Ahora el térmico se calcula sobre los km
+      // de los días con precio (kmEur), el mismo alcance que el coste
+      // eléctrico. El odómetro queda solo como dato informativo (_odo).
+      final ahorro = kmEur * _litros / 100 * _precio - eur;
       final kwhKm = km > 10 ? kwh / km : 0.18;
       final co2 = (_co2TermicoGkm - _co2RedGkwh * kwhKm) * odo / 1000;
 
@@ -134,7 +144,7 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
       setState(() {
         _odo = odo > 0 ? odo : null;
         _eurTotal = eur;
-        _termicoEur = odo * _litros / 100 * _precio;
+        _termicoEur = kmEur * _litros / 100 * _precio;
         _ahorro = ahorro;
         _co2 = co2;
         _kmMes = kmMes;
