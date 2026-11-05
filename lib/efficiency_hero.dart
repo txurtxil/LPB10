@@ -33,6 +33,7 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
   double? _odo;
   double _ahorro = 0, _co2 = 0, _eurTotal = 0, _termicoEur = 0;
   double _kmMes = 0, _eurMes = 0, _termicoMes = 0;
+  int _diasPrecio = 0;
   double _litros = 7.0, _precio = 1.7;
   final List<double> _spark = [];
 
@@ -100,6 +101,7 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
       _precio = term.precio > 0 ? term.precio.toDouble() : 1.7;
 
       double km = 0, eur = 0, kwh = 0, kmMes = 0, eurMes = 0, kmEur = 0;
+      var diasPrecio = 0;
       final mesActual = DateTime.now().toIso8601String().substring(0, 7);
       for (final a in days) {
         final t = totalizar([a], precios);
@@ -108,6 +110,7 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
         if (t.hayEur) {
           eur += t.eur;
           kmEur += t.km;
+          diasPrecio++;
         }
         if (a.d.startsWith(mesActual)) {
           kmMes += t.km;
@@ -150,6 +153,7 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
         _kmMes = kmMes;
         _eurMes = eurMes;
         _termicoMes = kmMes * _litros / 100 * _precio;
+        _diasPrecio = diasPrecio;
         _spark
           ..clear()
           ..addAll(spark);
@@ -214,8 +218,8 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
             const SizedBox(height: 8),
             Text(
               es
-                  ? 'electricidad ${_eurTotal.toStringAsFixed(2)}€ · un térmico (${_litros.toStringAsFixed(1)} L/100km a ${_precio.toStringAsFixed(2)}€/L) habría costado ${_eur(_termicoEur)}€'
-                  : 'electricity ${_eurTotal.toStringAsFixed(2)}€ · a thermal (${_litros.toStringAsFixed(1)} L/100km at ${_precio.toStringAsFixed(2)}€/L) would have cost ${_eur(_termicoEur)}€',
+                  ? 'electricidad ${_eurTotal.toStringAsFixed(2)}€ · un térmico (${_litros.toStringAsFixed(1)} L/100km a ${_precio.toStringAsFixed(2)}€/L) habría costado ${_eur(_termicoEur)}€ · basado en $_diasPrecio días con precio'
+                  : 'electricity ${_eurTotal.toStringAsFixed(2)}€ · a thermal (${_litros.toStringAsFixed(1)} L/100km at ${_precio.toStringAsFixed(2)}€/L) would have cost ${_eur(_termicoEur)}€ · based on $_diasPrecio priced days',
               style: TextStyle(fontSize: 10, color: Colors.grey[600]),
             ),
           ]),
