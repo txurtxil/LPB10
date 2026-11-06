@@ -296,6 +296,12 @@ abstract class AppLocalizations {
   /// **'Maletero'**
   String get tileTrunk;
 
+  /// No description provided for @tileWindows.
+  ///
+  /// In es, this message translates to:
+  /// **'Ventanas'**
+  String get tileWindows;
+
   /// No description provided for @openLabel.
   ///
   /// In es, this message translates to:

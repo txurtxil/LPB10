@@ -109,6 +109,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tileTrunk => 'Trunk';
 
   @override
+  String get tileWindows => 'Windows';
+
+  @override
   String get openLabel => 'Open';
 
   @override
