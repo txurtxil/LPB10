@@ -33,6 +33,7 @@
   "onLabel": "Encendido",
   "offLabel": "Apagada",
   "tileTrunk": "Maletero",
+  "tileWindows": "Ventanas",
   "openLabel": "Abierto",
   "closedLabel": "Cerrado",
   "tileSentry": "Centinela",

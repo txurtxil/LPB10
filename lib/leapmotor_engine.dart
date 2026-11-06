@@ -295,6 +295,9 @@ const Map<String, String> kSignalToNamed = {
   '2669': 'rapidCooling', '2681': 'rapidHeating', '1939': 'acOperateMode', '1941': 'acAirVolume',
   '1298': 'driverDoorLockStatus', '1277': 'lbcmDriverDoorStatus', '1278': 'rbcmDriverDoorStatus',
   '1279': 'lbcmLeftRearDoorStatus', '1280': 'rbcmRightRearDoorStatus', '1281': 'bbcmBackDoorStatus',
+  // v266: estado de ventanas (bits) + porcentaje como respaldo (nota LeapCo).
+  '1693': 'windowFlState', '1694': 'windowFrState', '1695': 'windowRlState', '1696': 'windowRrState',
+  '644': 'windowFlPercent', '645': 'windowFrPercent', '865': 'windowRlPercent', '866': 'windowRrPercent',
   '1256': 'bcmKeyPositionOn1', '1257': 'bcmKeyPositionOn2', '1258': 'bcmKeyPositionOn3',
   '2100': 'driverSeatHeating', '2101': 'driverSeatVentilation', '2118': 'passengerSeatHeating',
   '2119': 'passengerSeatVentilation', '1816': 'steeringWheelHeating', '1624': 'steeringWheelHeaterMinutes',
@@ -380,6 +383,8 @@ class VehicleStatus {
   final bool? driverDoorLockStatus;
   final bool? bbcmBackDoorStatus;
   final int? sentryMode;
+  final int? windowFlState, windowFrState, windowRlState, windowRrState;
+  final int? windowFlPercent, windowFrPercent, windowRlPercent, windowRrPercent;
   final int? totalMileage;
   final double? speed;
   final bool? chargeCompleted;
@@ -395,6 +400,8 @@ class VehicleStatus {
     this.soc, this.preciseSoc, this.chargeState, this.acInputSlowCharge, this.dcInputFastCharge,
     this.batteryThermalRequest, this.liveRemainingRange, this.latitude, this.longitude, this.acSwitch,
     this.driverDoorLockStatus, this.bbcmBackDoorStatus, this.sentryMode, this.totalMileage,
+    this.windowFlState, this.windowFrState, this.windowRlState, this.windowRrState,
+    this.windowFlPercent, this.windowFrPercent, this.windowRlPercent, this.windowRrPercent,
     this.speed, this.chargeCompleted, this.minBatteryTemp, this.interiorTemp,
     this.leftFrontTireKpa, this.rightFrontTireKpa, this.leftRearTireKpa, this.rightRearTireKpa,
     required this.raw,
@@ -471,6 +478,10 @@ class VehicleStatus {
       latitude: _asDouble(m['latitude']), longitude: _asDouble(m['longitude']), acSwitch: _asBool(m['acSwitch']),
       driverDoorLockStatus: _asBool(m['driverDoorLockStatus']), bbcmBackDoorStatus: _asBool(m['bbcmBackDoorStatus']),
       sentryMode: _asInt(m['sentryMode']), totalMileage: _asInt(m['totalMileage']),
+      windowFlState: _asInt(m['windowFlState']), windowFrState: _asInt(m['windowFrState']),
+      windowRlState: _asInt(m['windowRlState']), windowRrState: _asInt(m['windowRrState']),
+      windowFlPercent: _asInt(m['windowFlPercent']), windowFrPercent: _asInt(m['windowFrPercent']),
+      windowRlPercent: _asInt(m['windowRlPercent']), windowRrPercent: _asInt(m['windowRrPercent']),
       speed: _asDouble(m['speed']), chargeCompleted: _asBool(m['chargeCompleted']),
       minBatteryTemp: _asInt(m['minBatteryTemp']), interiorTemp: _asDouble(m['interiorTemp']),
       leftFrontTireKpa: _asInt(m['leftFrontTirePressure']), rightFrontTireKpa: _asInt(m['rightFrontTirePressure']),

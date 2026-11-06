@@ -1644,6 +1644,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return AppLocalizations.of(context)!.lastUpdatedMinutes(diff.inMinutes);
   }
 
+  // v266: true/false segun bits 1693-1696 (1 = abierta); si el modelo no
+  // reporta bits, respaldo por porcentaje (>0 = abierta). null = sin datos.
+  bool? _anyWindowOpen(VehicleStatus s) {
+    final st = [s.windowFlState, s.windowFrState, s.windowRlState, s.windowRrState];
+    if (st.any((v) => v == 1)) return true;
+    if (st.every((v) => v != null)) return false;
+    final pct = [s.windowFlPercent, s.windowFrPercent, s.windowRlPercent, s.windowRrPercent];
+    if (pct.any((v) => v != null && v > 0)) return true;
+    if (pct.every((v) => v != null)) return false;
+    return null;
+  }
+
   String _chargeStateLabel(VehicleStatus s, AppLocalizations t) {
     if (s.isCharging) return t.chargingLabel;
     if (s.isPluggedIn) return t.notChargingLabel;
@@ -2138,6 +2150,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     (pin) => widget.client.closeTrunk(widget.vehicle.vin, pin))
                 : _tileComando('Abrir maletero', 'Open trunk',
                     (pin) => widget.client.openTrunk(widget.vehicle.vin, pin)),
+      ),
+      _TileData(
+        _anyWindowOpen(s) == true ? Icons.window : Icons.window_outlined,
+        _anyWindowOpen(s) == true ? t.openLabel : t.closedLabel,
+        t.tileWindows,
       ),
       _TileData(Icons.security, s.sentryMode == 1 ? t.activeShortLabel : t.inactiveLabel, t.tileSentry),
       _TileData(Icons.thermostat_outlined,

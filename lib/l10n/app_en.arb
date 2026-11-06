@@ -33,6 +33,7 @@
   "onLabel": "On",
   "offLabel": "Off",
   "tileTrunk": "Trunk",
+  "tileWindows": "Windows",
   "openLabel": "Open",
   "closedLabel": "Closed",
   "tileSentry": "Sentry",
