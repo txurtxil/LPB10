@@ -3,27 +3,26 @@ package com.txurtxil.lpb10
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
-import android.view.Surface
-import androidx.car.app.AppManager
 import androidx.car.app.CarContext
-import androidx.car.app.model.Distance
 import androidx.car.app.Screen
-import androidx.car.app.SurfaceCallback
-import androidx.car.app.SurfaceContainer
+import androidx.car.app.model.Action
+import androidx.car.app.model.CarIcon
+import androidx.car.app.model.GridItem
+import androidx.car.app.model.GridTemplate
+import androidx.car.app.model.ItemList
+import androidx.car.app.model.ListTemplate
+import androidx.car.app.model.Row
 import androidx.car.app.model.Template
-import androidx.car.app.navigation.model.Maneuver
-import androidx.car.app.navigation.model.NavigationTemplate
-import androidx.car.app.navigation.model.RoutingInfo
-import androidx.car.app.navigation.model.Step
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -31,36 +30,24 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
-// Cuadro de conduccion (issue #18; diseno pedido por el grupo, mockup de
-// InJotec): SUPERFICIE LIBRE (categoria NAVIGATION, sideloaded sin Play).
-// Dibuja: velocimetro grande (izq), reloj de potencia con zona REGEN
-// (dcha), widget de bateria al centro y franja desnivel+hora arriba.
-// Velocidad por GPS del movil (~1 s); el resto de la nube (refresh ~24 s).
+// Cuadro de conduccion (issue #18, idea de @MF_Pau): velocimetro moderno
+// dibujado en bitmap (Canvas -> CarIcon, mismo truco que ConsumoChartScreen)
+// + velocidad por GPS del movil (1 s, sin nube; respaldo: senal del coche
+// via prefs). El resto de datos sigue viniendo de la nube (refresh ~24 s).
 class DriveScreen(carContext: CarContext) : Screen(carContext) {
 
     private val handler = Handler(Looper.getMainLooper())
     private var ticks = 0
     private var phoneSpeedKmh: Float? = null
     private var lastFixMs: Long = 0
-    private var lastDrawMs: Long = 0L
-    private var container: SurfaceContainer? = null
-
-    private val surfaceCb = object : SurfaceCallback {
-        override fun onSurfaceAvailable(c: SurfaceContainer) { container = c; redraw() }
-        override fun onVisibleAreaChanged(visibleArea: Rect) { redraw() }
-        override fun onStableAreaChanged(visibleArea: Rect) { redraw() }
-        override fun onSurfaceDestroyed(c: SurfaceContainer) { if (container === c) container = null }
-    }
 
     private val refresher = object : Runnable {
         override fun run() {
             ticks++
             if (ticks % 6 == 1) CarBridge.invoke("refresh", null) { }
             invalidate()
-            redraw()
             handler.postDelayed(this, 4000)
         }
     }
@@ -70,15 +57,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
             phoneSpeedKmh = loc.speed * 3.6f
             lastFixMs = System.currentTimeMillis()
         }
-        redraw()
     }
 
     init {
-        try {
-            carContext.getCarService(AppManager::class.java).setSurfaceCallback(surfaceCb)
-        } catch (t: Throwable) {
-            android.util.Log.e("LMB10-Drive", "setSurfaceCallback fallo", t)
-        }
         val lm = carContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (carContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
@@ -100,37 +81,33 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         HomeWidgetPlugin.getData(carContext).getString(name, "") ?: ""
 
     override fun onGetTemplate(): Template {
-        // El host VALIDA la plantilla: una NavigationTemplate vacia da
-        // "error no esperado". Damos un RoutingInfo minimo (paso "LMB10",
-        // sin maniobra) para que pase la validacion; el surface pinta el
-        // cuadro encima.
-        val step = Step.Builder()
-            .setManeuver(Maneuver.Builder(Maneuver.TYPE_UNKNOWN).build())
-            .setRoad("LMB10")
+        val speed = currentSpeed()
+        val kwS = d("kw")
+        val range = d("range")
+        val soc = d("soc")
+        val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val kwh100 = instantConsumption(speed, kwS)
+
+        val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora)
+
+        // GridTemplate: el gauge como GridItem de imagen GRANDE. La
+        // plantilla de lista lo achataba a miniatura; en grid ocupa la
+        // celda completa. La info de texto va DENTRO del bitmap (fila
+        // SoC/autonomia/consumo/hora dibujada en el propio gauge).
+        val item = GridItem.Builder()
+            .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
+            .setTitle("Conduccion")
             .build()
-        val routingInfo = RoutingInfo.Builder()
-            .setCurrentStep(step, Distance.create(1.0, Distance.UNIT_METERS))
-            .build()
-        return NavigationTemplate.Builder()
-            .setNavigationInfo(routingInfo)
+
+        return GridTemplate.Builder()
+            .setTitle("LMB10 - Conduccion")
+            .setHeaderAction(Action.BACK)
+            .setSingleList(ItemList.Builder().addItem(item).build())
             .build()
     }
 
-    private fun redraw() {
-        val now = System.currentTimeMillis()
-        if (now - lastDrawMs < 800) return
-        lastDrawMs = now
-        val cont = container ?: return
-        val surface: Surface = cont.surface ?: return
-        val canvas: Canvas = try { surface.lockCanvas(null) } catch (_: Exception) { return } ?: return
-        try {
-            dibujaDashboard(canvas)
-        } catch (t: Throwable) {
-            android.util.Log.e("LMB10-Drive", "draw fallo", t)
-        } finally {
-            try { surface.unlockCanvasAndPost(canvas) } catch (_: Exception) { }
-        }
-    }
+    private fun row(t: String, b: String): Row =
+        Row.Builder().setTitle(t).addText(b).build()
 
     private fun currentSpeed(): Float {
         val gps = phoneSpeedKmh?.takeIf { System.currentTimeMillis() - lastFixMs < 6000 }
@@ -138,153 +115,132 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         return d("speed").toFloatOrNull() ?: 0f
     }
 
-    // ---- dibujo -----------------------------------------------------------
-
-    private fun pText(color: Int, size: Float, bold: Boolean = false): Paint =
-        Paint().apply {
-            this.color = color
-            textSize = size
-            isAntiAlias = true
-            textAlign = Paint.Align.CENTER
-            if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
-        }
-
-    private fun dibujaDashboard(c: Canvas) {
-        val w = c.width.toFloat()
-        val h = c.height.toFloat()
-        if (w <= 0f || h <= 0f) return
-
-        val speed = currentSpeed()
-        val kw = d("kw").toFloatOrNull() ?: 0f
-        val kwS = d("kw")
-        val soc = d("soc")
-        val range = d("range")
-        val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-        val kwh100 = if (speed >= 5f && kwS.isNotEmpty())
-            "%.1f".format(kw / speed * 100f) else "--"
-
-        c.drawColor(Color.rgb(13, 15, 19))
-
-        val r = min(w, h) * 0.315f
-        val cy = h * 0.66f
-        val cLx = w * 0.29f
-        val cRx = w * 0.71f
-        val startAng = 135f
-        val sweep = 270f
-
-        val topP = pText(Color.rgb(205, 209, 218), h * 0.052f)
-        c.drawText("Desnivel: -- m (issue #17)      $hora  $fecha", w / 2f, h * 0.085f, topP)
-
-        dibujaGauge(
-            c, cLx, cy, r, startAng, sweep, 0f, 180f, speed,
-            accent = Color.rgb(155, 124, 255),
-            digital = "%.0f".format(speed), unit = "km/h"
-        )
-        dibujaGauge(
-            c, cRx, cy, r, startAng, sweep, -60f, 170f, kw,
-            accent = Color.rgb(155, 124, 255),
-            digital = kwS.ifEmpty { "0" }, unit = "kW", regen = true
-        )
-
-        // widget bateria central
-        val bw = w * 0.075f
-        val bh = h * 0.115f
-        val bx = w / 2f - bw / 2f
-        val by = h * 0.30f
-        val cuerpo = Paint().apply { color = Color.rgb(48, 52, 61); style = Paint.Style.STROKE; strokeWidth = h * 0.008f; isAntiAlias = true }
-        val fillPct = (soc.toFloatOrNull() ?: 0f) / 100f
-        c.drawRoundRect(RectF(bx, by, bx + bw, by + bh), bw * 0.12f, bw * 0.12f, cuerpo)
-        c.drawRoundRect(RectF(bx + bw, by + bh * 0.30f, bx + bw + bw * 0.10f, by + bh * 0.70f), 4f, 4f, cuerpo)
-        if (fillPct > 0.01f) {
-            val fill = Paint().apply {
-                color = if (fillPct < 0.2f) Color.rgb(231, 116, 96) else Color.rgb(46, 204, 168)
-                isAntiAlias = true
-            }
-            val pad = bw * 0.08f
-            c.drawRoundRect(
-                RectF(bx + pad, by + bh - pad - (bh - 2 * pad) * fillPct, bx + bw - pad, by + bh - pad),
-                6f, 6f, fill)
-        }
-        val socP = pText(Color.WHITE, h * 0.075f, bold = true)
-        c.drawText(if (soc.isEmpty()) "-- %" else "$soc %", w / 2f, by + bh + h * 0.075f, socP)
-
-        val botP = pText(Color.rgb(185, 190, 200), h * 0.048f)
-        val info = listOf(
-            if (range.isEmpty()) "-- km" else "$range km",
-            if (kwh100 == "--") "-- kWh/100" else "$kwh100 kWh/100"
-        ).joinToString("      ")
-        c.drawText(info, w / 2f, h * 0.955f, botP)
+    private fun instantConsumption(speedKmh: Float, kwS: String): String {
+        val kw = kwS.toFloatOrNull() ?: return "--"
+        if (speedKmh < 5f) return "--"
+        return "%.1f".format(kw / speedKmh * 100f)
     }
 
-    private fun dibujaGauge(
-        c: Canvas, cx: Float, cy: Float, r: Float,
-        startAng: Float, sweep: Float, vmin: Float, vmax: Float, value: Float,
-        accent: Int, digital: String, unit: String, regen: Boolean = false
-    ) {
-        fun fracOf(v: Float): Float = ((v - vmin) / (vmax - vmin)).coerceIn(0f, 1f)
+    // ---- velocimetro moderno ----------------------------------------------
+    private fun dibujaGauge(speedKmh: Float, kwS: String, soc: String,
+                            rangeS: String, kwh100: String, hora: String): Bitmap {
+        val w = 960
+        val h = 620
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+
+        val bg = Paint().apply { color = Color.rgb(17, 19, 24); isAntiAlias = true }
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
+
+        val cx = w / 2f
+        val cy = h * 0.86f
+        val r = w * 0.46f
+        val startAng = 135f
+        val fullSweep = 270f
+        val maxSpeed = 160f
+        val frac = (speedKmh / maxSpeed).coerceIn(0f, 1f)
+
         fun pt(angleDeg: Float, rad: Float): Pair<Float, Float> {
             val a = Math.toRadians((angleDeg - 90f).toDouble())
             return (cx + rad * cos(a)).toFloat() to (cy + rad * sin(a)).toFloat()
         }
 
+        // pista
         val pista = Paint().apply {
-            color = Color.rgb(38, 42, 50)
+            color = Color.rgb(42, 46, 55)
             style = Paint.Style.STROKE
             strokeWidth = r * 0.075f
             isAntiAlias = true
             strokeCap = Paint.Cap.ROUND
         }
-        c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, sweep, false, pista)
+        c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep, false, pista)
 
-        if (regen) {
-            val zRegen = Paint(pista).apply { color = Color.rgb(38, 150, 190) }
-            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, sweep * fracOf(0f), false, zRegen)
-            val zRed = Paint(pista).apply { color = Color.rgb(216, 84, 72) }
-            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng + sweep * fracOf(140f), sweep * (1f - fracOf(140f)), false, zRed)
+        // progreso (arco de acento) + halo suave
+        val accent = if (kwS.toFloatOrNull() ?: 0f < 0f) Color.rgb(46, 204, 168) else Color.rgb(155, 124, 255)
+        val halo = Paint(pista).apply { color = Color.argb(70, Color.red(accent), Color.green(accent), Color.blue(accent)); strokeWidth = r * 0.12f }
+        val prog = Paint(pista).apply { color = accent }
+        if (frac > 0.003f) {
+            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep * frac, false, halo)
+            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep * frac, false, prog)
         }
 
-        val f = fracOf(value)
-        if (f > 0.004f) {
-            val prog = Paint(pista).apply {
-                color = if (regen && value < 0f) Color.rgb(46, 204, 168) else accent
-            }
-            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, sweep * f, false, prog)
+        // marcas
+        val tickMajor = Paint().apply { color = Color.rgb(235, 237, 242); strokeWidth = r * 0.014f; isAntiAlias = true }
+        val tickMinor = Paint(tickMajor).apply { color = Color.rgb(120, 126, 138); strokeWidth = r * 0.008f }
+        val numP = Paint().apply {
+            color = Color.rgb(190, 195, 205)
+            textSize = r * 0.10f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
         }
-
-        val tickMaj = Paint().apply { color = Color.rgb(230, 232, 238); strokeWidth = r * 0.013f; isAntiAlias = true }
-        val tickMin = Paint(tickMaj).apply { color = Color.rgb(115, 121, 133); strokeWidth = r * 0.007f }
-        val numP = pText(Color.rgb(185, 190, 200), r * 0.105f)
-        var v = vmin
-        while (v <= vmax + 0.01f) {
-            val ang = startAng + sweep * fracOf(v)
-            val idx = ((v - vmin) / 10f).toInt()
-            val major = idx % 2 == 0
-            val (x1, y1) = pt(ang, r * if (major) 0.855f else 0.895f)
+        var v = 0
+        while (v <= maxSpeed.toInt()) {
+            val ang = startAng + fullSweep * (v / maxSpeed)
+            val major = v % 40 == 0
+            val (x1, y1) = pt(ang, r * if (major) 0.86f else 0.90f)
             val (x2, y2) = pt(ang, r * 0.965f)
-            c.drawLine(x1, y1, x2, y2, if (major) tickMaj else tickMin)
-            if (idx % 4 == 0 && v > vmin) {
-                val (tx, ty) = pt(ang, r * 0.735f)
-                c.drawText("%.0f".format(v), tx, ty + numP.textSize * 0.35f, numP)
+            c.drawLine(x1, y1, x2, y2, if (major) tickMajor else tickMinor)
+            if (major && v > 0) {
+                val (tx, ty) = pt(ang, r * 0.74f)
+                c.drawText("$v", tx, ty + numP.textSize * 0.35f, numP)
             }
-            v += 10f
+            v += 10
         }
 
-        val needleAng = startAng + sweep * f
+        // aguja
+        val needleAng = startAng + fullSweep * frac
         val (nx, ny) = pt(needleAng, r * 0.80f)
         val needle = Paint().apply {
             color = Color.rgb(250, 250, 252)
-            strokeWidth = r * 0.014f
+            strokeWidth = r * 0.016f
             isAntiAlias = true
             strokeCap = Paint.Cap.ROUND
         }
         c.drawLine(cx, cy, nx, ny, needle)
-        val hub = Paint().apply { color = Color.rgb(210, 213, 220); isAntiAlias = true }
-        c.drawCircle(cx, cy, r * 0.04f, hub)
+        val hub = Paint().apply { color = accent; isAntiAlias = true }
+        c.drawCircle(cx, cy, r * 0.045f, hub)
 
-        val digP = pText(Color.WHITE, r * 0.30f, bold = true)
-        c.drawText(digital, cx, cy - r * 0.06f, digP)
-        val unitP = pText(Color.rgb(150, 155, 165), r * 0.10f)
-        c.drawText(unit, cx, cy + r * 0.06f, unitP)
+        // centro digital
+        val spdP = Paint().apply {
+            color = Color.WHITE
+            textSize = r * 0.42f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        c.drawText("%.0f".format(speedKmh), cx, cy - r * 0.10f, spdP)
+        val unitP = Paint().apply {
+            color = Color.rgb(150, 155, 165)
+            textSize = r * 0.11f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        c.drawText("km/h", cx, cy + r * 0.02f, unitP)
+
+        // linea de info (SoC · autonomia · consumo · hora)
+        val infoP = Paint().apply {
+            color = Color.rgb(205, 209, 218)
+            textSize = r * 0.115f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        val info = listOf(
+            if (soc.isEmpty()) "-- %" else "$soc %",
+            if (rangeS.isEmpty()) "-- km" else "$rangeS km",
+            if (kwh100 == "--") "-- kWh/100" else "$kwh100 kWh/100",
+            hora
+        ).joinToString("   ")
+        c.drawText(info, cx, cy + r * 0.22f, infoP)
+
+        // kW abajo
+        val kwP = Paint().apply {
+            color = if ((kwS.toFloatOrNull() ?: 0f) < 0f) Color.rgb(46, 204, 168) else Color.rgb(190, 195, 205)
+            textSize = r * 0.10f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        c.drawText(if (kwS.isEmpty()) "-- kW" else "$kwS kW", cx, cy + r * 0.34f, kwP)
+
+        return bmp
     }
 }
