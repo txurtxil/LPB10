@@ -18,13 +18,14 @@ import androidx.car.app.validation.HostValidator
  */
 open class LMB10CarAppService : CarAppService() {
     override fun createHostValidator(): HostValidator =
-        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
-        } else {
-            HostValidator.Builder(applicationContext)
-                .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
-                .build()
-        }
+        // v-next (2026-11-07, issue #15): APP DISTRIBUIDA POR APK DIRECTA,
+        // sin certificar en Play (decision del owner). El allowlist de
+        // muestra solo acepta el DHU de escritorio; en el coche real el
+        // host de Google quedaria rechazado. Sideloaded => aceptamos
+        // cualquier host (el canal host<->app ya lo autentica el propio
+        // Android Auto del telefono). Si algun dia esto vuelve a Play,
+        // revertir al hosts_allowlist_sample certificado.
+        HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
     override fun onCreate() {
         super.onCreate()
@@ -54,8 +55,12 @@ open class LMB10CarAppService : CarAppService() {
         override fun onCreateScreen(intent: Intent): Screen {
             CarLog.log(carContext, "SERVICE",
                 "onCreateScreen action=" + intent.action + " data=" + intent.data)
-            // Raiz POI: sin hub intermedio, entra directo a los cargadores.
-            return ChargersScreen(carContext)
+            // Raiz: hub principal del coche (bateria, consumo, ruedas,
+            // acciones rapidas, rutinas, cargadores...). Rescate 2026-11-07
+            // de la suite completa de septiembre (a59a54c^): se habia
+            // reducido a cargadores SOLO por politica de Google Play;
+            // esta variante no va por Play (issue #15).
+            return CarMainScreen(carContext)
         }
 
         // Cuando el host entrega un intent a una sesion YA VIVA no llama a
