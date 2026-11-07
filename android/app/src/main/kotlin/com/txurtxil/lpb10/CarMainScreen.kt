@@ -97,15 +97,9 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        list.addItem(
-            Row.Builder()
-                .setTitle("Cargadores cerca")
-                .addText("Puntos de carga en 5 km")
-                .setImage(icon(R.drawable.ic_car_charger))
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(ChargersScreen(carContext)) }
-                .build()
-        )
+        // "Cargadores cerca" FUERA del hub del coche (owner 7-nov): no
+        // merece la pena en Auto; sigue en la app del movil. ChargersScreen
+        // queda en el codigo por si se reactiva.
 
         list.addItem(
             Row.Builder()

@@ -16,6 +16,8 @@ import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.CarIcon
+import androidx.car.app.model.GridItem
+import androidx.car.app.model.GridTemplate
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
@@ -88,24 +90,19 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
 
         val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora)
 
-        val list = ItemList.Builder()
-        list.addItem(
-            Row.Builder()
-                .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build(), Row.IMAGE_TYPE_LARGE)
-                .setTitle("Conduccion")
-                .addText("LMB10")
-                .build()
-        )
-        list.addItem(row("Energia", if (kwS.isEmpty()) "-- kW" else "$kwS kW (negativo = regenerando)"))
-        list.addItem(row("Autonomia", if (range.isEmpty()) "-- km" else "$range km"))
-        list.addItem(row("Bateria", if (soc.isEmpty()) "-- %" else "$soc %"))
-        list.addItem(row("Hora", hora))
-        list.addItem(row("Desnivel", "-- m (proximamente, issue #17)"))
+        // GridTemplate: el gauge como GridItem de imagen GRANDE. La
+        // plantilla de lista lo achataba a miniatura; en grid ocupa la
+        // celda completa. La info de texto va DENTRO del bitmap (fila
+        // SoC/autonomia/consumo/hora dibujada en el propio gauge).
+        val item = GridItem.Builder()
+            .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
+            .setTitle("Conduccion")
+            .build()
 
-        return ListTemplate.Builder()
+        return GridTemplate.Builder()
             .setTitle("LMB10 - Conduccion")
             .setHeaderAction(Action.BACK)
-            .setSingleList(list.build())
+            .setSingleList(ItemList.Builder().addItem(item).build())
             .build()
     }
 
