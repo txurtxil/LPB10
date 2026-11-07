@@ -41,6 +41,15 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
 
         list.addItem(
             Row.Builder()
+                .setTitle("Conduccion")
+                .addText("Velocidad, hora y autonomia en grande")
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(DriveScreen(carContext)) }
+                .build()
+        )
+
+        list.addItem(
+            Row.Builder()
                 .setTitle("Bateria  " + socText)
                 .addText(rangeText + "  ·  " + estadoLinea)
                 .setImage(icon(R.drawable.ic_car_battery))
@@ -59,10 +68,34 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        // Solo lo que ayuda a conducir: Rutinas, Acciones rapidas y Consumo
-        // se quitaron del hub del coche por el criterio PF-1 de Google (deben
-        // aportar algo mientras se conduce, no solo funcionar bien). Siguen
-        // intactas en el movil, sin ningun cambio.
+        // v-next (2026-11-07, issue #15): esta variante NO va por Play, asi
+        // que el criterio PF-1 ya no aplica: re-enlazamos las pantallas.
+        list.addItem(
+            Row.Builder()
+                .setTitle("Consumo")
+                .addText("Media del trayecto y grafica")
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(ConsumoScreen(carContext)) }
+                .build()
+        )
+
+        list.addItem(
+            Row.Builder()
+                .setTitle("Acciones rapidas")
+                .addText("Bloquear, clima, maletero...")
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(QuickActionsScreen(carContext)) }
+                .build()
+        )
+
+        list.addItem(
+            Row.Builder()
+                .setTitle("Rutinas")
+                .addText("Ejecutar rutinas guardadas")
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(RoutinesScreen(carContext)) }
+                .build()
+        )
 
         list.addItem(
             Row.Builder()

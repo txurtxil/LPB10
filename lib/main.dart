@@ -2407,6 +2407,8 @@ Future<List<({int ts, int km, double soc})>> _readPermanentTripsMain() async {
 Future<void> _pushToHomeWidget(VehicleStatus s) async {
   final soc = (s.preciseSoc ?? s.soc?.toDouble())?.toStringAsFixed(1);
   await LmWidget.saveWidgetData<String>('soc', soc ?? '--');
+  await LmWidget.saveWidgetData<String>(
+      'speed', s.speed == null ? '' : s.speed!.toStringAsFixed(0));
   // Telemetria a ABRP. No lanza excepcion nunca, asi que no puede afectar al
   // resto del refresco.
   try {
