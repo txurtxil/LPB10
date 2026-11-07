@@ -15,11 +15,15 @@ import android.os.Looper
 import android.view.Surface
 import androidx.car.app.AppManager
 import androidx.car.app.CarContext
+import androidx.car.app.model.Distance
 import androidx.car.app.Screen
 import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
 import androidx.car.app.model.Template
+import androidx.car.app.navigation.model.Maneuver
 import androidx.car.app.navigation.model.NavigationTemplate
+import androidx.car.app.navigation.model.RoutingInfo
+import androidx.car.app.navigation.model.Step
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -70,7 +74,11 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     init {
-        carContext.getCarService(AppManager::class.java).setSurfaceCallback(surfaceCb)
+        try {
+            carContext.getCarService(AppManager::class.java).setSurfaceCallback(surfaceCb)
+        } catch (t: Throwable) {
+            android.util.Log.e("LMB10-Drive", "setSurfaceCallback fallo", t)
+        }
         val lm = carContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (carContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
@@ -92,9 +100,20 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         HomeWidgetPlugin.getData(carContext).getString(name, "") ?: ""
 
     override fun onGetTemplate(): Template {
-        // Con superficie de navegacion el host pinta el surface; la
-        // plantilla aporta solo el contorno (sin contenido que lo tape).
-        return NavigationTemplate.Builder().build()
+        // El host VALIDA la plantilla: una NavigationTemplate vacia da
+        // "error no esperado". Damos un RoutingInfo minimo (paso "LMB10",
+        // sin maniobra) para que pase la validacion; el surface pinta el
+        // cuadro encima.
+        val step = Step.Builder()
+            .setManeuver(Maneuver.Builder(Maneuver.TYPE_UNKNOWN).build())
+            .setRoad("LMB10")
+            .build()
+        val routingInfo = RoutingInfo.Builder()
+            .setCurrentStep(step, Distance.create(1.0, Distance.UNIT_METERS))
+            .build()
+        return NavigationTemplate.Builder()
+            .setNavigationInfo(routingInfo)
+            .build()
     }
 
     private fun redraw() {
@@ -106,6 +125,8 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val canvas: Canvas = try { surface.lockCanvas(null) } catch (_: Exception) { return } ?: return
         try {
             dibujaDashboard(canvas)
+        } catch (t: Throwable) {
+            android.util.Log.e("LMB10-Drive", "draw fallo", t)
         } finally {
             try { surface.unlockCanvasAndPost(canvas) } catch (_: Exception) { }
         }
