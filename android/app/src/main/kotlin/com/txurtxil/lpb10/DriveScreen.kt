@@ -100,6 +100,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         list.addItem(fila(if (kwh100 == "--") "-- kWh/100" else "$kwh100 kWh/100", "Consumo del momento"))
         list.addItem(fila(hora, "Hora"))
         list.addItem(fila("-- m", "Desnivel (proximamente, issue #17)"))
+        list.addItem(fila("API " + carContext.carAppApiLevel, "Nivel del cabezal (debug graficos)"))
         return ListTemplate.Builder()
             .setTitle("LMB10 - Conduccion")
             .setHeaderAction(Action.BACK)
