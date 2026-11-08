@@ -44,7 +44,7 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .setTitle("Conduccion")
                 .addText("Velocidad, hora y autonomia en grande")
                 .setBrowsable(true)
-                .setOnClickListener { screenManager.push(ConduTabsScreen(carContext)) }
+                .setOnClickListener { screenManager.push(DriveScreen(carContext)) }
                 .build()
         )
 
