@@ -48,14 +48,6 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        list.addItem(
-            Row.Builder()
-                .setTitle("Altimetria")
-                .addText("Altitud y desnivel (GPS/barometro)")
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(AltimetryScreen(carContext)) }
-                .build()
-        )
 
         list.addItem(
             Row.Builder()
