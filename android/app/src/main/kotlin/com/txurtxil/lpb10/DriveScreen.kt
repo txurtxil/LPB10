@@ -97,11 +97,11 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         // PaneTemplate + pane.setImage: la ranura de imagen del PANE se
         // ve GRANDE en el host (como el dibujo de las ruedas de
         // TiresScreen); las imagenes de fila/grid salen diminutas.
+        // Solo la fila API: las demas filas estrechan la zona de imagen
+        // del pane; con una sola el gauge ocupa mas.
         val pane = Pane.Builder()
             .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
-            .addRow(Row.Builder().setTitle("%.0f km/h".format(speed)).addText("Velocidad (GPS)").build())
-            .addRow(Row.Builder().setTitle(if (kwS.isEmpty()) "-- kW" else "$kwS kW").addText("Energia (negativo = regenerando)").build())
-            .addRow(Row.Builder().setTitle("API " + carContext.carAppApiLevel).addText("nivel del cabezal (debug)").build())
+            .addRow(Row.Builder().setTitle("API " + carContext.carAppApiLevel).addText("beta 3.60.268-beta.3").build())
             .build()
         return PaneTemplate.Builder(pane)
             .setTitle("LMB10 - Conduccion")
