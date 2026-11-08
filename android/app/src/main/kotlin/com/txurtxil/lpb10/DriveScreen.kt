@@ -48,6 +48,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     private var descent = 0.0
     private var maxAlt: Double? = null
     private var minAlt: Double? = null
+    private var maxSpd = 0f
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -60,7 +61,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
 
     private val locListener = LocationListener { loc ->
         if (loc.hasSpeed()) {
-            phoneSpeedKmh = loc.speed * 3.6f
+            val k = loc.speed * 3.6f
+            phoneSpeedKmh = k
+            if (k > maxSpd) maxSpd = k
             lastFixMs = System.currentTimeMillis()
         }
         if (loc.hasAltitude()) {
@@ -137,7 +140,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
             .addRow(Row.Builder().setTitle((if (range.isEmpty()) "-- km" else range) + "  ·  " + (if (soc.isEmpty()) "--" else soc) + " %").addText("Autonomia y bateria").build())
             .build()
         return PaneTemplate.Builder(pane)
-            .setTitle("LMB10 3.60.269-beta.9 · API " + carContext.carAppApiLevel)
+            .setTitle("LMB10 3.60.269-beta.10 · API " + carContext.carAppApiLevel)
             .setHeaderAction(Action.BACK)
             .build()
     }
@@ -169,9 +172,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
 
         // margen seguro: el host RECORTA ~10-15% por lado del bitmap
-        val cx = w * 0.41f
-        val cy = h * 0.68f
-        val r = w * 0.26f
+        val cx = w * 0.40f
+        val cy = h * 0.62f
+        val r = w * 0.25f
         val startAng = 135f
         val fullSweep = 270f
         val maxSpeed = 160f
@@ -279,7 +282,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         c.drawText(if (kwS.isEmpty()) "-- kW" else "$kwS kW", cx, cy + r * 0.34f, kwP)
 
         // columna derecha (dentro del margen seguro): ALTITUD + CLIMA
-        val rx = w * 0.76f
+        val rx = w * 0.72f
         fun rp(color: Int, size: Float, bold: Boolean = false) = Paint().apply {
             this.color = color; textSize = size; isAntiAlias = true
             textAlign = Paint.Align.CENTER
@@ -287,12 +290,15 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         }
         val wxT = d("wx_temp")
         val wxX = d("wx_txt")
-        c.drawText("ALTITUD", rx, 165f, rp(Color.rgb(150, 155, 165), 26f))
-        c.drawText(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt), rx, 255f, rp(Color.WHITE, 64f, bold = true))
-        c.drawText("desde inicio " + (if (startAlt == null || lastAlt == null) "--" else "%+.0f m".format(lastAlt!! - startAlt!!)), rx, 300f, rp(Color.rgb(46, 204, 168), 24f))
-        c.drawText("CLIMA", rx, 345f, rp(Color.rgb(150, 155, 165), 26f))
-        c.drawText(if (wxT.isEmpty()) "-- C" else "$wxT C", rx, 425f, rp(Color.rgb(155, 124, 255), 48f, bold = true))
-        c.drawText(if (wxX.isEmpty()) "clima local" else wxX, rx, 475f, rp(Color.rgb(205, 209, 218), 28f))
+        val wxW = d("wx_wind")
+        c.drawText("ALTITUD", rx, 150f, rp(Color.rgb(150, 155, 165), 24f))
+        c.drawText(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt), rx, 235f, rp(Color.WHITE, 56f, bold = true))
+        c.drawText("desde inicio " + (if (startAlt == null || lastAlt == null) "--" else "%+.0f m".format(lastAlt!! - startAlt!!)), rx, 275f, rp(Color.rgb(46, 204, 168), 22f))
+        c.drawText("max %.0f km/h".format(maxSpd), rx, 310f, rp(Color.rgb(150, 155, 165), 22f))
+        c.drawText("CLIMA", rx, 360f, rp(Color.rgb(150, 155, 165), 24f))
+        c.drawText(if (wxT.isEmpty()) "-- C" else "$wxT C", rx, 430f, rp(Color.rgb(155, 124, 255), 44f, bold = true))
+        c.drawText(if (wxX.isEmpty()) "clima local" else wxX, rx, 472f, rp(Color.rgb(205, 209, 218), 24f))
+        c.drawText("viento " + (if (wxW.isEmpty()) "--" else wxW) + " km/h", rx, 520f, rp(Color.rgb(150, 155, 165), 24f))
 
         return bmp
     }
