@@ -50,6 +50,15 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
 
         list.addItem(
             Row.Builder()
+                .setTitle("Altimetria")
+                .addText("Altitud y desnivel (GPS/barometro)")
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(AltimetryScreen(carContext)) }
+                .build()
+        )
+
+        list.addItem(
+            Row.Builder()
                 .setTitle("Bateria  " + socText)
                 .addText(rangeText + "  ·  " + estadoLinea)
                 .setImage(icon(R.drawable.ic_car_battery))

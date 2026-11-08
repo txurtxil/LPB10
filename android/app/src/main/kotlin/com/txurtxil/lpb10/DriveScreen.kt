@@ -46,9 +46,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     private val refresher = object : Runnable {
         override fun run() {
             ticks++
-            if (ticks % 6 == 1) CarBridge.invoke("refresh", null) { }
+            if (ticks % 5 == 1) CarBridge.invoke("refresh", null) { }
             invalidate()
-            handler.postDelayed(this, 4000)
+            handler.postDelayed(this, 3000)
         }
     }
 
@@ -64,7 +64,11 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         if (carContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
             try {
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, locListener)
+                if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    lm.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 500L, 0f, locListener)
+                } else {
+                    lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500L, 0f, locListener)
+                }
             } catch (_: SecurityException) { }
         }
         lifecycle.addObserver(LifecycleEventObserver { _, ev ->
