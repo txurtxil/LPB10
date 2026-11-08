@@ -42,6 +42,12 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     private var ticks = 0
     private var phoneSpeedKmh: Float? = null
     private var lastFixMs: Long = 0
+    private var lastAlt: Double? = null
+    private var startAlt: Double? = null
+    private var climb = 0.0
+    private var descent = 0.0
+    private var maxAlt: Double? = null
+    private var minAlt: Double? = null
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -53,10 +59,28 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     private val locListener = LocationListener { loc ->
+        // FIX LAG: el listener del pane NO llamaba a invalidate() => la
+        // velocidad solo se repintaba con el refresher (3 s). Ahora cada
+        // fix GPS (500 ms fundido) repinta enseguida.
         if (loc.hasSpeed()) {
             phoneSpeedKmh = loc.speed * 3.6f
             lastFixMs = System.currentTimeMillis()
         }
+        if (loc.hasAltitude()) {
+            val a = loc.altitude
+            val prev = lastAlt
+            if (prev != null) {
+                val dd = a - prev
+                if (dd > 2.0) climb += dd
+                else if (dd < -2.0) descent += -dd
+            } else {
+                startAlt = a
+            }
+            lastAlt = a
+            maxAlt = if (maxAlt == null || a > maxAlt!!) a else maxAlt
+            minAlt = if (minAlt == null || a < minAlt!!) a else minAlt
+        }
+        invalidate()
     }
 
     init {
@@ -92,7 +116,13 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
         val kwh100 = instantConsumption(speed, kwS)
 
-        val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora)
+        val altTxt = if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt)
+        val iniTxt = if (startAlt == null || lastAlt == null) "-- m"
+                     else "%+.0f m".format(lastAlt!! - startAlt!!)
+        val subBajTxt = "+%.0f m  -%.0f m".format(climb, descent)
+        val maxMinTxt = "max %.0f  min %.0f".format(maxAlt ?: 0.0, minAlt ?: 0.0)
+        val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora,
+            altTxt, iniTxt, subBajTxt, maxMinTxt)
 
         // GridTemplate: el gauge como GridItem de imagen GRANDE. La
         // plantilla de lista lo achataba a miniatura; en grid ocupa la
@@ -105,7 +135,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         // del pane; con una sola el gauge ocupa mas.
         val pane = Pane.Builder()
             .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
-            .addRow(Row.Builder().setTitle("API " + carContext.carAppApiLevel).addText("beta 3.60.268-beta.3").build())
+            .addRow(Row.Builder().setTitle("API " + carContext.carAppApiLevel).addText("3.60.269-beta.6").build())
             .build()
         return PaneTemplate.Builder(pane)
             .setTitle("LMB10 - Conduccion")
@@ -130,7 +160,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
 
     // ---- velocimetro moderno ----------------------------------------------
     private fun dibujaGauge(speedKmh: Float, kwS: String, soc: String,
-                            rangeS: String, kwh100: String, hora: String): Bitmap {
+                            rangeS: String, kwh100: String, hora: String,
+                            altTxt: String, iniTxt: String,
+                            subBajTxt: String, maxMinTxt: String): Bitmap {
         val w = 960
         val h = 620
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -139,9 +171,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val bg = Paint().apply { color = Color.rgb(17, 19, 24); isAntiAlias = true }
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
 
-        val cx = w / 2f
+        val cx = w * 0.36f
         val cy = h * 0.86f
-        val r = w * 0.46f
+        val r = w * 0.335f
         val startAng = 135f
         val fullSweep = 270f
         val maxSpeed = 160f
@@ -247,6 +279,19 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
             isAntiAlias = true
         }
         c.drawText(if (kwS.isEmpty()) "-- kW" else "$kwS kW", cx, cy + r * 0.34f, kwP)
+
+        // columna de altitud (issue #17) fusionada en la misma caja
+        val ax = w * 0.78f
+        fun ap(color: Int, size: Float, bold: Boolean = false) = Paint().apply {
+            this.color = color; textSize = size; isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+            if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        c.drawText("ALTITUD", ax, 150f, ap(Color.rgb(150, 155, 165), 30f))
+        c.drawText(altTxt, ax, 280f, ap(Color.WHITE, 105f, bold = true))
+        c.drawText("desde inicio: $iniTxt", ax, 350f, ap(Color.rgb(46, 204, 168), 32f))
+        c.drawText(subBajTxt, ax, 415f, ap(Color.rgb(205, 209, 218), 30f))
+        c.drawText(maxMinTxt, ax, 470f, ap(Color.rgb(150, 155, 165), 26f))
 
         return bmp
     }
