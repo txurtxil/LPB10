@@ -2404,11 +2404,54 @@ Future<List<({int ts, int km, double soc})>> _readPermanentTripsMain() async {
   return out;
 }
 
+int _lastWxMs = 0;
+
+// Clima para las cajas de Android Auto: lo busca el MOVIL (red fiable;
+// geolocator ya tiene permiso) y lo deja en prefs wx_temp/wx_txt/wx_wind.
+// El host de Auto solo lee. Cache 15 min; nunca propaga excepciones.
+Future<void> fetchWeatherForWidget() async {
+  try {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastWxMs < 15 * 60 * 1000) return;
+    final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 8)));
+    final u = 'https://api.open-meteo.com/v1/forecast?latitude=${pos.latitude.toStringAsFixed(4)}&longitude=${pos.longitude.toStringAsFixed(4)}&current=temperature_2m,weathercode,windspeed_10m&wind_speed_unit=kmh&timezone=auto';
+    final r = await plain_http
+        .get(Uri.parse(u))
+        .timeout(const Duration(seconds: 8));
+    if (r.statusCode != 200) return;
+    final cur = (jsonDecode(r.body) as Map)['current'] as Map;
+    _lastWxMs = now;
+    await LmWidget.saveWidgetData<String>(
+        'wx_temp', (cur['temperature_2m'] as num).toStringAsFixed(1));
+    await LmWidget.saveWidgetData<String>(
+        'wx_wind', (cur['windspeed_10m'] as num).round().toString());
+    await LmWidget.saveWidgetData<String>(
+        'wx_txt', wxText(cur['weathercode'] as int));
+  } catch (_) {}
+}
+
+String wxText(int c) {
+  const m = {
+    0: 'Despejado', 1: 'Mayormente despejado', 2: 'Algo nuboso',
+    3: 'Nublado', 45: 'Niebla', 48: 'Niebla', 51: 'Llovizna',
+    53: 'Llovizna', 55: 'Llovizna', 61: 'Lluvia ligera', 63: 'Lluvia',
+    65: 'Lluvia fuerte', 71: 'Nieve', 73: 'Nieve', 75: 'Nieve',
+    77: 'Nieve', 80: 'Chubascos', 81: 'Chubascos', 82: 'Chubascos',
+    95: 'Tormenta', 96: 'Tormenta con granizo', 99: 'Tormenta con granizo',
+  };
+  return m[c] ?? 'Clima $c';
+}
+
 Future<void> _pushToHomeWidget(VehicleStatus s) async {
   final soc = (s.preciseSoc ?? s.soc?.toDouble())?.toStringAsFixed(1);
   await LmWidget.saveWidgetData<String>('soc', soc ?? '--');
   await LmWidget.saveWidgetData<String>(
       'speed', s.speed == null ? '' : s.speed!.toStringAsFixed(0));
+  // Clima para Auto (lo busca el movil; no esperamos a que termine)
+  unawaited(fetchWeatherForWidget());
   // Telemetria a ABRP. No lanza excepcion nunca, asi que no puede afectar al
   // resto del refresco.
   try {

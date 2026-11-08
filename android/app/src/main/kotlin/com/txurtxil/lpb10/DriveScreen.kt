@@ -42,6 +42,12 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     private var ticks = 0
     private var phoneSpeedKmh: Float? = null
     private var lastFixMs: Long = 0
+    private var lastAlt: Double? = null
+    private var startAlt: Double? = null
+    private var climb = 0.0
+    private var descent = 0.0
+    private var maxAlt: Double? = null
+    private var minAlt: Double? = null
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -56,6 +62,20 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         if (loc.hasSpeed()) {
             phoneSpeedKmh = loc.speed * 3.6f
             lastFixMs = System.currentTimeMillis()
+        }
+        if (loc.hasAltitude()) {
+            val a = loc.altitude
+            val prev = lastAlt
+            if (prev != null) {
+                val dd = a - prev
+                if (dd > 2.0) climb += dd
+                else if (dd < -2.0) descent += -dd
+            } else {
+                startAlt = a
+            }
+            lastAlt = a
+            maxAlt = if (maxAlt == null || a > maxAlt!!) a else maxAlt
+            minAlt = if (minAlt == null || a < minAlt!!) a else minAlt
         }
         invalidate()
     }
@@ -94,6 +114,8 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val range = d("range")
         val soc = d("soc")
         val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val wxT2 = d("wx_temp")
+        val wxX2 = d("wx_txt")
         val kwh100 = instantConsumption(speed, kwS)
 
         val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora)
@@ -109,13 +131,12 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         // del pane; con una sola el gauge ocupa mas.
         val pane = Pane.Builder()
             .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
-            .addRow(Row.Builder().setTitle("API " + carContext.carAppApiLevel).addText("LMB10 3.60.269-beta.7").build())
-            .addRow(Row.Builder().setTitle("%.0f km/h".format(speed)).addText("Velocidad (GPS, en vivo)").build())
-            .addRow(Row.Builder().setTitle(if (kwS.isEmpty()) "-- kW" else "$kwS kW").addText("Energia (negativo = regenerando)").build())
-            .addRow(Row.Builder().setTitle(if (range.isEmpty()) "-- km" else "$range km").addText("Autonomia").build())
+            .addRow(Row.Builder().setTitle("%.0f km/h".format(speed)).addText("Velocidad").build())
+            .addRow(Row.Builder().setTitle(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt)).addText("Altitud").build())
+            .addRow(Row.Builder().setTitle(if (wxT2.isEmpty()) "-- C" else wxT2 + " C").addText(if (wxX2.isEmpty()) "Clima local" else wxX2).build())
             .build()
         return PaneTemplate.Builder(pane)
-            .setTitle("LMB10 - Conduccion")
+            .setTitle("LMB10 3.60.269-beta.8 · API " + carContext.carAppApiLevel)
             .setHeaderAction(Action.BACK)
             .build()
     }
@@ -146,9 +167,10 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val bg = Paint().apply { color = Color.rgb(17, 19, 24); isAntiAlias = true }
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
 
-        val cx = w / 2f
-        val cy = h * 0.86f
-        val r = w * 0.46f
+        // margen seguro: el host RECORTA ~10-15% por lado del bitmap
+        val cx = w * 0.40f
+        val cy = h * 0.68f
+        val r = w * 0.27f
         val startAng = 135f
         val fullSweep = 270f
         val maxSpeed = 160f
@@ -254,6 +276,21 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
             isAntiAlias = true
         }
         c.drawText(if (kwS.isEmpty()) "-- kW" else "$kwS kW", cx, cy + r * 0.34f, kwP)
+
+        // columna derecha (dentro del margen seguro): ALTITUD + CLIMA
+        val rx = w * 0.76f
+        fun rp(color: Int, size: Float, bold: Boolean = false) = Paint().apply {
+            this.color = color; textSize = size; isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+            if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        val wxT = d("wx_temp")
+        val wxX = d("wx_txt")
+        c.drawText("ALTITUD", rx, 165f, rp(Color.rgb(150, 155, 165), 26f))
+        c.drawText(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt), rx, 265f, rp(Color.WHITE, 64f, bold = true))
+        c.drawText("CLIMA", rx, 345f, rp(Color.rgb(150, 155, 165), 26f))
+        c.drawText(if (wxT.isEmpty()) "-- C" else "$wxT C", rx, 425f, rp(Color.rgb(155, 124, 255), 48f, bold = true))
+        c.drawText(if (wxX.isEmpty()) "clima local" else wxX, rx, 475f, rp(Color.rgb(205, 209, 218), 28f))
 
         return bmp
     }
