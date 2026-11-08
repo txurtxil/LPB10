@@ -3,11 +3,6 @@ package com.txurtxil.lpb10
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Handler
@@ -15,27 +10,22 @@ import android.os.Looper
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
-import androidx.car.app.model.CarIcon
-import androidx.car.app.model.GridItem
-import androidx.car.app.model.GridTemplate
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
-import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import es.antonborri.home_widget.HomeWidgetPlugin
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.cos
-import kotlin.math.sin
 
-// Cuadro de conduccion (issue #18, idea de @MF_Pau): velocimetro moderno
-// dibujado en bitmap (Canvas -> CarIcon, mismo truco que ConsumoChartScreen)
-// + velocidad por GPS del movil (1 s, sin nube; respaldo: senal del coche
-// via prefs). El resto de datos sigue viniendo de la nube (refresh ~24 s).
+// Cuadro de conduccion (issue #18, @MF_Pau): texto GRANDE en filas.
+// Lecciones del host del B10: las imagenes (lista y grid) salen diminutas
+// y la superficie libre esta denegada => lo unico legible en plantillas es
+// el TEXTO. Valor enorme en el titulo, etiqueta pequena en el cuerpo.
+// Velocidad por GPS del movil (~1 s); resto de la nube (refresh ~24 s).
 class DriveScreen(carContext: CarContext) : Screen(carContext) {
 
     private val handler = Handler(Looper.getMainLooper())
@@ -57,6 +47,7 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
             phoneSpeedKmh = loc.speed * 3.6f
             lastFixMs = System.currentTimeMillis()
         }
+        invalidate()
     }
 
     init {
@@ -80,167 +71,45 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
     private fun d(name: String): String =
         HomeWidgetPlugin.getData(carContext).getString(name, "") ?: ""
 
-    override fun onGetTemplate(): Template {
-        val speed = currentSpeed()
-        val kwS = d("kw")
-        val range = d("range")
-        val soc = d("soc")
-        val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        val kwh100 = instantConsumption(speed, kwS)
-
-        val gauge = dibujaGauge(speed, kwS, soc, range, kwh100, hora)
-
-        // GridTemplate: el gauge como GridItem de imagen GRANDE. La
-        // plantilla de lista lo achataba a miniatura; en grid ocupa la
-        // celda completa. La info de texto va DENTRO del bitmap (fila
-        // SoC/autonomia/consumo/hora dibujada en el propio gauge).
-        val item = GridItem.Builder()
-            .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
-            .setTitle("Conduccion")
-            .build()
-
-        return GridTemplate.Builder()
-            .setTitle("LMB10 - Conduccion")
-            .setHeaderAction(Action.BACK)
-            .setSingleList(ItemList.Builder().addItem(item).build())
-            .build()
-    }
-
-    private fun row(t: String, b: String): Row =
-        Row.Builder().setTitle(t).addText(b).build()
-
     private fun currentSpeed(): Float {
         val gps = phoneSpeedKmh?.takeIf { System.currentTimeMillis() - lastFixMs < 6000 }
         if (gps != null) return gps
         return d("speed").toFloatOrNull() ?: 0f
     }
 
-    private fun instantConsumption(speedKmh: Float, kwS: String): String {
-        val kw = kwS.toFloatOrNull() ?: return "--"
-        if (speedKmh < 5f) return "--"
-        return "%.1f".format(kw / speedKmh * 100f)
+    override fun onGetTemplate(): Template {
+        val speed = currentSpeed()
+        val kwS = d("kw")
+        val kw = kwS.toFloatOrNull()
+        val soc = d("soc")
+        val range = d("range")
+        val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val kwh100 = if (speed >= 5f && kw != null) "%.1f".format(kw / speed * 100f) else "--"
+
+        val energiaTitulo = when {
+            kwS.isEmpty() -> "-- kW"
+            kw != null && kw < 0f -> "%.1f kW (regenerando)".format(kw)
+            else -> "$kwS kW"
+        }
+
+        val list = ItemList.Builder()
+        list.addItem(fila("%.0f km/h".format(speed), "Velocidad"))
+        list.addItem(fila(if (soc.isEmpty()) "-- %" else "$soc %", "Bateria"))
+        list.addItem(fila(if (range.isEmpty()) "-- km" else "$range km", "Autonomia"))
+        list.addItem(fila(energiaTitulo, "Energia"))
+        list.addItem(fila(if (kwh100 == "--") "-- kWh/100" else "$kwh100 kWh/100", "Consumo del momento"))
+        list.addItem(fila(hora, "Hora"))
+        list.addItem(fila("-- m", "Desnivel (proximamente, issue #17)"))
+        return ListTemplate.Builder()
+            .setTitle("LMB10 - Conduccion")
+            .setHeaderAction(Action.BACK)
+            .setSingleList(list.build())
+            .build()
     }
 
-    // ---- velocimetro moderno ----------------------------------------------
-    private fun dibujaGauge(speedKmh: Float, kwS: String, soc: String,
-                            rangeS: String, kwh100: String, hora: String): Bitmap {
-        val w = 960
-        val h = 620
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val c = Canvas(bmp)
-
-        val bg = Paint().apply { color = Color.rgb(17, 19, 24); isAntiAlias = true }
-        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
-
-        val cx = w / 2f
-        val cy = h * 0.86f
-        val r = w * 0.46f
-        val startAng = 135f
-        val fullSweep = 270f
-        val maxSpeed = 160f
-        val frac = (speedKmh / maxSpeed).coerceIn(0f, 1f)
-
-        fun pt(angleDeg: Float, rad: Float): Pair<Float, Float> {
-            val a = Math.toRadians((angleDeg - 90f).toDouble())
-            return (cx + rad * cos(a)).toFloat() to (cy + rad * sin(a)).toFloat()
-        }
-
-        // pista
-        val pista = Paint().apply {
-            color = Color.rgb(42, 46, 55)
-            style = Paint.Style.STROKE
-            strokeWidth = r * 0.075f
-            isAntiAlias = true
-            strokeCap = Paint.Cap.ROUND
-        }
-        c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep, false, pista)
-
-        // progreso (arco de acento) + halo suave
-        val accent = if (kwS.toFloatOrNull() ?: 0f < 0f) Color.rgb(46, 204, 168) else Color.rgb(155, 124, 255)
-        val halo = Paint(pista).apply { color = Color.argb(70, Color.red(accent), Color.green(accent), Color.blue(accent)); strokeWidth = r * 0.12f }
-        val prog = Paint(pista).apply { color = accent }
-        if (frac > 0.003f) {
-            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep * frac, false, halo)
-            c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), startAng, fullSweep * frac, false, prog)
-        }
-
-        // marcas
-        val tickMajor = Paint().apply { color = Color.rgb(235, 237, 242); strokeWidth = r * 0.014f; isAntiAlias = true }
-        val tickMinor = Paint(tickMajor).apply { color = Color.rgb(120, 126, 138); strokeWidth = r * 0.008f }
-        val numP = Paint().apply {
-            color = Color.rgb(190, 195, 205)
-            textSize = r * 0.10f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-        var v = 0
-        while (v <= maxSpeed.toInt()) {
-            val ang = startAng + fullSweep * (v / maxSpeed)
-            val major = v % 40 == 0
-            val (x1, y1) = pt(ang, r * if (major) 0.86f else 0.90f)
-            val (x2, y2) = pt(ang, r * 0.965f)
-            c.drawLine(x1, y1, x2, y2, if (major) tickMajor else tickMinor)
-            if (major && v > 0) {
-                val (tx, ty) = pt(ang, r * 0.74f)
-                c.drawText("$v", tx, ty + numP.textSize * 0.35f, numP)
-            }
-            v += 10
-        }
-
-        // aguja
-        val needleAng = startAng + fullSweep * frac
-        val (nx, ny) = pt(needleAng, r * 0.80f)
-        val needle = Paint().apply {
-            color = Color.rgb(250, 250, 252)
-            strokeWidth = r * 0.016f
-            isAntiAlias = true
-            strokeCap = Paint.Cap.ROUND
-        }
-        c.drawLine(cx, cy, nx, ny, needle)
-        val hub = Paint().apply { color = accent; isAntiAlias = true }
-        c.drawCircle(cx, cy, r * 0.045f, hub)
-
-        // centro digital
-        val spdP = Paint().apply {
-            color = Color.WHITE
-            textSize = r * 0.42f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        }
-        c.drawText("%.0f".format(speedKmh), cx, cy - r * 0.10f, spdP)
-        val unitP = Paint().apply {
-            color = Color.rgb(150, 155, 165)
-            textSize = r * 0.11f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-        c.drawText("km/h", cx, cy + r * 0.02f, unitP)
-
-        // linea de info (SoC · autonomia · consumo · hora)
-        val infoP = Paint().apply {
-            color = Color.rgb(205, 209, 218)
-            textSize = r * 0.115f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-        val info = listOf(
-            if (soc.isEmpty()) "-- %" else "$soc %",
-            if (rangeS.isEmpty()) "-- km" else "$rangeS km",
-            if (kwh100 == "--") "-- kWh/100" else "$kwh100 kWh/100",
-            hora
-        ).joinToString("   ")
-        c.drawText(info, cx, cy + r * 0.22f, infoP)
-
-        // kW abajo
-        val kwP = Paint().apply {
-            color = if ((kwS.toFloatOrNull() ?: 0f) < 0f) Color.rgb(46, 204, 168) else Color.rgb(190, 195, 205)
-            textSize = r * 0.10f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-        c.drawText(if (kwS.isEmpty()) "-- kW" else "$kwS kW", cx, cy + r * 0.34f, kwP)
-
-        return bmp
-    }
+    private fun fila(valor: String, etiqueta: String): Row =
+        Row.Builder()
+            .setTitle(valor)
+            .addText(etiqueta)
+            .build()
 }
