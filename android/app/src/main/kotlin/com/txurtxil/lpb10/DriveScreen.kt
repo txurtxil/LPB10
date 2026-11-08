@@ -132,11 +132,12 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val pane = Pane.Builder()
             .setImage(CarIcon.Builder(IconCompat.createWithBitmap(gauge)).build())
             .addRow(Row.Builder().setTitle("%.0f km/h".format(speed)).addText("Velocidad").build())
-            .addRow(Row.Builder().setTitle(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt)).addText("Altitud").build())
-            .addRow(Row.Builder().setTitle(if (wxT2.isEmpty()) "-- C" else wxT2 + " C").addText(if (wxX2.isEmpty()) "Clima local" else wxX2).build())
+            .addRow(Row.Builder().setTitle(if (kwS.isEmpty()) "-- kW" else "$kwS kW").addText("Energia").build())
+            .addRow(Row.Builder().setTitle((if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt)) + "  (+" + "%.0f".format(climb) + " / -" + "%.0f".format(descent) + " m)").addText("Altitud y desnivel").build())
+            .addRow(Row.Builder().setTitle((if (range.isEmpty()) "-- km" else range) + "  ·  " + (if (soc.isEmpty()) "--" else soc) + " %").addText("Autonomia y bateria").build())
             .build()
         return PaneTemplate.Builder(pane)
-            .setTitle("LMB10 3.60.269-beta.8 · API " + carContext.carAppApiLevel)
+            .setTitle("LMB10 3.60.269-beta.9 · API " + carContext.carAppApiLevel)
             .setHeaderAction(Action.BACK)
             .build()
     }
@@ -168,9 +169,9 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
 
         // margen seguro: el host RECORTA ~10-15% por lado del bitmap
-        val cx = w * 0.40f
+        val cx = w * 0.41f
         val cy = h * 0.68f
-        val r = w * 0.27f
+        val r = w * 0.26f
         val startAng = 135f
         val fullSweep = 270f
         val maxSpeed = 160f
@@ -287,7 +288,8 @@ class DriveScreen(carContext: CarContext) : Screen(carContext) {
         val wxT = d("wx_temp")
         val wxX = d("wx_txt")
         c.drawText("ALTITUD", rx, 165f, rp(Color.rgb(150, 155, 165), 26f))
-        c.drawText(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt), rx, 265f, rp(Color.WHITE, 64f, bold = true))
+        c.drawText(if (lastAlt == null) "-- m" else "%.0f m".format(lastAlt), rx, 255f, rp(Color.WHITE, 64f, bold = true))
+        c.drawText("desde inicio " + (if (startAlt == null || lastAlt == null) "--" else "%+.0f m".format(lastAlt!! - startAlt!!)), rx, 300f, rp(Color.rgb(46, 204, 168), 24f))
         c.drawText("CLIMA", rx, 345f, rp(Color.rgb(150, 155, 165), 26f))
         c.drawText(if (wxT.isEmpty()) "-- C" else "$wxT C", rx, 425f, rp(Color.rgb(155, 124, 255), 48f, bold = true))
         c.drawText(if (wxX.isEmpty()) "clima local" else wxX, rx, 475f, rp(Color.rgb(205, 209, 218), 28f))
