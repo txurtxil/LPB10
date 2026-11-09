@@ -46,6 +46,7 @@ import 'geo_reminder.dart';
 import 'pvpc_alert.dart';
 import 'monthly_report_pdf.dart' show generarInformeSiToca;
 import 'battery_health_screen.dart' show BatteryHealthScreen;
+import 'v2l_screen.dart' show V2lScreen;
 import 'charging_costs_screen.dart' show ChargingCostsScreen;
 import 'exterior_temp.dart' show ExteriorTemp;
 import 'telemetry_push.dart' show TelemetryPush;
@@ -2308,7 +2309,10 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
                   ),
           ),
           const SizedBox(height: 8),
-          // Accesos claros a las dos pantallas de bateria (clon Mate):
+          // Accesos claros a las tres pantallas de bateria (clon Mate):
+          // salud (capacidad, descarga pasiva, consumo-temperatura),
+          // costes de carga (sesiones AC/DC/HPC con tarifas) y
+          // V2L (coche como fuente, solo lectura).
           // salud (capacidad, descarga pasiva, consumo-temperatura) y
           // costes de carga (sesiones AC/DC/HPC con tarifas).
           Row(
@@ -2339,6 +2343,18 @@ class _BatteryWidgetCardState extends State<BatteryWidgetCard> {
                           ? 'Costes carga'
                           : 'Charging costs',
                       style: const TextStyle(fontSize: 12)),
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 8)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const V2lScreen())),
+                  icon: const Icon(Icons.electric_meter_outlined, size: 18),
+                  label: const Text('V2L', style: TextStyle(fontSize: 12)),
                   style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 36),
                       padding: const EdgeInsets.symmetric(horizontal: 8)),
