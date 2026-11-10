@@ -52,7 +52,11 @@ class _Pt {
   final double soc;
   final double? lat;
   final double? lon;
-  const _Pt(this.ts, this.km, this.soc, this.lat, this.lon);
+  // v/a (tension y corriente de bateria, 1177/1178) se guardan desde
+  // 2026-XX; los puntos antiguos los traen a null.
+  final double? v;
+  final double? a;
+  const _Pt(this.ts, this.km, this.soc, this.lat, this.lon, [this.v, this.a]);
 }
 
 class _Stop {
@@ -111,6 +115,16 @@ class RouteTrip {
   /// que el viaje ocurrio en algun momento entre startTs y endTs.
   final bool reconstruida;
 
+  /// Regeneracion del viaje: kWh que entraron a la bateria al frenar,
+  /// integrando V x I (1177 x 1178) con la regla trapezoidal de
+  /// battery_health.dart. null si los puntos no traen V/I (historico
+  /// anterior a su captura) o no hay pares validos. Nota: con la regla
+  /// "corriente negativa = entra energia", un punto enchufado dentro de un
+  /// viaje contaria como regen; el detector ya separa las paradas largas,
+  /// asi que es despreciable.
+  final double? regenKwh;
+  final double? regenPct;
+
   const RouteTrip({
     required this.startTs,
     required this.endTs,
@@ -120,6 +134,8 @@ class RouteTrip {
     required this.puntos,
     required this.waypoints,
     this.reconstruida = false,
+    this.regenKwh,
+    this.regenPct,
   });
 
   Duration get duracion => Duration(milliseconds: endTs - startTs);
@@ -166,7 +182,8 @@ class TripRebuild {
         if (!seen.add(k)) continue;
         final lat = (m['lat'] as num?)?.toDouble();
         final lon = (m['lon'] as num?)?.toDouble();
-        pts.add(_Pt(ts, km, soc.toDouble(), lat, lon));
+        pts.add(_Pt(ts, km, soc.toDouble(), lat, lon,
+            (m['v'] as num?)?.toDouble(), (m['a'] as num?)?.toDouble()));
       } catch (_) {}
     }
     pts.sort((a, b) => a.ts.compareTo(b.ts));
@@ -266,8 +283,36 @@ class TripRebuild {
       final lo = pts[i].lon;
       if (la != null && lo != null) waypoints.add(RouteWaypoint(la, lo));
     }
+    // Regeneracion y energia bruta de traccion, integrando la potencia de
+    // bateria (kW = V x A / 1000) entre puntos consecutivos que traen V/I.
+    double regen = 0, bruta = 0;
+    var paresVa = 0;
+    for (var i = ini + 1; i <= fin; i++) {
+      final p0 = pts[i - 1];
+      final p1 = pts[i];
+      if (p0.v == null || p0.a == null || p1.v == null || p1.a == null) {
+        continue;
+      }
+      final dtH = (p1.ts - p0.ts) / 3600000.0;
+      if (dtH <= 0 || dtH > 1) continue;
+      double pos(double x) => x > 0 ? x : 0;
+      final p0kw = p0.v! * p0.a! / 1000.0;
+      final p1kw = p1.v! * p1.a! / 1000.0;
+      regen += (pos(-p0kw) + pos(-p1kw)) / 2.0 * dtH;
+      bruta += (pos(p0kw) + pos(p1kw)) / 2.0 * dtH;
+      paresVa++;
+    }
+    double? regenKwh;
+    double? regenPct;
+    if (paresVa >= 2 && regen >= 0.01) {
+      regenKwh = regen;
+      final tot = regen + bruta;
+      regenPct = tot > 0 ? regen / tot * 100 : null;
+    }
     return RouteTrip(
       startTs: pts[ini].ts,
+      regenKwh: regenKwh,
+      regenPct: regenPct,
       endTs: pts[fin].ts,
       km: kmTotal,
       kwh100: kwh100,

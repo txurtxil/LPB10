@@ -198,12 +198,15 @@ class _TripListScreenState extends State<TripListScreen> {
                             ? '  \u00b7  ${r.aproximada ? "\u2248 " : ""}'
                                 '${(r.km / (r.duracion.inMinutes / 60.0)).round()} km/h'
                             : '';
+                    final regenTxt = (r.regenKwh != null && r.regenKwh! >= 0.05)
+                        ? '  \u00b7  \u21bb ${r.regenKwh!.toStringAsFixed(1)} kWh regen (${r.regenPct?.toStringAsFixed(0) ?? '-'}%)'
+                        : '';
                     return ListTile(
                       leading: const Icon(Icons.route_outlined, color: _cBlue),
                       title: Text(_fechaHora(r.startTs),
                           style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                       subtitle: Text(
-                        '${r.km.toStringAsFixed(0)} km  \u00b7  $dur  \u00b7  $consumo$velMedia',
+                        '${r.km.toStringAsFixed(0)} km  \u00b7  $dur  \u00b7  $consumo$velMedia$regenTxt',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12.5,
