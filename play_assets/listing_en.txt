@@ -1,0 +1,28 @@
+LMB10 is the unofficial app (not affiliated with Leapmotor) to get the
+most out of your Leapmotor B10, C10 and family: real telemetry, costs and
+savings, security and comfort.
+
+WHAT YOU CAN DO
+- Live dashboard: battery, real range, temperatures, vehicle state.
+- Energy costs to the cent: AC/DC/HPC charges with your tariff (PVPC or
+  custom), daily/monthly reports, PDF and an "efficiency receipt".
+- Sentry mode: alerts if the car unlocks, opens, starts or moves, and arms
+  the car's own sentry.
+- Remote controls: climate, rapid heat/cool, lock, trunk, windows,
+  sunshade, heated seats and steering wheel.
+- Battery health: estimated usable capacity and passive drain.
+- Trips with map and consumption, comparison vs a combustion car, home
+  screen widget and electricity price to charge cheap.
+- Android Auto: speedometer and car data on the car screen.
+- Backups (Drive), MQTT/webhook telemetry and much more.
+
+PRIVACY
+No sign-up, no third-party analytics: your credentials stay on your phone
+and the app talks directly to the Leapmotor cloud, like the official app.
+
+REQUIRES
+A Leapmotor account and a compatible vehicle. The app is independent: if
+Leapmotor changes its API, some features may stop working until adapted.
+
+Open project and website: https://txurtxil.github.io/LPB10/
+Enjoying it? Buy me a coffee: https://ko-fi.com/txurtxil
