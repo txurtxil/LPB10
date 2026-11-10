@@ -48,6 +48,12 @@ android {
             }
         }
     }
+    flavorDimensions += "distrib"
+    productFlavors {
+        create("full") { dimension = "distrib" }
+        create("play") { dimension = "distrib" }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

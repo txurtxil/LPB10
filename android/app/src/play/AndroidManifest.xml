@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Cirugia Play (decision owner 2026-11-10): el AAB que sube a Google Play
+         NO declara Android Auto. La review de AA en Play es restrictiva y el
+         Android Auto real se distribuye por GitHub (APK full). Todo lo demas
+         va integro: mismas clases, mismos datos, solo se retira la
+         declaracion del servicio y sus meta-datas para que el host de AA no
+         la ofrezca y Play no la catalogue. -->
+    <application>
+        <service
+            android:name=".LMB10CarAppService"
+            tools:node="remove" />
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            tools:node="remove" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            tools:node="remove" />
+    </application>
+</manifest>
