@@ -424,8 +424,22 @@ class VehicleStatus {
   /// completada. chargeState != 0 tambien se da con la regeneracion al
   /// conducir y con la carga terminada: causaba falsos "Cargando" y
   /// sesiones fantasma en el historial.
+  /// Derivacion por potencia medida (issue #13): algunos coches (p. ej.
+  /// Reev) no ponen chargeState != 0 al cargar en AC a maxima potencia.
+  /// Regla: enchufado (descartando V2L, senal 47 == 2, que tambien reporta
+  /// enchufado) y potencia de bateria <= -1 kW (negativa = entrando).
+  /// Umbral 1 kW: el standby enchufado ronda 0,1-0,5 kW y las cargas AC
+  /// empiezan en ~1,4 kW.
+  bool get _cargandoPorPotencia {
+    if (!isPluggedIn) return false;
+    final modoAc = raw['acInputSlowCharge'];
+    if (modoAc is num && modoAc.toInt() == 2) return false; // V2L, no carga
+    final kw = batteryPowerKw;
+    return kw != null && kw <= -1.0;
+  }
+
   bool get isCharging =>
-      (chargeState ?? 0) != 0 &&
+      ((chargeState ?? 0) != 0 || _cargandoPorPotencia) &&
       isPluggedIn &&
       (chargeCompleted != true);
   /// Ruedas con estado de presion anomalo (no normal). Lee los *PressureState
