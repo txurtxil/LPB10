@@ -1099,11 +1099,20 @@ Future<void> widgetActionCallback(Uri? uri) async {
   Future<void> aviso(String t) async {
     try {
       await LmWidget.saveWidgetData<String>('qw_status', t);
-      await LmWidget.updateWidget(androidName: 'QuickWidgetProvider');
-      // v240/v245: el widget de bloqueo (2x2 y mini 2x1) muestra el mismo estado.
-      await LmWidget.updateWidget(androidName: 'LockWidgetProvider');
-      await LmWidget.updateWidget(androidName: 'MiniLockWidgetProvider');
     } catch (_) {}
+    // v252 dejo UN SOLO widget (mini 2x1): cada repintado va en su propio
+    // try/catch. Antes, un unico try compartido hacia que la excepcion de
+    // LockWidgetProvider (eliminado en v252) abortara el repintado del mini
+    // y no se viera nunca "enviando..." (issue #25).
+    for (final w in [
+      'QuickWidgetProvider',
+      'LockWidgetProvider',
+      'MiniLockWidgetProvider',
+    ]) {
+      try {
+        await LmWidget.updateWidget(androidName: w);
+      } catch (_) {}
+    }
   }
   await aviso('enviando...');
   final ok = await carQuickAction(cmd);
