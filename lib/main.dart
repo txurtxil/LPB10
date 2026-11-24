@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:home_widget/home_widget.dart';
 import 'widget_bridge.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -1106,7 +1107,6 @@ Future<void> widgetActionCallback(Uri? uri) async {
     // y no se viera nunca "enviando..." (issue #25).
     for (final w in [
       'QuickWidgetProvider',
-      'LockWidgetProvider',
       'MiniLockWidgetProvider',
     ]) {
       try {
@@ -1141,6 +1141,9 @@ void main() async {
   );
   try {
     gPendingRoutineId = _routineIdFromUri(await LmWidget.initiallyLaunchedFromHomeWidget());
+  } catch (_) {}
+  try {
+    await HomeWidget.registerBackgroundCallback(widgetActionCallback);
   } catch (_) {}
   try {
     LmWidget.registerInteractivityCallback(widgetActionCallback);
