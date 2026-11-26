@@ -13,7 +13,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'charge_cost.dart';
 import 'daily_stats.dart';
@@ -22,8 +21,28 @@ import 'price_screen.dart';
 import 'pvpc.dart';
 import 'maintenance.dart';
 import 'widget_chart.dart' show gBatteryKwh;
+import 'package:shared_preferences/shared_preferences.dart';
 
-const _priceStorage = FlutterSecureStorage();
+// Fix #33 (beta.17): los precios no son secretos. flutter_secure_storage
+// puede colgar PERMANENTE en dispositivos con Keystore roto (la lectura del
+// precio se hace en el arranque -> app "colgada" siempre). Se migra a
+// SharedPreferences; no se lee el valor viejo del secure storage precisamente
+// porque esa lectura es la que puede bloquear (el usuario reintroduce precios).
+class _PriceStorage {
+  Future<String?> read({required String key}) async =>
+      (await SharedPreferences.getInstance()).getString(key);
+  Future<void> write({required String key, String? value}) async {
+    final p = await SharedPreferences.getInstance();
+    if (value == null) {
+      await p.remove(key);
+    } else {
+      await p.setString(key, value);
+    }
+  }
+  Future<void> delete({required String key}) async =>
+      (await SharedPreferences.getInstance()).remove(key);
+}
+final _priceStorage = _PriceStorage();
 const kEnergyPriceKey = 'lm_energy_price_v1';
 
 /// Se guarda como estructura y no como numero suelto, para poder anadir tramos
