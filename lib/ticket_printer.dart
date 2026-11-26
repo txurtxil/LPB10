@@ -219,17 +219,23 @@ Future<String> buildEfficiencyTicket({
   b.writeln('');
 
   // ---------- COSTE ----------
-  if (tot.hayEur && tot.km > 0) {
+  // Fix beta.20: el bloque (y la COMPARATIVA del termico) se imprime con
+  // SOLO km > 0. Las lineas en euros quedan condicionadas a tot.hayEur:
+  // asi la comparativa termica se ve aunque falten precios del periodo.
+  if (tot.km > 0) {
     b.writeln(line('COSTE DE USO'));
     b.writeln(sep());
-    b.writeln(_kv('Energia consumida:', _d2(tot.eur) + ' EUR'));
-    final eurKm = tot.eur / tot.km;
-    b.writeln(_kv('Coste por km:', _d3(eurKm) + ' EUR/km'));
-    b.writeln(_kv('Coste por 100km:', _d2(eurKm * 100) + ' EUR'));
-    b.writeln('');
-    b.writeln(line('Calculado sobre la energia'));
-    b.writeln(line('consumida en el periodo, no'));
-    b.writeln(line('sobre lo cargado.'));
+    double? eurKm;
+    if (tot.hayEur) {
+      b.writeln(_kv('Energia consumida:', _d2(tot.eur) + ' EUR'));
+      eurKm = tot.eur / tot.km;
+      b.writeln(_kv('Coste por km:', _d3(eurKm) + ' EUR/km'));
+      b.writeln(_kv('Coste por 100km:', _d2(eurKm * 100) + ' EUR'));
+      b.writeln('');
+      b.writeln(line('Calculado sobre la energia'));
+      b.writeln(line('consumida en el periodo, no'));
+      b.writeln(line('sobre lo cargado.'));
+    }
     // Referencia: un termico equivalente a 7 l/100 y 1,55 EUR/l son 10,85
     // EUR/100 km. Sirve para dimensionar el ahorro, no es una medida.
     // Cifras del termico que el usuario tenia antes, si las indico. Una
@@ -238,21 +244,23 @@ Future<String> buildEfficiencyTicket({
     final term = await Pvpc.termico();
     if (term.litros > 0 && term.precio > 0) {
       final ref100 = term.litros * term.precio;
-      final ahorro = (ref100 - eurKm * 100) / 100.0 * tot.km;
       b.writeln('');
       b.writeln(line('COMPARATIVA'));
       b.writeln(sep());
       b.writeln(_kv('Termico ref.:', _d1(term.litros) + ' l/100'));
       b.writeln(_kv('Combustible:', _d3(term.precio) + ' EUR/l'));
       b.writeln(_kv('Termico 100km:', _d2(ref100) + ' EUR'));
-      b.writeln(_kv('Electrico 100km:', _d2(eurKm * 100) + ' EUR'));
-      b.writeln(sep());
-      if (ahorro > 0) {
-        b.writeln(_kv('AHORRO:', _d2(ahorro) + ' EUR'));
-        b.writeln(_kv('Litros no gastados:',
-            _d1(term.litros * tot.km / 100.0) + ' l'));
-      } else {
-        b.writeln(_kv('Sobrecoste:', _d2(-ahorro) + ' EUR'));
+      b.writeln(_kv('Litros no gastados:',
+          _d1(term.litros * tot.km / 100.0) + ' l'));
+      if (eurKm != null) {
+        final ahorro = (ref100 - eurKm * 100) / 100.0 * tot.km;
+        b.writeln(_kv('Electrico 100km:', _d2(eurKm * 100) + ' EUR'));
+        b.writeln(sep());
+        if (ahorro > 0) {
+          b.writeln(_kv('AHORRO:', _d2(ahorro) + ' EUR'));
+        } else {
+          b.writeln(_kv('Sobrecoste:', _d2(-ahorro) + ' EUR'));
+        }
       }
     }
     b.writeln('');

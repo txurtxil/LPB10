@@ -269,7 +269,15 @@ class DailyStats {
     final prevLen = (meta['len'] as num?)?.toInt() ?? 0;
     final len = await f.length();
     if (len < prevLen) return rebuild();
-    if (len == prevLen) return load();
+    if (len == prevLen) {
+      final cached = await load();
+      // Fix beta.20 (auto-sanacion): si el cache agg se perdio pero el meta
+      // sigue apuntando a datos del trips (p.ej. limpieza parcial de datos
+      // en el movil), el incremental NUNCA repasaria el historial -> el
+      // ticket de rango saldria a 0 km. Forzar rebuild en ese caso.
+      if (cached.isEmpty && prevLen > 0) return rebuild();
+      return cached;
+    }
 
     final raf = await f.open();
     await raf.setPosition(prevLen);
@@ -320,6 +328,7 @@ class DailyStats {
     for (final a in await load()) {
       days[a.d] = a;
     }
+    if (days.isEmpty && prevLen > 0) return rebuild();
     final delta = accumulate(nue);
     if (meta['lastTs'] is num) {
       final kFirst = dayKey(DateTime.fromMillisecondsSinceEpoch(
