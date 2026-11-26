@@ -38,14 +38,25 @@ Future<String> buildEfficiencyTicket({
   required DateTime to,
   String? nickname,
 }) async {
-  final agg = await DailyStats.sync();
+  var agg = await DailyStats.sync();
   final d0 = DateTime(from.year, from.month, from.day);
   final d1 = DateTime(to.year, to.month, to.day);
   final desde = DailyStats.dayKey(d0);
   final hasta = DailyStats.dayKey(d1);
-  final dias = agg.where((a) => a.d.compareTo(desde) >= 0 && a.d.compareTo(hasta) <= 0)
+  var dias = agg.where((a) => a.d.compareTo(desde) >= 0 && a.d.compareTo(hasta) <= 0)
       .toList()
     ..sort((a, b) => a.d.compareTo(b.d));
+  // Fix beta.21: si el rango queda vacio, puede ser un agg PARCIALMENTE
+  // perdido (la auto-sanacion de beta.20 solo actua si esta vacio del todo).
+  // Reconstruir una vez desde trips.jsonl y reintentar el filtro.
+  if (dias.isEmpty) {
+    await DailyStats.rebuild();
+    agg = await DailyStats.sync();
+    dias = agg.where((a) => a.d.compareTo(desde) >= 0 && a.d.compareTo(hasta) <= 0)
+      .toList()
+      ..sort((a, b) => a.d.compareTo(b.d));
+  }
+
 
   final precios = await preciosPorDia();
   final tot = totalizar(dias, precios);
