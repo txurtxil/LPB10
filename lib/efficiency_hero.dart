@@ -191,7 +191,10 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
     // Fix #32: el odometro (muestras bat) es decorativo e intermitente por
     // Doze/TCU; no debe ocultar la tarjeta de ahorro. Solo se oculta si no
     // hay NI ahorro NI spark (es decir, sin datos acumulados de verdad).
-    if (_ahorro == 0 && _spark.isEmpty) return const SizedBox.shrink();
+    // Fix #33 (beta.18): el bloque entero (ahorro + mes + spark) se oculta SOLO
+    // si no hay absolutamente nada que mostrar. Que falten precios (ahorro==0 y
+    // spark vacio tras reconfigurar tarifa o migrar almacen) NO debe tumbarlo.
+    if (_odo == null && _kmMes <= 0 && _spark.isEmpty) return const SizedBox.shrink();
     final maxMes = _termicoMes > _eurMes ? _termicoMes : _eurMes;
     final pcMes = _termicoMes > 0 ? _eurMes / _termicoMes : 0.0;
     return Column(children: [

@@ -22,6 +22,8 @@ import 'pvpc.dart';
 import 'maintenance.dart';
 import 'widget_chart.dart' show gBatteryKwh;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // Fix #33 (beta.17): los precios no son secretos. flutter_secure_storage
 // puede colgar PERMANENTE en dispositivos con Keystore roto (la lectura del
@@ -63,10 +65,8 @@ class EnergyPrice {
   const EnergyPrice(
       {this.mode = 'single', required this.eurKwh, this.p1, this.p2, this.p3});
 
-  static Future<EnergyPrice?> load() async {
+  static EnergyPrice? _fromJson(String raw) {
     try {
-      final raw = await _priceStorage.read(key: kEnergyPriceKey);
-      if (raw == null || raw.isEmpty) return null;
       final m = Map<String, dynamic>.from(json.decode(raw) as Map);
       final v = m['eur_kwh'];
       if (v is! num || v <= 0) return null;
@@ -78,6 +78,47 @@ class EnergyPrice {
         p2: d(m['p2']),
         p3: d(m['p3']),
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Migracion #33 (beta.18): si SharedPreferences esta vacio, intentar
+  // recuperar el precio del viejo secure storage CON CARRERA DE 3 SEGUNDOS.
+  // Si el Keystore del dispositivo esta roto, esa lectura se cuelga para
+  // siempre; preferimos perder el precio antiguo antes que colgar el arranque.
+  static Future<String?> _readLegacyWithTimeout() async {
+    final done = Completer<String?>();
+    // ignore: unawaited
+    _legacyRead().then((v) {
+      if (!done.isCompleted) done.complete(v);
+    }).catchError((_) {
+      if (!done.isCompleted) done.complete(null);
+    });
+    Timer(const Duration(seconds: 3), () {
+      if (!done.isCompleted) done.complete(null);
+    });
+    return done.future;
+  }
+
+  static Future<String?> _legacyRead() async {
+    const storage = FlutterSecureStorage();
+    return storage.read(key: kEnergyPriceKey);
+  }
+
+  static Future<EnergyPrice?> load() async {
+    try {
+      final raw = await _priceStorage.read(key: kEnergyPriceKey);
+      if (raw != null && raw.isNotEmpty) return _fromJson(raw);
+      final legacy = await _readLegacyWithTimeout();
+      if (legacy != null && legacy.isNotEmpty) {
+        final parsed = _fromJson(legacy);
+        if (parsed != null) {
+          await _priceStorage.write(key: kEnergyPriceKey, value: legacy);
+        }
+        return parsed;
+      }
+      return null;
     } catch (_) {
       return null;
     }
