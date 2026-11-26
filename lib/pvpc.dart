@@ -19,8 +19,54 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'car_log_bridge.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
-const _pvpcStore = FlutterSecureStorage();
+// Fix beta.19: toda la config PVPC/Térmico migra a SharedPreferences. El viejo
+// secure storage se consulta UNA vez por clave CON CARRERA DE 3s: un Keystore
+// roto cuelga la lectura para siempre; preferemos perder el dato que colgar.
+class _PvpcStore {
+  static const _legacy = FlutterSecureStorage();
+
+  Future<String?> read({required String key}) async {
+    final p = await SharedPreferences.getInstance();
+    final v = p.getString(key);
+    if (v != null) return v;
+    final old = await _readLegacy(key);
+    if (old != null && old.isNotEmpty) {
+      await p.setString(key, old);
+      return old;
+    }
+    return null;
+  }
+
+  Future<void> write({required String key, String? value}) async {
+    final p = await SharedPreferences.getInstance();
+    if (value == null) {
+      await p.remove(key);
+    } else {
+      await p.setString(key, value);
+    }
+  }
+
+  Future<void> delete({required String key}) => write(key: key, value: null);
+
+  static Future<String?> _readLegacy(String key) async {
+    final done = Completer<String?>();
+    // ignore: unawaited
+    _legacy.read(key: key).then((v) {
+      if (!done.isCompleted) done.complete(v);
+    }).catchError((_) {
+      if (!done.isCompleted) done.complete(null);
+    });
+    Timer(const Duration(seconds: 3), () {
+      if (!done.isCompleted) done.complete(null);
+    });
+    return done.future;
+  }
+}
+
+const _pvpcStore = _PvpcStore();
 const _kCache = 'lm_pvpc_cache_v1';
 const _kDto = 'lm_pvpc_dto_v1';
 const _kVentana = 'lm_carga_ventana_v1';
