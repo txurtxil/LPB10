@@ -50,6 +50,13 @@ jobs:
       - name: Prepare iOS build (pod install + config)
         run: flutter build ios --release --no-codesign --config-only
 
+      # Stub del token de feedback: el real vive en lib/feedback_token.dart,
+      # gitignored por contener un secreto; en CI se genera uno vacio (la app
+      # ya gestiona kFeedbackToken vacio mostrando "no configurado").
+      - name: Stub feedback token
+        run: |
+          [ -f lib/feedback_token.dart ] || echo "const String kFeedbackToken = '';" > lib/feedback_token.dart
+
       - name: Build iOS App
         run: |
           set -e
