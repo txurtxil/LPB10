@@ -188,7 +188,10 @@ class _EfficiencyHeroState extends State<EfficiencyHero> {
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     if (_cargando) return const SizedBox(height: 40);
-    if (_odo == null && _spark.isEmpty) return const SizedBox.shrink();
+    // Fix #32: el odometro (muestras bat) es decorativo e intermitente por
+    // Doze/TCU; no debe ocultar la tarjeta de ahorro. Solo se oculta si no
+    // hay NI ahorro NI spark (es decir, sin datos acumulados de verdad).
+    if (_ahorro == 0 && _spark.isEmpty) return const SizedBox.shrink();
     final maxMes = _termicoMes > _eurMes ? _termicoMes : _eurMes;
     final pcMes = _termicoMes > 0 ? _eurMes / _termicoMes : 0.0;
     return Column(children: [

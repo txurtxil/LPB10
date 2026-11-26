@@ -219,11 +219,26 @@ Future<Map<String, String>> buildWidgetExtras(
     // que depender de chargeSessions (que el sueno del TCU puede no registrar).
     if (points.length >= 2) {
       int rechargeIdx = 0;
+      bool jumpFound = false;
       for (var i = 1; i < points.length; i++) {
         // Subida de SoC de >=3% => hubo recarga entre esos dos puntos.
         if (points[i].soc - points[i - 1].soc >= 3) {
           rechargeIdx = i - 1;
+          jumpFound = true;
         }
+      }
+      if (!jumpFound) {
+        // Fix #32: sin salto visible (TCU dormido / Doze de madrugada), la
+        // ultima recarga se aproxima por el MAXIMO de SoC del historial: el
+        // coche sale de cargar al SoC mas alto que registra. Sobrevive a
+        // muestreo sparse.
+        var best = 0;
+        for (var i = 1; i < points.length; i++) {
+          if (points[i].soc > points[best].soc) best = i;
+        }
+        // Solo vale como referencia si despues hubo descarga; si el maximo es
+        // el ultimo punto, estamos cargando aun o no hay ciclo que medir.
+        if (best < points.length - 1) rechargeIdx = best;
       }
       if (rechargeIdx < points.length - 1) {
         final km = points.last.km - points[rechargeIdx].km;
