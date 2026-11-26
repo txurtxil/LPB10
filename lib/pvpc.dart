@@ -66,7 +66,7 @@ class _PvpcStore {
   }
 }
 
-const _pvpcStore = _PvpcStore();
+final _pvpcStore = _PvpcStore();
 const _kCache = 'lm_pvpc_cache_v1';
 const _kDto = 'lm_pvpc_dto_v1';
 const _kVentana = 'lm_carga_ventana_v1';
