@@ -44,7 +44,7 @@
         android:layout_height="wrap_content"
         android:text="-- km autonomia"
         android:textColor="#0D3B66"
-        android:textSize="12sp" />
+        android:textSize="12sp"  android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
     <TextView
         android:id="@+id/widget_lock"
         android:layout_width="wrap_content"
@@ -52,7 +52,7 @@
         android:text="Estado desconocido"
         android:textColor="#0D3B66"
         android:textSize="12sp"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="2dp"  android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
     <TextView
         android:id="@+id/widget_charge"
         android:layout_width="wrap_content"
@@ -62,7 +62,7 @@
         android:textColor="#1B7A4B"
         android:textStyle="bold"
         android:textSize="12sp"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="2dp"  android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
     <TextView
         android:id="@+id/widget_chart_text"
         android:layout_width="match_parent"
@@ -115,5 +115,5 @@
         android:text=""
         android:textColor="#0D3B66"
         android:textSize="10sp"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="4dp"  android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
 </LinearLayout>

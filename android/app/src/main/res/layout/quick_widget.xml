@@ -58,20 +58,20 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:maxLines="1"
-        android:ellipsize="end"
+        android:ellipsize="marquee"
         android:textColor="#144E7A"
         android:textSize="13sp"
-        android:text="" />
+        android:text=""  android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
     <TextView
         android:id="@+id/qw_info2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:maxLines="1"
-        android:ellipsize="end"
+        android:ellipsize="marquee"
         android:textColor="#5B87AC"
         android:textSize="12sp"
-        android:text="" />
+        android:text=""  android:marqueeRepeatLimit="marquee_forever" android:singleLine="true"/>
     <TextView
         android:id="@+id/qw_gasto"
         android:layout_width="match_parent"
