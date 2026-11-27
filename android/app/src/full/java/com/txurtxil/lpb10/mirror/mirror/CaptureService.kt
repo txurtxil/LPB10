@@ -25,6 +25,7 @@ import androidx.annotation.MainThread
 import androidx.core.app.ServiceCompat
 import androidx.core.content.IntentCompat
 import com.txurtxil.lpb10.mirror.Notifications
+import com.txurtxil.lpb10.mirror.SessionLog
 import com.txurtxil.lpb10.mirror.Preferences
 import com.txurtxil.lpb10.R
 
@@ -63,6 +64,7 @@ class CaptureService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        SessionLog.init(this)
 
         notifications = Notifications(this)
         // Fix integracion LMB10: los canales se creaban en MainApplication,

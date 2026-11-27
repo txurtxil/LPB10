@@ -52,6 +52,7 @@ object SessionLog {
 
     @Synchronized
     fun record(line: String) {
+        if (!::logFile.isInitialized) return
         try {
             logFile.appendText("${dateFormat.format(System.currentTimeMillis())} $line\n")
             trimIfNeeded()
@@ -69,6 +70,7 @@ object SessionLog {
     }
 
     fun dump(uri: Uri) {
+        if (!::logFile.isInitialized) return
         if (uri.scheme == ContentResolver.SCHEME_FILE) {
             logFile.copyTo(uri.toFile(), overwrite = true)
             return
