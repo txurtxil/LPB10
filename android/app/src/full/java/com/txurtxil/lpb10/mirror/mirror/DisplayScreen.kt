@@ -158,9 +158,10 @@ class DisplayScreen(carContext: CarContext) : Screen(carContext), DefaultLifecyc
         if (Permissions.have(carContext, Permissions.ALL)) {
             registerSpeedListener()
         } else {
-            screenManager.pushForResult(PermissionScreen(carContext)) {
-                registerSpeedListener()
-            }
+            // Fusion LMB10: sin pantalla de permisos (era Compose). El estado
+            // se refleja en la propia pantalla; los permisos van por el
+            // consentimiento de captura al iniciar.
+            android.util.Log.w(TAG, "Permisos de espejo incompletos")
         }
     }
 

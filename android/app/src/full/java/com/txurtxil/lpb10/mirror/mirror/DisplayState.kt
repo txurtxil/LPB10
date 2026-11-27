@@ -10,7 +10,7 @@ import android.util.Log
 import android.view.Display
 import androidx.car.app.CarContext
 import androidx.car.app.SurfaceContainer
-import androidx.core.app.ActivityOptionsCompat
+import androidx.core.app.android.app.ActivityOptions
 import com.txurtxil.lpb10.mirror.Preferences
 
 /**
@@ -173,7 +173,7 @@ sealed interface DisplayState {
                     Intent(carContext, CaptureRequestActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     },
-                    ActivityOptionsCompat
+                    android.app.ActivityOptions
                         .makeBasic()
                         .setLaunchDisplayId(Display.DEFAULT_DISPLAY)
                         .toBundle(),
