@@ -10,7 +10,7 @@ import android.util.Log
 import android.view.Display
 import androidx.car.app.CarContext
 import androidx.car.app.SurfaceContainer
-import androidx.core.app.android.app.ActivityOptions
+import android.app.ActivityOptions
 import com.txurtxil.lpb10.mirror.Preferences
 
 /**
