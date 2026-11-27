@@ -83,8 +83,8 @@ flutter {
 dependencies {
     // ---- Modulo espejo LMonitor (SOLO flavor full; jamas en play) ----
     "fullImplementation"(files("../../mirror/lmonitor.aar"))
-    "fullImplementation"("androidx.car:car:1.7.0")
-    "fullImplementation"("androidx.car:car-projected:1.7.0")
+    "fullImplementation"("androidx.car.app:app:1.7.0")
+    "fullImplementation"("androidx.car.app:app-projected:1.7.0")
     "fullImplementation"("androidx.core:core-ktx:1.19.0")
     "fullImplementation"("androidx.preference:preference-ktx:1.2.1")
     "fullImplementation"("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
