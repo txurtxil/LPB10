@@ -11,4 +11,5 @@
     <string name="notification_channel_persistent_desc">Persistent notification for screen mirroring</string>
     <string name="notification_channel_persistent_name">Background services</string>
     <string name="notification_mirroring_active">Screen mirroring is active</string>
+    <string name="app_name" translatable="false">LMB10</string>
 </resources>

@@ -84,6 +84,10 @@ flutter {
 dependencies {
     // ---- Modulo espejo LMonitor (SOLO flavor full; jamas en play) ----
     "fullImplementation"("androidx.car.app:app-projected:1.7.0")
+    "fullImplementation"("androidx.preference:preference-ktx:1.2.1") {
+        exclude(group = "androidx.core")
+        exclude(group = "androidx.collection")
+    }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.car.app:app:1.7.0")
     // El plugin "workmanager" ya trae androidx.work de forma transitiva,
