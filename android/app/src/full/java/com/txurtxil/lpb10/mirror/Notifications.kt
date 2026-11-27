@@ -6,7 +6,7 @@
 package com.txurtxil.lpb10.mirror
 
 import android.app.Notification
-import com.txurtxil.lmonitor.R
+import com.txurtxil.lpb10.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context

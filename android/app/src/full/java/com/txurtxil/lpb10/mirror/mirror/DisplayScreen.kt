@@ -36,7 +36,7 @@ import com.txurtxil.lpb10.mirror.Preferences
 import com.txurtxil.lpb10.mirror.SessionLog
 import com.txurtxil.lpb10.mirror.extension.canWriteSystemSettings
 import com.txurtxil.lpb10.mirror.extension.forceLandscapeRotation
-import com.txurtxil.lmonitor.R
+import com.txurtxil.lpb10.R
 
 class DisplayScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycleObserver,
     SharedPreferences.OnSharedPreferenceChangeListener, ServiceConnection, CaptureService.Listener,
