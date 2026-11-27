@@ -31,7 +31,7 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
         ListTemplate.Builder()
             .setTitle("LMB10 (error de menu)")
             .setHeaderAction(Action.APP_ICON)
-            .setItemList(
+            .setSingleList(
                 ItemList.Builder().addItem(
                     Row.Builder()
                         .setTitle(t.javaClass.simpleName)
