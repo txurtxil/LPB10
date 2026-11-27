@@ -17,7 +17,33 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
     private fun icon(res: Int): CarIcon =
         CarIcon.Builder(IconCompat.createWithResource(carContext, res)).build()
 
-    override fun onGetTemplate(): Template {
+    override fun onGetTemplate(): Template = try {
+        buildMenuTemplate()
+    } catch (t: Throwable) {
+        // Diagnóstico AA: la excepción salta en el hilo del host y nunca
+        // llega al handler global -> la capturamos aquí, la volcamos a
+        // CarLog (exportable) y mostramos un resumen en la propia pantalla.
+        CarLog.log(carContext, "AAMENU", "EXCEPCION: " + t.javaClass.name + ": " + t.message)
+        val sw = java.io.StringWriter()
+        t.printStackTrace(java.io.PrintWriter(sw))
+        CarLog.log(carContext, "AAMENU", sw.toString().take(1500))
+        invalidate()
+        ListTemplate.Builder()
+            .setTitle("LMB10 (error de menu)")
+            .setHeaderAction(Action.APP_ICON)
+            .setItemList(
+                ItemList.Builder().addItem(
+                    Row.Builder()
+                        .setTitle(t.javaClass.simpleName)
+                        .addText((t.message ?: "sin mensaje").take(180))
+                        .addText("Exporta el log de la app y pasaselo a Kimi")
+                        .build()
+                ).build()
+            )
+            .build()
+    }
+
+    private fun buildMenuTemplate(): Template {
         val prefs = HomeWidgetPlugin.getData(carContext)
         val soc = prefs.getString("soc", null)
         val range = prefs.getString("range", null)
