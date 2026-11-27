@@ -89,19 +89,6 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
 
         
 
-        // Fusion espejo (solo flavor full): ver la pantalla del telefono en
-        // la unidad a traves de Android Auto (consentimiento + captura).
-        if (MirrorNav.ENABLED) {
-            list.addItem(
-                Row.Builder()
-                    .setTitle("Espejo")
-                    .addText("Ver la pantalla del telefono (solo en parado)")
-                    .setBrowsable(true)
-                    .setOnClickListener { screenManager.push(MirrorNav.screen(carContext)) }
-                    .build()
-            )
-        }
-
         // v-next (2026-11-07, issue #15): esta variante NO va por Play, asi
         // que el criterio PF-1 ya no aplica: re-enlazamos las pantallas.
         list.addItem(
