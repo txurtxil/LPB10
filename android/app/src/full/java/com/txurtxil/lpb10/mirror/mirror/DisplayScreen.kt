@@ -128,11 +128,16 @@ class DisplayScreen(carContext: CarContext) : Screen(carContext), DefaultLifecyc
                 carContext.getString(R.string.mirror_state_requesting)
         }
 
-        return if (message != null) {
+        val effectiveMessage = if (!surfaceAccess) {
+            carContext.getString(R.string.mirror_state_unsupported_host)
+        } else {
+            message
+        }
+        return if (effectiveMessage != null) {
             MapWithContentTemplate.Builder()
                 .setActionStrip(actionStrip)
                 .setContentTemplate(
-                    MessageTemplate.Builder(message)
+                    MessageTemplate.Builder(effectiveMessage)
                         .build()
                 )
                 .build()
@@ -143,6 +148,8 @@ class DisplayScreen(carContext: CarContext) : Screen(carContext), DefaultLifecyc
         }
     }
 
+    private var surfaceAccess = true
+
     override fun onCreate(owner: LifecycleOwner) {
         Log.d(TAG, "onCreate()")
 
@@ -150,7 +157,13 @@ class DisplayScreen(carContext: CarContext) : Screen(carContext), DefaultLifecyc
             carContext.forceLandscapeRotation()
         }
 
-        appManager.setSurfaceCallback(this)
+        surfaceAccess = try {
+            appManager.setSurfaceCallback(this)
+            true
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Host sin permiso de superficie (ACCESS_SURFACE)", e)
+            false
+        }
 
         val intent = Intent(carContext, CaptureService::class.java)
         carContext.bindService(intent, this, Context.BIND_AUTO_CREATE)
