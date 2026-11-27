@@ -18,7 +18,8 @@ android {
     buildFeatures {
         buildConfig = true
     }
-    compileSdk = flutter.compileSdkVersion
+    // 37: requisito del AAR del modulo espejo (LMonitor).
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
