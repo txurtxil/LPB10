@@ -75,14 +75,7 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
         )
 
 
-        list.addItem(
-            Row.Builder()
-                .setTitle("Ambiente")
-                .addText("Barometro, clima local, temperaturas")
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(AmbienteScreen(carContext)) }
-                .build()
-        )
+        
 
         list.addItem(
             Row.Builder()
@@ -94,15 +87,7 @@ class CarMainScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
-        list.addItem(
-            Row.Builder()
-                .setTitle("Ruedas")
-                .addText("Estado de las 4 ruedas")
-                .setImage(icon(R.drawable.ic_car_tire))
-                .setBrowsable(true)
-                .setOnClickListener { screenManager.push(TiresScreen(carContext)) }
-                .build()
-        )
+        
 
         // Fusion espejo (solo flavor full): ver la pantalla del telefono en
         // la unidad a traves de Android Auto (consentimiento + captura).
