@@ -82,12 +82,12 @@ flutter {
 
 dependencies {
     // ---- Modulo espejo LMonitor (SOLO flavor full; jamas en play) ----
-    fullImplementation(files("../../mirror/lmonitor.aar"))
-    fullImplementation("androidx.car:car:1.7.0")
-    fullImplementation("androidx.car:car-projected:1.7.0")
-    fullImplementation("androidx.core:core-ktx:1.19.0")
-    fullImplementation("androidx.preference:preference-ktx:1.2.1")
-    fullImplementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
+    "fullImplementation"(files("../../mirror/lmonitor.aar"))
+    "fullImplementation"("androidx.car:car:1.7.0")
+    "fullImplementation"("androidx.car:car-projected:1.7.0")
+    "fullImplementation"("androidx.core:core-ktx:1.19.0")
+    "fullImplementation"("androidx.preference:preference-ktx:1.2.1")
+    "fullImplementation"("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.car.app:app:1.7.0")
     // El plugin "workmanager" ya trae androidx.work de forma transitiva,
