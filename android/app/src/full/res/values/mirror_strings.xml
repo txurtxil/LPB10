@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mirror_bottom_unavailable">…</string>
+    <string name="mirror_button_exit">Exit</string>
+    <string name="mirror_button_start">Start</string>
+    <string name="mirror_button_stop">Stop</string>
+    <string name="mirror_state_cancelled">Capture request was cancelled</string>
+    <string name="mirror_state_driving">Not available while driving</string>
+    <string name="mirror_state_inactive">Mirroring is not active</string>
+    <string name="mirror_state_requesting">Check phone for permission request</string>
+    <string name="notification_channel_persistent_desc">Persistent notification for screen mirroring</string>
+    <string name="notification_channel_persistent_name">Background services</string>
+    <string name="notification_mirroring_active">Screen mirroring is active</string>
+</resources>
