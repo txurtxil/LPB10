@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'safe_storage.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'package:home_widget/home_widget.dart';
@@ -90,10 +91,10 @@ const _fallosTokenKey = 'lm_fallos_token_v1';
 const _kSoloLectura = 'lm_solo_lectura_v1';
 
 Future<bool> modoSoloLectura() async =>
-    (await _storage.read(key: _kSoloLectura)) == '1';
+    (await SafeStorage.readNonSecret(_kSoloLectura)) == '1';
 
 Future<void> setModoSoloLectura(bool v) =>
-    _storage.write(key: _kSoloLectura, value: v ? '1' : '0');
+    SafeStorage.writeNonSecret(_kSoloLectura, v ? '1' : '0');
 
 const _kConfirmarCmd = 'lm_confirmar_cmd_v1';
 
@@ -102,10 +103,10 @@ const _kConfirmarCmd = 'lm_confirmar_cmd_v1';
 /// panel piden confirmacion antes de mandar nada al coche; se puede
 /// desactivar desde Ajustes, junto al modo solo lectura.
 Future<bool> confirmarComandos() async =>
-    (await _storage.read(key: _kConfirmarCmd)) != '0';
+    (await SafeStorage.readNonSecret(_kConfirmarCmd)) != '0';
 
 Future<void> setConfirmarComandos(bool v) =>
-    _storage.write(key: _kConfirmarCmd, value: v ? '1' : '0');
+    SafeStorage.writeNonSecret(_kConfirmarCmd, v ? '1' : '0');
 
 /// Crea un cliente con la sesion restaurada y los callbacks anti-carrera
 /// del refreshToken cableados (v174): si el refresh rota el refreshToken se
