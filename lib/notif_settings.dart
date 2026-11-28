@@ -2,6 +2,7 @@
 // betatester): cada tipo de aviso de la app se puede apagar por separado.
 // Por defecto todos activos (el comportamiento actual no cambia).
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'safe_storage.dart';
 
 const _storage = FlutterSecureStorage();
 
@@ -16,9 +17,9 @@ class NotifKey {
   static const centinela = 'lm_notif_sentry_v1';
 }
 
-Future<bool> _lee(String k) async => (await _storage.read(key: k)) != '0';
+Future<bool> _lee(String k) async => (await SafeStorage.readNonSecret(k)) != '0';
 Future<void> _guarda(String k, bool v) =>
-    _storage.write(key: k, value: v ? '1' : '0');
+    SafeStorage.writeNonSecret(k, v ? '1' : '0');
 
 Future<bool> notifBateriaBaja() => _lee(NotifKey.bateriaBaja);
 Future<void> setNotifBateriaBaja(bool v) => _guarda(NotifKey.bateriaBaja, v);

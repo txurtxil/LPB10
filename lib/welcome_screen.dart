@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'safe_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _welcomeStorage = FlutterSecureStorage();
@@ -7,14 +8,14 @@ const String kWelcomeAcceptedKey = 'lm_welcome_accepted_v1';
 
 Future<bool> welcomeAccepted() async {
   try {
-    return (await _welcomeStorage.read(key: kWelcomeAcceptedKey)) == '1';
+    return (await SafeStorage.readNonSecret(kWelcomeAcceptedKey)) == '1';
   } catch (_) {
     return false;
   }
 }
 
 Future<void> setWelcomeAccepted() async {
-  await _welcomeStorage.write(key: kWelcomeAcceptedKey, value: '1');
+  await SafeStorage.writeNonSecret(kWelcomeAcceptedKey, '1');
 }
 
 class WelcomeScreen extends StatelessWidget {
